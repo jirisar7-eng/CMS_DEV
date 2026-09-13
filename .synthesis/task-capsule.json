@@ -1,19 +1,24 @@
 {
   "version": "1.0",
-  "task_id": "CMD-CMS-003R04",
+  "task_id": "SYN-UI-001-FIRST-VISIBLE-CMS",
   "environment": "CMS_DEV",
-  "base_sha": "2ad86885f926399843c2161205f45f9e11d6660e",
-  "expected_branch": "task/CMD-CMS-003R04",
+  "base_sha": "ae23066f26907ba66cd18ed8a5d87991632a7fba",
+  "expected_branch": "task/SYN-UI-001-FIRST-VISIBLE-CMS",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": ["CODE", "CONFIG"],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "scripts/ci/diff_firewall.mjs",
-    ".github/workflows/governance-ci.yml"
+    "app/*",
+    "components/*",
+    "lib/*",
+    "hooks/*",
+    "styles/*"
   ],
   "forbidden_paths": [
     ".env*",
-    "docs/environment/ENV-LEGACY-*"
+    "docs/environment/ENV-LEGACY-*",
+    "scripts/ci/*",
+    ".github/*"
   ]
 }
