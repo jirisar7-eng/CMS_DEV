@@ -121,9 +121,46 @@ async function runTests() {
   console.log("PASS: Reducer - Undo/Redo");
 
   // Test 5: Reducer - Delete
+  state = editorReducer(state, { type: 'SET_SELECTION', ids: ['r1'] });
   state = editorReducer(state, { type: 'DELETE_SELECTION' });
   assert.strictEqual(state.document.children[0].children.length, 0, 'Rect should be deleted');
   console.log("PASS: Reducer - Delete selection");
+
+    // Test 6: Reducer - Group Selection
+  const rawSVG2 = `<svg id="root"><rect id="r1" width="10" height="10"/><circle id="c1" r="5"/></svg>`;
+  const ast3 = parseSVG(rawSVG2);
+  let state2 = {
+    document: ast3,
+    selection: ["r1", "c1"],
+    history: [ast3],
+    historyIndex: 0,
+    viewBox: {x:0, y:0, w:100, h:100},
+    zoom: 1,
+    pan: {x:0, y:0}
+  };
+  state2 = editorReducer(state2, { type: "GROUP_SELECTION" });
+  const rootChildren = state2.document.children;
+  assert.strictEqual(rootChildren.length, 1, "Group should replace individual nodes at root");
+  assert.strictEqual(rootChildren[0].type, "g", "Node should be a group");
+  assert.strictEqual(rootChildren[0].children.length, 2, "Group should contain both original nodes");
+  assert.strictEqual(state2.selection.length, 1, "Selection should now be the new group");
+  assert.ok(state2.selection[0].startsWith("group-"), "Group ID should have prefix group-");
+  console.log("PASS: Reducer - Group selection");
+
+  // Test 7: Reducer - Ungroup Selection
+  state2 = editorReducer(state2, { type: "UNGROUP_SELECTION" });
+  assert.strictEqual(state2.document.children.length, 2, "Ungroup should restore nodes to root");
+  assert.strictEqual(state2.document.children[0].type, "rect", "First node should be rect");
+  assert.strictEqual(state2.document.children[1].type, "circle", "Second node should be circle");
+  console.log("PASS: Reducer - Ungroup selection");
+
+  // Test 8: Reducer - Reorder Nodes
+  state2 = editorReducer(state2, { type: "SET_SELECTION", ids: ["r1"] });
+  state2 = editorReducer(state2, { type: "BRING_FORWARD" });
+  assert.strictEqual(state2.document.children[1].id, "r1", "r1 should move to index 1");
+  state2 = editorReducer(state2, { type: "SEND_BACKWARD" });
+  assert.strictEqual(state2.document.children[0].id, "r1", "r1 should move to index 0");
+  console.log("PASS: Reducer - Reorder layers");
 
   console.log("ALL CORE TESTS PASSED");
 }
@@ -131,3 +168,4 @@ async function runTests() {
 // NextJS expects TS compilation. Since we are running raw Node script, 
 // we will compile the ts files temporarily for testing or use a tool.
 // Let's use node with a simple build step.
+runTests().catch(console.error);

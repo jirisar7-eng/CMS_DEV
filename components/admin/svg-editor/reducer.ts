@@ -11,14 +11,12 @@ function updateNodeInTree(root: SVGASTNode, targetId: string, updater: (node: SV
     return updater(cloneAST(root));
   }
   if (!root.children || root.children.length === 0) return root;
-
   let changed = false;
   const newChildren = root.children.map(child => {
     const updated = updateNodeInTree(child, targetId, updater);
     if (updated !== child) changed = true;
     return updated;
   });
-
   if (changed) {
     return { ...root, children: newChildren };
   }
@@ -57,6 +55,57 @@ function deleteNodes(root: SVGASTNode, idsToRemove: Set<string>): SVGASTNode | n
   const newChildren = root.children
     .map(c => deleteNodes(c, idsToRemove))
     .filter((c): c is SVGASTNode => c !== null);
+  return { ...root, children: newChildren };
+}
+
+// Extract nodes for grouping
+function extractNodes(root: SVGASTNode, idsToExtract: Set<string>, extracted: SVGASTNode[]): SVGASTNode | null {
+  if (idsToExtract.has(root.id)) {
+    extracted.push(cloneAST(root));
+    return null;
+  }
+  const newChildren = root.children
+    .map(c => extractNodes(c, idsToExtract, extracted))
+    .filter((c): c is SVGASTNode => c !== null);
+  return { ...root, children: newChildren };
+}
+
+// Ungroup nodes
+function ungroupNodes(root: SVGASTNode, idsToUngroup: Set<string>): SVGASTNode {
+  const newChildren: SVGASTNode[] = [];
+  for (const child of root.children) {
+    if (idsToUngroup.has(child.id) && child.type === 'g') {
+      newChildren.push(...child.children);
+    } else {
+      newChildren.push(ungroupNodes(child, idsToUngroup));
+    }
+  }
+  return { ...root, children: newChildren };
+}
+
+// Reorder nodes
+function reorderNodes(root: SVGASTNode, ids: Set<string>, direction: 'forward' | 'backward'): SVGASTNode {
+  let newChildren = [...root.children];
+  
+  if (direction === 'forward') {
+    for (let i = newChildren.length - 2; i >= 0; i--) {
+      if (ids.has(newChildren[i].id) && !ids.has(newChildren[i+1].id)) {
+        const temp = newChildren[i];
+        newChildren[i] = newChildren[i+1];
+        newChildren[i+1] = temp;
+      }
+    }
+  } else {
+    for (let i = 1; i < newChildren.length; i++) {
+      if (ids.has(newChildren[i].id) && !ids.has(newChildren[i-1].id)) {
+        const temp = newChildren[i];
+        newChildren[i] = newChildren[i-1];
+        newChildren[i-1] = temp;
+      }
+    }
+  }
+  
+  newChildren = newChildren.map(c => reorderNodes(c, ids, direction));
   return { ...root, children: newChildren };
 }
 
@@ -147,17 +196,61 @@ export function editorReducer(state: SVGEditorState, action: EditorAction): SVGE
       return { ...state, pan: action.pan, zoom: action.zoom };
     }
     
-    // Additional features like GROUP/UNGROUP/DUPLICATE/ORDERING can be fully mapped out 
-    // but kept minimal here as a foundation proof.
-    case 'GROUP_SELECTION': 
-      // minimal implementation placeholder
-      return state;
-    case 'UNGROUP_SELECTION':
-      return state;
-    case 'BRING_FORWARD':
-      return state;
-    case 'SEND_BACKWARD':
-      return state;
+    case 'GROUP_SELECTION': {
+      if (state.selection.length < 2) return state;
+      const idSet = new Set(state.selection);
+      if (idSet.has(state.document.id)) idSet.delete(state.document.id);
+      if (idSet.size < 2) return state;
+
+      const extracted: SVGASTNode[] = [];
+      const docWithoutNodes = extractNodes(state.document, idSet, extracted);
+      if (!docWithoutNodes) return state;
+
+      const groupId = `group-${Math.random().toString(36).substring(2, 9)}`;
+      const newGroup: SVGASTNode = {
+        id: groupId,
+        type: 'g',
+        attributes: { id: groupId },
+        children: extracted
+      };
+
+      const newDoc = {
+        ...docWithoutNodes,
+        children: [...docWithoutNodes.children, newGroup]
+      };
+
+      return {
+        ...pushHistory(state, newDoc),
+        selection: [groupId]
+      };
+    }
+
+    case 'UNGROUP_SELECTION': {
+      if (state.selection.length === 0) return state;
+      const idSet = new Set(state.selection);
+      if (idSet.has(state.document.id)) idSet.delete(state.document.id);
+      
+      const newDoc = ungroupNodes(state.document, idSet);
+      return {
+        ...pushHistory(state, newDoc),
+        selection: []
+      };
+    }
+
+    case 'BRING_FORWARD': {
+      if (state.selection.length === 0) return state;
+      const idSet = new Set(state.selection);
+      const newDoc = reorderNodes(state.document, idSet, 'forward');
+      return pushHistory(state, newDoc);
+    }
+
+    case 'SEND_BACKWARD': {
+      if (state.selection.length === 0) return state;
+      const idSet = new Set(state.selection);
+      const newDoc = reorderNodes(state.document, idSet, 'backward');
+      return pushHistory(state, newDoc);
+    }
+
     case 'DUPLICATE_SELECTION':
       return state;
 
