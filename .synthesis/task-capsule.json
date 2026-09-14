@@ -1,9 +1,9 @@
 {
   "version": "1.0",
-  "task_id": "SYN-UI-003-PAGES-WORKSPACE",
+  "task_id": "SYN-UI-005H-CONTEXTUAL-HELP",
   "environment": "CMS_DEV",
-  "base_sha": "60e190012e665ed9dab27286665fca300906a9f0",
-  "expected_branch": "task/SYN-UI-003-PAGES-WORKSPACE",
+  "base_sha": "ce41c903417a9cd310134902289e24c8aae0b2f0",
+  "expected_branch": "task/SYN-UI-005H-CONTEXTUAL-HELP",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": ["CODE", "CONFIG"],
