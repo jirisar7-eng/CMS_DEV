@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PageSummary, PageStatus, PageVisibility, pagesRepository } from '@/lib/domain/pages';
 import { useI18n } from '@/lib/i18n';
+import { HelpTrigger } from '@/components/help/HelpTrigger';
 import {
   ArrowLeft,
   FolderTree,
@@ -218,9 +219,12 @@ export function PageCreateWorkspace() {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
-              {dict.title}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+                {dict.title}
+              </h1>
+              <HelpTrigger helpKey="content.page.create" size="sm" align="left" label="Nápověda k vytváření stránky" />
+            </div>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-1">
               {dict.description}
             </p>

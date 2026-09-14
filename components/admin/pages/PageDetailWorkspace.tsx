@@ -13,6 +13,7 @@ import {
 } from '@/lib/domain/pages';
 import { PageStatusBadge } from './PageStatusBadge';
 import { useI18n } from '@/lib/i18n';
+import { HelpTrigger } from '@/components/help/HelpTrigger';
 import {
   ArrowLeft,
   ExternalLink,
@@ -267,9 +268,12 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
                 {page.path || '/'}
               </span>
             </div>
-            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">
-              {page.title}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">
+                {page.title}
+              </h1>
+              <HelpTrigger helpKey="content.page.edit" size="sm" align="left" label="Nápověda k editaci a detailu stránky" />
+            </div>
           </div>
         </div>
 

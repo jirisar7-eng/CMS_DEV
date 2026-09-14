@@ -2,6 +2,7 @@ import React from 'react';
 import { ContentBlock } from '@/lib/domain/pages';
 import { getBlockDefinition } from '@/lib/composer/registry';
 import { ContentCapabilities } from '@/lib/composer/types';
+import { HelpTrigger } from '@/components/help/HelpTrigger';
 import {
   ChevronUp,
   ChevronDown,
@@ -77,15 +78,18 @@ export const BlockInspector: React.FC<BlockInspectorProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onDeselect}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Zavřít panel vlastností"
-            aria-label="Zavřít panel vlastností"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <HelpTrigger helpKey="content.block.edit" size="sm" align="right" label="Nápověda k editaci bloku" />
+            <button
+              type="button"
+              onClick={onDeselect}
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Zavřít panel vlastností"
+              aria-label="Zavřít panel vlastností"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Structural Move & Action Controls */}

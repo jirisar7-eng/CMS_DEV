@@ -6,6 +6,7 @@ import { useI18n } from '@/lib/i18n';
 import { PageTreeTable } from './PageTreeTable';
 import { PageListTable } from './PageListTable';
 import { PageListRowMobile } from './PageListRowMobile';
+import { HelpTrigger } from '@/components/help/HelpTrigger';
 import {
   Plus,
   Search,
@@ -209,10 +210,13 @@ export function PagesWorkspace() {
     <div className="space-y-4 md:space-y-6 w-full max-w-7xl mx-auto">
       {/* Header section: Compact on mobile, inline title & primary action button */}
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
-            {dict.title}
-          </h1>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+              {dict.title}
+            </h1>
+            <HelpTrigger helpKey="content.pages.view" size="sm" align="left" label="Nápověda ke správě stránek" />
+          </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-1">
             {dict.description}
           </p>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ContentBlockType } from '@/lib/domain/pages';
 import { BLOCK_REGISTRY, FIRST_SLICE_BLOCK_TYPES } from '@/lib/composer/registry';
+import { HelpTrigger } from '@/components/help/HelpTrigger';
 import { Search, Plus, Layers } from 'lucide-react';
 
 interface BlockPaletteProps {
@@ -43,6 +44,7 @@ export const BlockPalette: React.FC<BlockPaletteProps> = ({
               <p className="text-[11px] text-muted-foreground">Kanonické bloky obsahu</p>
             </div>
           </div>
+          <HelpTrigger helpKey="content.block.create" size="sm" align="right" label="Nápověda ke katalogu bloků" />
         </div>
 
         {/* Search input */}

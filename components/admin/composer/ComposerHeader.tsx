@@ -2,6 +2,7 @@ import React from 'react';
 import { PageStatus } from '@/lib/domain/pages';
 import { ViewportMode, ContentCapabilities } from '@/lib/composer/types';
 import { PageStatusBadge } from '@/components/admin/pages/PageStatusBadge';
+import { HelpTrigger } from '@/components/help/HelpTrigger';
 import {
   ArrowLeft,
   Eye,
@@ -200,6 +201,8 @@ export const ComposerHeader: React.FC<ComposerHeaderProps> = ({
             <span>{isSaving ? 'Ukládám...' : 'Uložit koncept'}</span>
           </button>
         )}
+
+        <HelpTrigger helpKey="content.draft.save" size="icon-only" align="right" label="Nápověda k ukládání a náhledu" />
       </div>
     </header>
   );

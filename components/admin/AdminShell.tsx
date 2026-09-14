@@ -5,6 +5,7 @@ import { Menu, X, LayoutDashboard, FileText, Image as ImageIcon, Paintbrush, Tag
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from "../theme/theme-toggle";
+import { HelpTrigger } from '@/components/help/HelpTrigger';
 import { useI18n } from '@/lib/i18n';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -137,6 +138,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border-2 border-card"></span>
             </button>
             <ThemeToggle />
+            <HelpTrigger helpKey="theme.switch" size="sm" align="right" label="Nápověda k motivu a ovládání rozhraní" />
           </div>
         </header>
 
