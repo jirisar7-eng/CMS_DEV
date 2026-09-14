@@ -32,6 +32,7 @@ export type HelpKey =
   // Design
   | 'design.themes.view'
   | 'design.brands.view'
+  | 'design.svg_editor.view'
   | 'design.pwa.view'
   // Správa (Management)
   | 'management.modules.view'
