@@ -290,6 +290,15 @@ class HelpRegistryService {
     });
 
     this.register({
+      helpKey: 'design.svg_editor.view',
+      title: 'SVG Editor',
+      shortSummary: 'Vektorový editor SVG aktiv v bezpečném vývojovém režimu.',
+      extendedBody:
+        'SVG Editor slouží k tvorbě a úpravě vektorových aktiv. Aktuální verze je DEV PREVIEW. Import, ukládání a publikování nejsou aktivní. Produkční SVG musí před uložením a publikací projít autoritativní serverovou SVG security pipeline.',
+      tags: ['svg', 'editor', 'design', 'vektor', 'bezpečnost'],
+    });
+
+    this.register({
       helpKey: 'design.pwa.view',
       title: 'Progressive Web App (PWA)',
       shortSummary: 'Nastavení instalačního manifestu a offline chování webové aplikace.',
