@@ -71,3 +71,24 @@ export interface SvgSecurityParseFailure {
  * Union result type for parseSvgSecurity.
  */
 export type SvgSecurityParseResult = SvgSecurityParseSuccess | SvgSecurityParseFailure;
+
+/**
+ * Successful result of SVG sanitization.
+ */
+export interface SvgSanitizeSuccess {
+  readonly success: true;
+  readonly root: SvgSecurityNode;
+}
+
+/**
+ * Failed result of SVG sanitization.
+ */
+export interface SvgSanitizeFailure {
+  readonly success: false;
+  readonly error: SvgSecurityError;
+}
+
+/**
+ * Union result type for safe SVG sanitization.
+ */
+export type SvgSanitizeResult = SvgSanitizeSuccess | SvgSanitizeFailure;
