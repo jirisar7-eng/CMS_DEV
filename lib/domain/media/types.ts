@@ -136,3 +136,36 @@ export interface MediaFilterOptions {
   tag?: string;
   sort?: MediaSortOption;
 }
+
+
+/**
+ * Generic Media Asset Version Lifecycle Types
+ */
+export type MediaAssetVersionStatus =
+  | 'draft'
+  | 'validated'
+  | 'published'
+  | 'superseded'
+  | 'rejected';
+
+export interface MediaAssetVersionSecurity {
+  validated: boolean;
+  pipelineId: string;
+  validatedAt: string;
+  reasonCode?: string;
+  sourceChecksumSha256: string;
+  canonicalChecksumSha256: string;
+}
+
+export interface MediaAssetVersion {
+  id: string;
+  assetId: string;
+  versionNumber: number;
+  status: MediaAssetVersionStatus;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey?: string;
+  createdAt: string;
+  updatedAt: string;
+  security: MediaAssetVersionSecurity;
+}

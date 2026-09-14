@@ -1,27 +1,20 @@
 {
   "version": "1.0",
-  "task_id": "SYN-SVG-005-INTEGRATION",
+  "task_id": "SYN-SVG-006-ASSET-LIFECYCLE",
   "environment": "CMS_DEV",
-  "base_sha": "7f20667c5ef6d22f5cd57e73f30c93d3c91bccec",
-  "expected_branch": "task/SYN-SVG-005-EDITOR-PREVIEW",
+  "base_sha": "e86a2c6ccceaa31ecc71b72e780ed546cb0dcf08",
+  "expected_branch": "task/SYN-SVG-006-ASSET-LIFECYCLE",
   "owner": "AI_STUDIO",
-  "status": "INTEGRATION",
+  "status": "IMPLEMENTATION",
   "allowed_mutation_types": [
     "CODE",
-    "CONFIG",
-    "DEPENDENCY",
     "GOVERNANCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "app/admin/svg-editor/*",
-    "components/admin/svg-editor/*",
-    "lib/svg-security/*",
-    "lib/navigation/adminNav.ts",
-    "lib/help/types.ts",
-    "lib/help/registry.ts",
-    "package.json",
-    "package-lock.json"
+    "lib/domain/media/types.ts",
+    "lib/domain/media/svgAssetLifecycle.server.ts",
+    "lib/domain/media/tests/svgAssetLifecycle.ts"
   ],
   "forbidden_paths": [
     ".env*",
