@@ -1,0 +1,3 @@
+cms-dev.tatovacesta.cz {
+    reverse_proxy synthesis_cms_dev_app:3000
+}
