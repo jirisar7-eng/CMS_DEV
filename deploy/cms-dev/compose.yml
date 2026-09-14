@@ -1,0 +1,51 @@
+services:
+  cms:
+    container_name: synthesis_cms_dev_app
+
+    image: "synthesis-cms-dev:${CMS_GIT_SHA:?CMS_GIT_SHA required}"
+
+    build:
+      context: ../..
+      dockerfile: deploy/cms-dev/Dockerfile
+
+    restart: unless-stopped
+    init: true
+
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      CMS_GIT_SHA: "${CMS_GIT_SHA}"
+
+    expose:
+      - "3000"
+
+    cap_drop:
+      - ALL
+
+    security_opt:
+      - no-new-privileges:true
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/admin/svg-editor').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    networks:
+      - internal
+      - edge
+
+networks:
+  internal:
+    name: synthesis_cms_dev_internal
+
+  edge:
+    external: true
+    name: "${CMS_EDGE_NETWORK:?CMS_EDGE_NETWORK required}"

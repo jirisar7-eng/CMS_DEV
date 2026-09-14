@@ -1,25 +1,24 @@
 {
   "version": "1.0",
-  "task_id": "SYN-SVG-006-ASSET-LIFECYCLE",
+  "task_id": "SYN-DEPLOY-001-CMS-DEV-CONTAINER",
   "environment": "CMS_DEV",
-  "base_sha": "e86a2c6ccceaa31ecc71b72e780ed546cb0dcf08",
-  "expected_branch": "task/SYN-SVG-006-ASSET-LIFECYCLE",
+  "base_sha": "89946dd71400b0ae7568238024b382cf58425039",
+  "expected_branch": "task/SYN-DEPLOY-001-CMS-DEV-CONTAINER",
   "owner": "AI_STUDIO",
   "status": "IMPLEMENTATION",
   "allowed_mutation_types": [
-    "CODE",
+    "CONFIG",
     "GOVERNANCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "lib/domain/media/types.ts",
-    "lib/domain/media/svgAssetLifecycle.server.ts",
-    "lib/domain/media/tests/svgAssetLifecycle.ts"
+    ".dockerignore",
+    "deploy/cms-dev/Dockerfile",
+    "deploy/cms-dev/compose.yml"
   ],
   "forbidden_paths": [
     ".env*",
     "docs/environment/ENV-LEGACY-*",
-    "deployment/*",
     "infra/*"
   ]
 }
