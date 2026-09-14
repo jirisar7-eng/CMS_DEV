@@ -1,0 +1,54 @@
+{
+  "results": [
+    {
+      "contractId": "EVD-CMD-CMS-002",
+      "version": "1.0.0",
+      "hash": "866e50a6154a26290200f0dd66c658a4059e35cc75620155814fe5e3e938d498",
+      "canonicalRepeatMatch": true,
+      "hashRepeatMatch": true
+    },
+    {
+      "contractId": "SYN-HASH-CONTRACT",
+      "version": "1.0.0",
+      "hash": "cf356b36c0e91f8441088850434a5f6fec3fbfabac0e86af37b931a962692665",
+      "canonicalRepeatMatch": true,
+      "hashRepeatMatch": true
+    },
+    {
+      "contractId": "SYN-AI-STUDIO-GLOBAL",
+      "version": "6.0",
+      "hash": "813e666f37530755f88257ccbbe195662fc3c97967d4f388314b8ebee3f1fd87",
+      "canonicalRepeatMatch": true,
+      "hashRepeatMatch": true
+    },
+    {
+      "contractId": "ENV-CMS-DEV",
+      "version": "0.1.0-draft",
+      "hash": "013d2b2768abccb8db28039248468bbca0f0b954561f3e2bcd54a12d1f2b99dd",
+      "canonicalRepeatMatch": true,
+      "hashRepeatMatch": true
+    },
+    {
+      "contractId": "CMD-CMS-000-PREFLIGHT",
+      "version": "0.1.0",
+      "hash": "72fa38efedca11c30f1ccf9689fb8608daa300a806a33abf9b78fb908dffa388",
+      "canonicalRepeatMatch": true,
+      "hashRepeatMatch": true
+    },
+    {
+      "contractId": "SYN-RULEBOOK-ROOT",
+      "version": "0.1.0-provisional",
+      "hash": "63135ee7fc3362106bc92420bfdac3765cbbe17ecca5af8822252a17b329a0d3",
+      "canonicalRepeatMatch": true,
+      "hashRepeatMatch": true
+    },
+    {
+      "contractId": "ENV-LEGACY-DEV3",
+      "version": "historical-unverified",
+      "hash": "87366b29e5a083834a9776018b1f4415a37072441ebd080580845a2d180965eb",
+      "canonicalRepeatMatch": true,
+      "hashRepeatMatch": true
+    }
+  ],
+  "determinismPassed": true
+}

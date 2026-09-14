@@ -1,5 +1,5 @@
-import { NotImplemented } from '@/components/admin/NotImplemented';
+import { PagesWorkspace } from '@/components/admin/pages/PagesWorkspace';
 
 export default function Page() {
-  return <NotImplemented title="Pages" />;
+  return <PagesWorkspace />;
 }

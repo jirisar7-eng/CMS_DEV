@@ -1,7 +1,12 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
+import { useI18n } from '@/lib/i18n';
 
 export function PublicHeader() {
+  const dict = useI18n();
+
   return (
     <header className="border-b bg-background sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,7 +23,7 @@ export function PublicHeader() {
           </nav>
           <div>
             <Link href="/admin" className="text-sm font-medium px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
-              Return to Admin
+              {dict.preview.returnToAdmin}
             </Link>
           </div>
         </div>

@@ -1,23 +1,30 @@
+"use client";
+
 import React from 'react';
 import { Construction, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useI18n } from '@/lib/i18n';
 
-export function NotImplemented({ title }: { title: string }) {
+export function NotImplemented({ featureName }: { featureName?: string }) {
+  const dict = useI18n();
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-      <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center text-muted-foreground mb-6">
-        <Construction className="w-8 h-8" />
+      <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+        <Construction className="w-10 h-10 text-muted-foreground" />
       </div>
-      <h1 className="text-2xl font-bold tracking-tight mb-2">{title} Not Implemented Yet</h1>
+      <h2 className="text-2xl font-bold tracking-tight mb-2">
+        {featureName ? featureName : dict.not_implemented.title}
+      </h2>
       <p className="text-muted-foreground max-w-md mb-8">
-        This section is part of the future Synthesis CMS roadmap and is not currently available in this environment.
+        {dict.not_implemented.description}
       </p>
       <Link 
         href="/admin" 
-        className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline underline-offset-4"
       >
         <ArrowLeft className="w-4 h-4" />
-        Return to Dashboard
+        {dict.not_implemented.back}
       </Link>
     </div>
   );
