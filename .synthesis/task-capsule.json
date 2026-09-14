@@ -1,56 +1,24 @@
 {
   "version": "1.0",
-  "task_id": "SYN-INTEGRATE-001-PREPRISMA-CHECKPOINT",
+  "task_id": "SYN-SVG-003-EDITOR-CORE",
   "environment": "CMS_DEV",
-  "base_sha": "c070c01db40ca75cbeeedf3f97943c1c758bcf3a",
-  "expected_branch": "task/SYN-DEP-002B-TOOLCHAIN-BASELINE",
+  "base_sha": "1fd5877b510947318e2983b3be8f17c7e1f8ccad",
+  "expected_branch": "task/SYN-SVG-003-EDITOR-CORE",
   "owner": "AI_STUDIO",
-  "status": "INTEGRATION",
+  "status": "IN_PROGRESS",
   "allowed_mutation_types": [
-    "CODE",
-    "CONFIG",
-    "DEPENDENCY",
-    "GOVERNANCE"
+    "CODE"
   ],
   "allowed_paths": [
-    ".github/*",
-    ".synthesis/*",
-    ".gitignore",
-    ".nvmrc",
-    ".eslintrc.json",
-    "app/*",
-    "branch_protection.js",
-    "bun.lock",
-    "check_ci.js",
-    "check_main_ci.js",
-    "components/*",
-    "create_audit.mjs",
-    "create_audit_003.mjs",
-    "create_design_spec.mjs",
-    "docs/*",
-    "eslint.config.mjs",
-    "fetch_notion.sh",
-    "generate_baseline.mjs",
-    "govern.js",
-    "hash_results.json",
-    "hooks/*",
-    "lib/*",
-    "metadata.json",
-    "modify_pkg.js",
-    "next-env.d.ts",
-    "next.config.ts",
-    "package-lock.json",
-    "package.json",
-    "postcss.config.mjs",
-    "read_notion.js",
-    "scripts/*",
-    "tsconfig.json",
-    "update_registry.mjs"
+    ".synthesis/task-capsule.json",
+    "components/admin/svg-editor/*",
+    "lib/svg-editor/*"
   ],
   "forbidden_paths": [
     ".env*",
     "docs/environment/ENV-LEGACY-*",
     "deployment/*",
-    "infra/*"
+    "infra/*",
+    "package.json"
   ]
 }
