@@ -2,6 +2,7 @@ import React from 'react';
 import { PageStatus } from '@/lib/domain/pages';
 import { ViewportMode, ContentCapabilities } from '@/lib/composer/types';
 import { PageStatusBadge } from '@/components/admin/pages/PageStatusBadge';
+import { CapabilityStatusBadge } from '@/components/admin/CapabilityStatusBadge';
 import { HelpTrigger } from '@/components/help/HelpTrigger';
 import {
   ArrowLeft,
@@ -75,6 +76,7 @@ export const ComposerHeader: React.FC<ComposerHeaderProps> = ({
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="hidden sm:inline">Editor obsahu</span>
+            <CapabilityStatusBadge status="PROTOTYP" size="sm" />
             {isDirty ? (
               <span className="inline-flex items-center gap-1 text-amber-800 dark:text-amber-300 font-medium">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />

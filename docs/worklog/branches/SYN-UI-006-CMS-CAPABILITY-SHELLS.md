@@ -1,12 +1,12 @@
 # SYN-UI-006: CMS CAPABILITY SHELLS
 
 ## Goal
-Implement complete visual administration map of GENERAL Synthesis CMS capabilities across structured navigation groups.
+Implement complete visual administration map of GENERAL Synthesis CMS capabilities across structured navigation groups with a truthful capability status model.
 
-## Navigation Groups & Routes
+## Navigation Groups & Routes (31 General Capabilities)
 1. **OBSAH (Content)**:
-   - Přehled: `/admin` (FUNKČNÍ)
-   - Stránky: `/admin/pages` (FUNKČNÍ)
+   - Přehled: `/admin` (PROTOTYP)
+   - Stránky: `/admin/pages` (PROTOTYP)
    - Média: `/admin/media` (UI PŘIPRAVENO)
    - Navigace: `/admin/navigation` (UI PŘIPRAVENO)
    - Publikování: `/admin/publishing` (UI PŘIPRAVENO)
@@ -51,9 +51,16 @@ Implement complete visual administration map of GENERAL Synthesis CMS capabiliti
    - Project Packs: `/admin/project-packs` (PLÁNOVÁNO)
    - Deployment: `/admin/deployment` (UI PŘIPRAVENO)
 
+## Truthful Status Model & Semantics
+- **PROTOTYP**: Interaktivní workflow běžící nad in-memory adaptérem / fixture daty (Dashboard, Stránky, Composer).
+- **UI PŘIPRAVENO**: Vizuální rozhraní existuje, je plně responzivní a podporuje simulaci stavů (Normal, Empty, Loading, Error, Disabled), ale backendové služby nejsou připojeny. Všechna data jsou pravdivě označena jako ukázková.
+- **PLÁNOVÁNO**: Schopnost schválena v roadmapě, bez implementace (PWA, Templates, Queues, Project Packs).
+- **FUNKČNÍ**: Plná end-to-end implementace s reálnou perzistencí (vyhrazena pro dokončené vertikální slices).
+- **VYPNUTO**: Schopnost záměrně deaktivována konfigurací nebo bezpečnostní politikou.
+
 ## Architecture Invariants
 - Responsive: mobile 320/360/390/412 (compact group navigation, no overflow) and desktop 1440/1920 (dense, readable layout).
-- Status badges: FUNKČNÍ, UI PŘIPRAVENO, PLÁNOVÁNO, VYPNUTO.
+- Status badges: PROTOTYP, UI PŘIPRAVENO, PLÁNOVÁNO, VYPNUTO, FUNKČNÍ.
 - State simulation: Empty / Loading / Error / Module-disabled / Normal view tabs for every capability.
 - Unfinished action notifications explicitly declare that backend APIs will be connected in future tasks.
-- Contextual HelpTrigger on every capability with dedicated help topics in `lib/help/registry.ts`.
+- Contextual HelpTrigger on every capability with dedicated help topics in `lib/help/registry.ts` (including `system.status_model`).

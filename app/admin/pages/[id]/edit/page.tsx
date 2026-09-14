@@ -6,6 +6,19 @@ export const metadata = {
   description: 'Kanonický blokový editor obsahu pro stránky Synthesis.',
 };
 
+export function generateStaticParams() {
+  return [
+    { id: 'page-home' },
+    { id: 'page-services' },
+    { id: 'page-pricing' },
+    { id: 'page-about' },
+    { id: 'page-contact' },
+    { id: 'page-gdpr' },
+  ];
+}
+
+export const dynamicParams = true;
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }

@@ -7,6 +7,7 @@ import { PageTreeTable } from './PageTreeTable';
 import { PageListTable } from './PageListTable';
 import { PageListRowMobile } from './PageListRowMobile';
 import { HelpTrigger } from '@/components/help/HelpTrigger';
+import { CapabilityStatusBadge } from '@/components/admin/CapabilityStatusBadge';
 import {
   Plus,
   Search,
@@ -211,6 +212,12 @@ export function PagesWorkspace() {
       {/* Header section: Compact on mobile, inline title & primary action button */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+              OBSAH
+            </span>
+            <CapabilityStatusBadge status="PROTOTYP" size="sm" />
+          </div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
               {dict.title}
