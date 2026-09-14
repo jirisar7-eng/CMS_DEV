@@ -91,6 +91,35 @@ export class MockStorageProvider implements StorageProvider {
   async getUrl(storageKey: string): Promise<string> {
     return `https://picsum.photos/seed/${encodeURIComponent(storageKey)}/1200/800`;
   }
+
+  async putObject(
+    key: string,
+    data: Buffer | Uint8Array | Blob,
+    options: { mimeType: string; sizeBytes: number; checksumSha256: string }
+  ): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async getObject(key: string): Promise<{ data: Buffer | Uint8Array | Blob; mimeType: string; sizeBytes: number }> {
+    const data = typeof Buffer !== 'undefined' ? Buffer.from('mock-data') : new Uint8Array();
+    return {
+      data,
+      mimeType: 'application/octet-stream',
+      sizeBytes: 9,
+    };
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async getSignedReadUrl(key: string, expirySeconds?: number): Promise<string> {
+    return `https://picsum.photos/seed/${encodeURIComponent(key)}/1200/800?expires=${expirySeconds || 900}`;
+  }
+
+  async exists(key: string): Promise<boolean> {
+    return true;
+  }
 }
 
 export class MockMalwareScanner implements MalwareScanner {

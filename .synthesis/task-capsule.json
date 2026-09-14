@@ -1,19 +1,22 @@
 {
   "version": "1.0",
-  "task_id": "SYN-DEPLOY-003-CADDY-PERSISTENCE",
+  "task_id": "SYN-MEDIA-001A-PERSISTENCE-FOUNDATION",
   "environment": "CMS_DEV",
-  "base_sha": "f0c49653ba1ed9644bceafb9df788db004ff3c72",
-  "expected_branch": "task/SYN-DEPLOY-003-CADDY-PERSISTENCE",
+  "base_sha": "b82c8d7d1190ccb8d0594a050f2eab618be39bee",
+  "expected_branch": "task/SYN-MEDIA-001A-PERSISTENCE-FOUNDATION",
   "owner": "AI_STUDIO",
   "status": "IMPLEMENTATION",
   "allowed_mutation_types": [
+    "CODE",
     "CONFIG",
     "GOVERNANCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "deploy/cms-dev/caddy/Caddyfile.cms-dev",
-    "deploy/cms-dev/caddy/docker-compose.override.yml"
+    "lib/domain/media/types.ts",
+    "lib/domain/media/repository.ts",
+    "lib/domain/media/mockProviders.ts",
+    "lib/domain/media/tests/persistence.test.ts"
   ],
   "forbidden_paths": [
     ".env*",
