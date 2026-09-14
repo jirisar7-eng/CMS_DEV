@@ -84,8 +84,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/media',
         icon: ImageIcon,
         group: 'OBSAH',
-        status: 'UI PŘIPRAVENO',
-        helpKey: 'content.media.view',
+        status: 'PROTOTYP',
+        helpKey: 'media.library',
         description: 'Knihovna obrázků, dokumentů a multimediálních aktiv.',
       },
       {

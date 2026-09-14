@@ -95,8 +95,62 @@ class HelpRegistryService {
       title: 'Knihovna médií (Media Library)',
       shortSummary: 'Centrální úložiště obrázků, dokumentů, ikon a multimediálních aktiv.',
       extendedBody:
-        'Knihovna médií zajišťuje optimalizované nahrávání a správu souborů. Každý nahraný obrázek je automaticky převeden do moderních formátů (WebP, AVIF) a opatřen alternativním textem pro přístupnost a SEO.',
+        'Knihovna médií zajišťuje optimalizované nahrávání a správu souborů. Každý nahraný obrázek je optimalizován, opatřen metadaty a chráněn před nechtěným smazáním při aktivním použití na stránkách.',
       tags: ['média', 'obrázky', 'dokumenty', 'úložiště'],
+    });
+
+    this.register({
+      helpKey: 'media.library',
+      title: 'Knihovna médií a správa digitálních aktiv',
+      shortSummary: 'Přehled, filtrování, vyhledávání a organizace všech multimediálních souborů webu.',
+      extendedBody:
+        'Knihovna médií poskytuje mřížkové i řádkové zobrazení aktiv. Umožňuje rychlé fulltextové vyhledávání podle názvu, ALT textu, popisu i štítků a filtrování podle typu souboru (obrázky, vektorová grafika, dokumenty, audio, video). Každé aktivum je uloženo s izolovaným úložištním klíčem.',
+      tags: ['média', 'knihovna', 'filtry', 'aktiva', 'správa'],
+    });
+
+    this.register({
+      helpKey: 'media.upload',
+      title: 'Bezpečné nahrávání souborů (Upload Pipeline)',
+      shortSummary: 'Politika povolených typů souborů, validace velikosti a bezpečnostní kontrola.',
+      extendedBody:
+        'Nahrávací pipeline ověřuje soubory ve více fázích:\n\n1. Validace MIME typu a přípony souboru (blokace spustitelných souborů .exe, .sh, .bat, skriptů).\n2. Kontrola limitu velikosti (výchozí 25 MB).\n3. Antivirová kontrola a detekce aktivního obsahu (např. sanitace SVG s potenciálními skripty).\n4. Generování bezpečného izolovaného klíče v úložišti (uživatelský název se nikdy nepoužívá jako fyzická cesta).',
+      tags: ['nahrávání', 'upload', 'bezpečnost', 'validace', 'antivir'],
+    });
+
+    this.register({
+      helpKey: 'media.alt',
+      title: 'Přístupnost a alternativní text (ALT)',
+      shortSummary: 'Zásady psaní popisků obrázků pro zrakově znevýhodněné uživatele a vyhledávače.',
+      extendedBody:
+        'Alternativní text (ALT) je klíčový pro přístupnost (čtečky obrazovky) a SEO indexaci. Měl by věcně a stručně popsat, co je na obrázku zobrazeno a jaký má význam v kontextu stránky. U čistě dekorativních prvků může zůstat prázdný, ale systém vyžaduje vědomé nastavení.',
+      tags: ['alt', 'přístupnost', 'seo', 'popis', 'metadata'],
+    });
+
+    this.register({
+      helpKey: 'media.replace',
+      title: 'Výměna souboru se zachováním vazeb',
+      shortSummary: 'Nahrazení fyzického souboru novou verzí bez rozbití existujících odkazů na stránkách.',
+      extendedBody:
+        'Funkce Nahradit soubor umožňuje nahrát aktualizovanou verzi aktiva (např. upravenou fotografii nebo novou verzi PDF ceníku) při zachování stejného ID a storage klíče. Všechny bloky a stránky, které toto médium používají, automaticky zobrazí novou verzi bez nutnosti ručního přelinkování.',
+      tags: ['výměna', 'nahradit', 'aktualizace', 'vazby'],
+    });
+
+    this.register({
+      helpKey: 'media.delete',
+      title: 'Ochrana před smazáním a bezpečnostní pravidla',
+      shortSummary: 'Destruktivní smazání je blokováno, pokud je médium používáno na kterékoli stránce.',
+      extendedBody:
+        'Aby se předešlo vzniku neplatných odkazů (broken links) a chybějících obrázků na veřejném webu, systém aktivně kontroluje reference:\n\n• Pokud je médium použito na 1 nebo více stránkách, tlačítko Smazat je zablokováno a zobrazí se přesný seznam odkazujících stránek a bloků.\n• V takovém případě je doporučeno médium archivovat, nebo nejprve odstranit vazbu z příslušných stránek.\n• Smazat lze pouze nepoužívaná média (počet referencí = 0).',
+      tags: ['smazání', 'ochrana', 'reference', 'bezpečnost', 'archiv'],
+    });
+
+    this.register({
+      helpKey: 'media.usage',
+      title: 'Sledování výskytu a referencí médií',
+      shortSummary: 'Přehled všech stránek a bloků, které dané aktivum aktivně využívají.',
+      extendedBody:
+        'Systém automaticky eviduje vazby mezi bloky stránek a médii. V detailu aktiva vidíte přesný počet referencí, názvy stránek, URL adresy a konkrétní bloky (např. Hero sekce, Tým, Záhlaví), kde je soubor vložen. Kliknutím na odkaz můžete přejít přímo do editoru dané stránky.',
+      tags: ['použití', 'reference', 'výskyt', 'stránky', 'vazby'],
     });
 
     this.register({
