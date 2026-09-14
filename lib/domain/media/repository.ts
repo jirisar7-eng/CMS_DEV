@@ -5,6 +5,10 @@ import {
   MediaStatus,
   MediaType,
   UploadPipelineResult,
+  IMediaRepository,
+  MediaAssetVersion,
+  MediaUsageReference,
+  MediaMetadata,
 } from './types';
 import {
   DEFAULT_UPLOAD_POLICY,
@@ -329,8 +333,9 @@ const INITIAL_MEDIA_FIXTURES: MediaAsset[] = [
   },
 ];
 
-export class MediaRepository {
+export class MediaRepository implements IMediaRepository {
   private assets: MediaAsset[];
+  private versions: MediaAssetVersion[] = [];
   private storageProvider: MockStorageProvider;
   private malwareScanner: MockMalwareScanner;
 
@@ -611,6 +616,119 @@ export class MediaRepository {
 
     this.assets = this.assets.filter(a => a.id !== id);
     return { success: true };
+  }
+
+  async createAsset(assetInput: Omit<MediaAsset, 'id' | 'createdAt' | 'updatedAt' | 'usageCount' | 'usageReferences'>): Promise<MediaAsset> {
+    const now = new Date().toISOString();
+    const newAsset: MediaAsset = {
+      ...assetInput,
+      id: `media-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      createdAt: now,
+      updatedAt: now,
+      usageCount: 0,
+      usageReferences: [],
+    };
+    this.assets.unshift(newAsset);
+    return newAsset;
+  }
+
+  async list(filters?: MediaFilterOptions): Promise<MediaAsset[]> {
+    return this.filter(filters);
+  }
+
+  async createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>): Promise<MediaAssetVersion> {
+    const existingVersions = this.versions.filter(v => v.assetId === assetId);
+    const versionNumber = existingVersions.length + 1;
+    const now = new Date().toISOString();
+    const newVersion: MediaAssetVersion = {
+      ...versionInput,
+      id: `ver-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      assetId,
+      versionNumber,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.versions.push(newVersion);
+    return newVersion;
+  }
+
+  async listVersions(assetId: string): Promise<MediaAssetVersion[]> {
+    return this.versions.filter(v => v.assetId === assetId);
+  }
+
+  async setCurrentVersion(assetId: string, versionId: string): Promise<MediaAsset | undefined> {
+    const asset = this.getById(assetId);
+    if (!asset) return undefined;
+    const version = this.versions.find(v => v.id === versionId && v.assetId === assetId);
+    if (!version) return undefined;
+
+    // Update active version status
+    this.versions.forEach(v => {
+      if (v.assetId === assetId) {
+        v.status = v.id === versionId ? 'PUBLISHED' : 'superseded';
+      }
+    });
+
+    // Update asset properties to match the version
+    if (version.storageKey) {
+      asset.storageKey = version.storageKey;
+    }
+    asset.mimeType = version.mimeType;
+    asset.sizeBytes = version.sizeBytes;
+    asset.updatedAt = new Date().toISOString();
+    return asset;
+  }
+
+  async changeStatus(id: string, status: MediaStatus): Promise<MediaAsset | undefined> {
+    const asset = this.getById(id);
+    if (!asset) return undefined;
+    asset.status = status;
+    asset.updatedAt = new Date().toISOString();
+    return asset;
+  }
+
+  async addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>): Promise<MediaUsageReference> {
+    const asset = this.getById(assetId);
+    if (!asset) throw new Error('Asset not found');
+    const newRef: MediaUsageReference = {
+      ...reference,
+      id: `use-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      usedAt: new Date().toISOString(),
+    };
+    asset.usageReferences.push(newRef);
+    asset.usageCount = asset.usageReferences.length;
+    return newRef;
+  }
+
+  async removeUsageReference(assetId: string, referenceId: string): Promise<void> {
+    const asset = this.getById(assetId);
+    if (!asset) return;
+    asset.usageReferences = asset.usageReferences.filter(r => r.id !== referenceId);
+    asset.usageCount = asset.usageReferences.length;
+  }
+
+  async listUsageReferences(assetId: string): Promise<MediaUsageReference[]> {
+    const asset = this.getById(assetId);
+    if (!asset) return [];
+    return [...asset.usageReferences];
+  }
+
+  async isDeletionAllowed(id: string): Promise<boolean> {
+    const asset = this.getById(id);
+    if (!asset) return false;
+    return asset.usageCount === 0;
+  }
+
+  async archiveAsset(id: string): Promise<MediaAsset | undefined> {
+    return this.archive(id);
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    const allowed = await this.isDeletionAllowed(id);
+    if (!allowed) {
+      throw new Error(`Deletion blocked: Asset ${id} is actively referenced or does not exist.`);
+    }
+    this.assets = this.assets.filter(a => a.id !== id);
   }
 }
 

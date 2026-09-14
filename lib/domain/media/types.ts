@@ -5,7 +5,16 @@
 
 export type MediaType = 'image' | 'vector' | 'document' | 'video' | 'audio' | 'archive' | 'other';
 
-export type MediaStatus = 'ready' | 'processing' | 'archived' | 'failed';
+export type MediaStatus =
+  | 'DRAFT'
+  | 'READY'
+  | 'PUBLISHED'
+  | 'ARCHIVED'
+  | 'QUARANTINED'
+  | 'ready'
+  | 'processing'
+  | 'archived'
+  | 'failed';
 
 export interface MediaDimensions {
   width: number;
@@ -73,6 +82,17 @@ export interface StorageProvider {
   ): Promise<{ url: string; storageKey: string; sizeBytes: number }>;
   delete(storageKey: string): Promise<void>;
   getUrl(storageKey: string): Promise<string>;
+
+  // Pluggable S3/MinIO conceptual capabilities
+  putObject(
+    key: string,
+    data: Buffer | Uint8Array | Blob,
+    options: { mimeType: string; sizeBytes: number; checksumSha256: string }
+  ): Promise<void>;
+  getObject(key: string): Promise<{ data: Buffer | Uint8Array | Blob; mimeType: string; sizeBytes: number }>;
+  deleteObject(key: string): Promise<void>;
+  getSignedReadUrl(key: string, expirySeconds?: number): Promise<string>;
+  exists(key: string): Promise<boolean>;
 }
 
 /**
@@ -142,9 +162,13 @@ export interface MediaFilterOptions {
  * Generic Media Asset Version Lifecycle Types
  */
 export type MediaAssetVersionStatus =
+  | 'DRAFT'
+  | 'READY'
+  | 'PUBLISHED' | 'published'
+  | 'ARCHIVED' | 'archived'
+  | 'QUARANTINED'
   | 'draft'
   | 'validated'
-  | 'published'
   | 'superseded'
   | 'rejected';
 
@@ -168,4 +192,25 @@ export interface MediaAssetVersion {
   createdAt: string;
   updatedAt: string;
   security: MediaAssetVersionSecurity;
+  originalFilename?: string; // Original filename only as safe metadata, never storage path
+}
+
+/**
+ * Generic Persistence-Capable MediaRepository Contract
+ */
+export interface IMediaRepository {
+  createAsset(assetInput: Omit<MediaAsset, 'id' | 'createdAt' | 'updatedAt' | 'usageCount' | 'usageReferences'>): Promise<MediaAsset> | MediaAsset;
+  getById(id: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  list(filters?: MediaFilterOptions): Promise<MediaAsset[]> | MediaAsset[];
+  updateMetadata(id: string, metadata: Partial<MediaMetadata>): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>): Promise<MediaAssetVersion> | MediaAssetVersion;
+  listVersions(assetId: string): Promise<MediaAssetVersion[]> | MediaAssetVersion[];
+  setCurrentVersion(assetId: string, versionId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  changeStatus(id: string, status: MediaStatus): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>): Promise<MediaUsageReference> | MediaUsageReference;
+  removeUsageReference(assetId: string, referenceId: string): Promise<void> | void;
+  listUsageReferences(assetId: string): Promise<MediaUsageReference[]> | MediaUsageReference[];
+  isDeletionAllowed(id: string): Promise<boolean> | boolean;
+  archiveAsset(id: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  deleteAsset(id: string): Promise<void> | void;
 }
