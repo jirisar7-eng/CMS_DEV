@@ -1,0 +1,10 @@
+services:
+  caddy_proxy:
+    networks:
+      - app_network
+      - synthesis_edge
+
+networks:
+  synthesis_edge:
+    external: true
+    name: synthesis-edge-net
