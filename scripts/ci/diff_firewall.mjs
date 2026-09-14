@@ -35,16 +35,26 @@ function matchesPattern(file, patterns) {
 
 function main() {
   console.log("=== DIFF FIREWALL ===");
-  if (!fs.existsSync(CAPSULE_PATH)) {
-    // If on main, we might skip, but let's fail closed if it's missing on a PR/task branch
-    const branch = runCmd('git rev-parse --abbrev-ref HEAD');
-    if (branch !== 'main') {
-      console.error(`FAIL: Missing task capsule at ${CAPSULE_PATH}`);
-      process.exit(1);
-    } else {
-      console.log("On main branch. Assuming verified state or check not applicable.");
+
+  let current_branch = process.env.GITHUB_HEAD_REF;
+  if (!current_branch) {
+      current_branch = process.env.GITHUB_REF_NAME;
+  }
+  if (!current_branch) {
+      current_branch = runCmd('git rev-parse --abbrev-ref HEAD');
+  }
+  if (current_branch === 'HEAD') {
+      current_branch = 'detached';
+  }
+
+  if (current_branch === 'main') {
+      console.log("On main branch. Task-scope Diff Firewall is not applicable. Returning success.");
       return;
-    }
+  }
+
+  if (!fs.existsSync(CAPSULE_PATH)) {
+    console.error(`FAIL: Missing task capsule at ${CAPSULE_PATH}`);
+    process.exit(1);
   }
 
   let capsule;
@@ -68,14 +78,6 @@ function main() {
     process.exit(1);
   }
 
-  // Determine current branch, but in CI it might be detached HEAD.
-  // We can check if GITHUB_HEAD_REF is present.
-  let current_branch = process.env.GITHUB_HEAD_REF || runCmd('git rev-parse --abbrev-ref HEAD');
-  if (current_branch === 'HEAD') {
-      // Might be running in actions/checkout detached HEAD
-      current_branch = process.env.GITHUB_REF_NAME || 'detached';
-  }
-
   if (current_branch !== expected_branch && current_branch !== 'detached') {
     console.error(`FAIL: Branch mismatch. Expected ${expected_branch}, got ${current_branch}`);
     process.exit(1);
@@ -96,7 +98,6 @@ function main() {
   console.log(`Checking ${diffFiles.length} changed files against capsule...`);
   
   let failed = false;
-
   for (const file of diffFiles) {
     let allowed = false;
 
