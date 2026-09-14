@@ -163,6 +163,69 @@ class HelpRegistryService {
     });
 
     this.register({
+      helpKey: 'navigation.manager',
+      title: 'Správce navigačních sad (Navigation Manager)',
+      shortSummary: 'Centrální správa a přepínání kontextů nabídek (Záhlaví, Patička, Mobilní menu, Portál).',
+      extendedBody:
+        'Správce navigace umožňuje vytvářet a konfigurovat nezávislé sady odkazů pro různé části webu:\n\n• Záhlaví (Header): Hlavní navigační lišta s podporou víceúrovňových rozbalovacích nabídek.\n• Patička (Footer): Sloupcová struktura odkazů, skupin a právních náležitostí.\n• Mobilní menu (Mobile/Drawer): Optimalizovaná stromová navigace pro dotyková zařízení.\n• Portál / Uživatelská zóna: Odkazy pro přihlášené uživatele nebo klientský systém.\n\nKaždá sada disponuje vlastním verzováním, stavem a detekcí neplatných odkazů.',
+      tags: ['navigace', 'sady', 'menu', 'záhlaví', 'patička', 'mobil'],
+    });
+
+    this.register({
+      helpKey: 'navigation.item',
+      title: 'Položka navigace a typologie odkazů',
+      shortSummary: 'Typy navigačních uzlů: Kanonická stránka, Externí URL, Kotva a Skupinový nadpis.',
+      extendedBody:
+        'Synthesis CMS podporuje čtyři typy položek:\n\n1. Interní stránka (PAGE): Odkazuje na kanonickou stránku v CMS podle trvalého pageId. Při změně URL slug se odkaz automaticky udrží v konzistentním stavu.\n2. Externí odkaz (EXTERNAL_LINK): Směřuje na vnější webovou adresu. Vyžaduje bezpečný protokol (https://, http://) a automaticky vynucuje rel="noopener noreferrer".\n3. Kotva (ANCHOR): Odkaz na sekci stejné stránky (např. #kontakt, #cenik).\n4. Skupina (GROUP): Organizační hlavička bez vlastního prokliku, sloužící ke strukturování sloupců v patičce nebo mega menu.',
+      tags: ['položka', 'odkaz', 'stránka', 'externí', 'kotva', 'skupina'],
+    });
+
+    this.register({
+      helpKey: 'navigation.internal_link',
+      title: 'Vazba na interní kanonickou stránku',
+      shortSummary: 'Provázání navigace s objektem stránky podle trvalého identifikátoru.',
+      extendedBody:
+        'Navigační položka typu Stránka ukládá referenci na kanonické pageId. Tím je zajištěno, že pokud dojde k přejmenování stránky nebo změně hierarchie ve stromu stránek, navigační menu zůstane funkční a odkazuje na správnou aktuální URL adresu.',
+      tags: ['interní', 'stránka', 'pageId', 'kanonická', 'slug'],
+    });
+
+    this.register({
+      helpKey: 'navigation.external_link',
+      title: 'Bezpečnost externích odkazů a sanitace URL',
+      shortSummary: 'Validace protokolů, ochrana před zranitelnostmi a bezpečné otevírání v novém okně.',
+      extendedBody:
+        'Bezpečnostní pravidla pro externí odkazy:\n\n• Zakázány jsou nebezpečné protokoly javascript:, data:, vbscript: i lokální souborová schémata.\n• Povoleny jsou výhradně validní webové a komunikační protokoly (https://, http://, mailto:, tel:).\n• Otevírání v novém okně (target="_blank") povinně doplňuje atribut rel="noopener noreferrer" k zamezení útoku typu tabnabbing.',
+      tags: ['externí', 'url', 'bezpečnost', 'sanitace', 'noopener', 'xss'],
+    });
+
+    this.register({
+      helpKey: 'navigation.reorder',
+      title: 'Změna pořadí a úrovně zanoření (Přístupnost)',
+      shortSummary: 'Klávesnicová alternativa k drag-and-drop: posun nahoru/dolů a zanoření/vyjmutí.',
+      extendedBody:
+        'Synthesis CMS striktně dodržuje pravidla přístupnosti (a11y). Všechny editační operace stromu navigace jsou plně ovladatelné jak myší, tak čistě z klávesnice:\n\n• Posunout nahoru / dolů: Změna pořadí položky mezi sourozenci ve stejné úrovni.\n• Zanořit (Indent): Povýšení položky na podpoložku předcházejícího prvku (max. do hloubky 3).\n• Vyjmout (Outdent): Posun položky o úroveň výše k rodičovským prvkům.\n\nSystém automaticky brání vzniku cyklických vazeb ve stromu.',
+      tags: ['pořadí', 'hierarchie', 'zanoření', 'klávesnice', 'přístupnost', 'a11y'],
+    });
+
+    this.register({
+      helpKey: 'navigation.visibility',
+      title: 'Řízení viditelnosti položek',
+      shortSummary: 'Dočasné skrytí navigační položky na veřejném webu bez nutnosti jejího smazání.',
+      extendedBody:
+        'Položku navigace lze jednoduše deaktivovat (přepínač Viditelnost). Skrytá položka i její případné podpoložky zůstávají uloženy v administračním modelu, ale veřejný renderer a živé menu ji ignorují. V administraci je skrytá položka vizuálně označena.',
+      tags: ['viditelnost', 'skrytí', 'aktivní', 'draft'],
+    });
+
+    this.register({
+      helpKey: 'navigation.broken_reference',
+      title: 'Detekce a oprava neplatných referencí (Broken Links)',
+      shortSummary: 'Identifikace položek odkazujících na smazané či neexistující stránky.',
+      extendedBody:
+        'Pokud je v systému smazána nebo archivována stránka, na kterou stále odkazuje položka menu, systém odkaz NIKDY tiše nesmaže ani nenechá rozbitý. V přehledu navigace se okamžitě zobrazí varovný indikátor neplatné reference (Broken Reference) s možností:\n\n1. Přeorientovat odkaz na jinou existující stránku.\n2. Změnit typ položky na externí URL nebo kotvu.\n3. Položku s vědomým potvrzením odstranit z navigace.',
+      tags: ['neplatný odkaz', 'broken link', 'reference', 'integrita', 'oprava'],
+    });
+
+    this.register({
       helpKey: 'content.publishing.view',
       title: 'Publikační pipeline a verze (Releases)',
       shortSummary: 'Přehled nasazených verzí obsahu, plánování publikace a okamžitý rollback.',

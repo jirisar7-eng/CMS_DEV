@@ -94,9 +94,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/navigation',
         icon: Compass,
         group: 'OBSAH',
-        status: 'UI PŘIPRAVENO',
-        helpKey: 'content.navigation.view',
-        description: 'Správa navigačních nabídek, záhlaví, patičky a menu.',
+        status: 'PROTOTYP',
+        helpKey: 'navigation.manager',
+        description: 'Hierarchický správce menu, záhlaví, patičky a bezpečných odkazů.',
       },
       {
         id: 'publishing',
