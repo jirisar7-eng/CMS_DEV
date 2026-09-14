@@ -28,7 +28,7 @@ export const dict = {
     manage_themes: 'Vizuální identita a design tokeny.',
     manage_brands: 'Značky a konfigurace.',
     manage_modules: 'Znovupoužitelné funkční komponenty.',
-    manage_users: 'Řízení přístupu a členové týmu.',
+    manage_users: 'Řízení přístupových práv a účtů.',
     manage_audit: 'Systémové logy a bezpečnostní události.'
   },
   pages_workspace: {

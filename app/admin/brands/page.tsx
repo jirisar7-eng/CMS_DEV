@@ -17,11 +17,11 @@ export default function BrandsPage() {
     <CapabilityShell
       group="DESIGN"
       title="Značky a identita (Brands)"
-      description="Konfigurace firemní identity, logotypů pro světlý i tmavý režim, favicon a prvků značky."
+      description="Konfigurace vizuální identity projektu a studia, logotypů pro světlý i tmavý režim, favicon a prvků značky."
       status="UI PŘIPRAVENO"
       helpKey="design.brands.view"
       emptyTitle="Zatím nebyla definována identita značky"
-      emptyDescription="Nastavte základní název značky a nahrajte logotypy organizace."
+      emptyDescription="Nastavte základní název značky a nahrajte logotypy projektu či studia."
       emptyActionLabel="Založit profil značky"
     >
       {({ handleUnfinishedAction }) => (
@@ -33,10 +33,10 @@ export default function BrandsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
               <div>
-                <label className="block font-semibold text-foreground mb-1">Název značky / firmy</label>
+                <label className="block font-semibold text-foreground mb-1">Název značky / projektu</label>
                 <input
                   type="text"
-                  defaultValue="Synthesis Ecosystem s.r.o."
+                  defaultValue="Synthesis — Studio Jiřího Šára"
                   className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs"
                 />
               </div>

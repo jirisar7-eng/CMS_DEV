@@ -21,11 +21,11 @@ export default function NavigationPage() {
 
   const menuItems = [
     { id: 1, title: 'Domů', target: '/', type: 'Interní stránka', depth: 0, visible: true },
-    { id: 2, title: 'O nás', target: '/o-nas', type: 'Interní stránka', depth: 0, visible: true },
-    { id: 3, title: 'Náš tým', target: '/o-nas/tym', type: 'Interní stránka', depth: 1, visible: true },
-    { id: 4, title: 'Kariéra', target: '/kariera', type: 'Interní stránka', depth: 0, visible: true },
+    { id: 2, title: 'O projektu', target: '/o-projektu', type: 'Interní stránka', depth: 0, visible: true },
+    { id: 3, title: 'Studio & Vývoj', target: '/o-projektu/studio', type: 'Interní stránka', depth: 1, visible: true },
+    { id: 4, title: 'Roadmapa', target: '/roadmapa', type: 'Interní stránka', depth: 0, visible: true },
     { id: 5, title: 'Služby', target: '/sluzby', type: 'Interní stránka', depth: 0, visible: true },
-    { id: 6, title: 'Klientský portál', target: 'https://portal.synthesis.com', type: 'Externí odkaz', depth: 0, visible: true },
+    { id: 6, title: 'GitHub repozitář', target: 'https://github.com/jirisar7-eng/CMS_DEV', type: 'Externí odkaz', depth: 0, visible: true },
     { id: 7, title: 'Kontakt', target: '/kontakt', type: 'Interní stránka', depth: 0, visible: true },
   ];
 

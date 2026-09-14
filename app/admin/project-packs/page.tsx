@@ -14,7 +14,7 @@ import {
 
 export default function ProjectPacksPage() {
   const packs = [
-    { id: 'pack-corporate', name: 'Corporate & Services Pack', desc: 'Kompletní sada pro firemní weby, ceníky, tým, reference a poptávkové formuláře.', blocksCount: 28, status: 'PŘIPRAVENO' },
+    { id: 'pack-corporate', name: 'Corporate & Services Pack', desc: 'Kompletní sada pro prezentační weby, ceníky, portfolio, reference a poptávkové formuláře.', blocksCount: 28, status: 'PŘIPRAVENO' },
     { id: 'pack-editorial', name: 'Editorial & Blog Pack', desc: 'Optimalizováno pro magazíny, novinky, autorské profily a čtenářské rubriky.', blocksCount: 19, status: 'PŘIPRAVENO' },
     { id: 'pack-commerce-lite', name: 'Product Showcase Pack', desc: 'Katalog produktů, detail položky, filtrace parametrů a lead generation.', blocksCount: 22, status: 'PLÁNOVÁNO' },
   ];

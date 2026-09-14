@@ -22,7 +22,7 @@ export default function AnalyticsPage() {
     { path: '/', title: 'Úvodní stránka (Domů)', views: 14250, unique: 8910, bounce: '24 %' },
     { path: '/sluzby', title: 'Naše služby & Řešení', views: 6410, unique: 4120, bounce: '31 %' },
     { path: '/cenik', title: 'Ceník služeb a licencí', views: 5120, unique: 3840, bounce: '19 %' },
-    { path: '/o-nas', title: 'O společnosti Synthesis', views: 2890, unique: 1940, bounce: '38 %' },
+    { path: '/o-projektu', title: 'O studiu a projektu Synthesis', views: 2890, unique: 1940, bounce: '38 %' },
     { path: '/kontakt', title: 'Kontaktní informace', views: 1750, unique: 1200, bounce: '22 %' },
   ];
 

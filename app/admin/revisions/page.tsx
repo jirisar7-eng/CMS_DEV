@@ -45,7 +45,7 @@ export default function RevisionsPage() {
       author: 'Jiří Šár',
       timestamp: '10. 09. 2026 16:45',
       changes: '+2 bloky',
-      message: 'Rozšíření sekce historie a vize společnosti',
+      message: 'Rozšíření sekce historie a vize vývojového studia',
       isCurrent: false,
     },
   ];

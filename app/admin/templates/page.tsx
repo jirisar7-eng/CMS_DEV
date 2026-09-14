@@ -15,7 +15,7 @@ import {
 
 export default function TemplatesPage() {
   const templates = [
-    { id: 'welcome', title: 'Uvítací e-mail nového uživatele', trigger: 'Registrace / Pozvánka', subject: 'Vítejte v týmu Synthesis CMS', updated: '10. 09. 2026' },
+    { id: 'welcome', title: 'Uvítací e-mail nového uživatele', trigger: 'Registrace / Pozvánka', subject: 'Vítejte v administraci Synthesis CMS', updated: '10. 09. 2026' },
     { id: 'reset-pwd', title: 'Obnovení zapomenutého hesla', trigger: 'Žádost uživatele', subject: 'Instrukce k obnovení hesla', updated: '05. 09. 2026' },
     { id: 'form-contact', title: 'Potvrzení kontaktního formuláře', trigger: 'Odeslání z webu', subject: 'Děkujeme za vaši zprávu', updated: '01. 09. 2026' },
     { id: 'publish-notify', title: 'Oznámení o schválení publikace', trigger: 'Publikační proces', subject: 'Vaše stránka byla schválena a publikována', updated: '28. 08. 2026' },

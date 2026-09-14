@@ -172,7 +172,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         group: 'DESIGN',
         status: 'UI PŘIPRAVENO',
         helpKey: 'design.brands.view',
-        description: 'Logotypy, favicony, firemní barvy a identita organizace.',
+        description: 'Logotypy, favicony, barvy a vizuální identita projektu.',
       },
       {
         id: 'pwa',
@@ -208,7 +208,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         group: 'SPRÁVA',
         status: 'UI PŘIPRAVENO',
         helpKey: 'management.users.view',
-        description: 'Redakční tým, uživatelské účty a 2FA ověření.',
+        description: 'Správa redakčních a administrátorských účtů s 2FA.',
       },
       {
         id: 'roles',

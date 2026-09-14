@@ -222,7 +222,7 @@ class HelpRegistryService {
       title: 'Identita značek (Brands)',
       shortSummary: 'Konfigurace logotypů, favicon, aplikačních ikon a firemních prvků.',
       extendedBody:
-        'Nastavte loga pro světlý i tmavý režim, vektorové ikony pro záložky prohlížeče, mobilní domovské obrazovky a metadata identity organizace pro automatické vkládání do patiček.',
+        'Nastavte loga pro světlý i tmavý režim, vektorové ikony pro záložky prohlížeče, mobilní domovské obrazovky a metadata identity projektu či studia pro automatické vkládání do patiček.',
       tags: ['značky', 'logo', 'favicon', 'identita'],
     });
 
@@ -247,11 +247,11 @@ class HelpRegistryService {
 
     this.register({
       helpKey: 'management.users.view',
-      title: 'Uživatelé a týmové účty',
-      shortSummary: 'Správa redakčních účtů, pozvánky členů týmu a stav dvoufázového ověření.',
+      title: 'Uživatelské účty a přístupy',
+      shortSummary: 'Správa redakčních a administrátorských účtů s dvoufázovým ověřením.',
       extendedBody:
-        'Přehled všech uživatelů s přístupem do administrace. Můžete zvát nové členy týmu, přiřazovat jim role, vynucovat 2FA ověření a v případě potřeby účet dočasně deaktivovat.',
-      tags: ['uživatelé', 'účty', 'tým', '2fa'],
+        'Přehled všech uživatelů s přístupem do administrace. Můžete zvát nové redaktory a administrátory, přiřazovat jim role, vynucovat 2FA ověření a v případě potřeby účet dočasně deaktivovat.',
+      tags: ['uživatelé', 'účty', 'role', '2fa'],
     });
 
     this.register({

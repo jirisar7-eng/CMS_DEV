@@ -24,12 +24,12 @@ export default function UsersPage() {
   return (
     <CapabilityShell
       group="SPRÁVA"
-      title="Uživatelé a týmové účty"
+      title="Uživatelské a redakční účty"
       description="Správa přístupových účtů do administrace Synthesis CMS, pozvánky a stav dvoufázového ověření (2FA)."
       status="UI PŘIPRAVENO"
       helpKey="management.users.view"
       emptyTitle="V systému zatím nejsou žádní uživatelé"
-      emptyDescription="Pozvěte prvního člena týmu nebo administrátora."
+      emptyDescription="Pozvěte prvního redaktora nebo administrátora."
       emptyActionLabel="Pozvat prvního uživatele"
     >
       {({ handleUnfinishedAction }) => (
