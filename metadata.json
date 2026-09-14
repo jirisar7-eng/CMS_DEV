@@ -1,0 +1,6 @@
+{
+  "name": "Synthesis CMS",
+  "description": "Modulární redakční systém platformy Synthesis pro správu stránek, obsahu a hierarchie.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
