@@ -114,7 +114,7 @@ export function SvgEditor({ initialSvgString, onChange }: SvgEditorProps) {
       );
     }
 
-    const ElementType = type as keyof JSX.IntrinsicElements;
+    const ElementType = type as any;
 
     return (
       <ElementType
