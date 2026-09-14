@@ -636,7 +636,7 @@ export class MediaRepository implements IMediaRepository {
     return this.filter(filters);
   }
 
-  async createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt'>): Promise<MediaAssetVersion> {
+  async createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>): Promise<MediaAssetVersion> {
     const existingVersions = this.versions.filter(v => v.assetId === assetId);
     const versionNumber = existingVersions.length + 1;
     const now = new Date().toISOString();

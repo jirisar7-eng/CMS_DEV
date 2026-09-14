@@ -203,7 +203,7 @@ export interface IMediaRepository {
   getById(id: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
   list(filters?: MediaFilterOptions): Promise<MediaAsset[]> | MediaAsset[];
   updateMetadata(id: string, metadata: Partial<MediaMetadata>): Promise<MediaAsset | undefined> | MediaAsset | undefined;
-  createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt'>): Promise<MediaAssetVersion> | MediaAssetVersion;
+  createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>): Promise<MediaAssetVersion> | MediaAssetVersion;
   listVersions(assetId: string): Promise<MediaAssetVersion[]> | MediaAssetVersion[];
   setCurrentVersion(assetId: string, versionId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
   changeStatus(id: string, status: MediaStatus): Promise<MediaAsset | undefined> | MediaAsset | undefined;
