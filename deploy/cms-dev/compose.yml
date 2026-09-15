@@ -11,12 +11,24 @@ services:
     restart: unless-stopped
     init: true
 
+    depends_on:
+      cms-db:
+        condition: service_healthy
+      cms-storage:
+        condition: service_healthy
+
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
       PORT: "3000"
       CMS_GIT_SHA: "${CMS_GIT_SHA}"
+      DATABASE_URL: "${DATABASE_URL}"
+      CMS_STORAGE_ENDPOINT: "http://cms-storage:9000"
+      CMS_STORAGE_BUCKET: "synthesis-cms-dev"
+      CMS_STORAGE_ACCESS_KEY: "${CMS_STORAGE_ACCESS_KEY}"
+      CMS_STORAGE_SECRET_KEY: "${CMS_STORAGE_SECRET_KEY}"
+      CMS_STORAGE_REGION: "us-east-1"
 
     expose:
       - "3000"
@@ -42,6 +54,42 @@ services:
       - internal
       - edge
 
+  cms-db:
+    container_name: synthesis_cms_dev_db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: synthesis_cms_dev
+      POSTGRES_USER: synthesis_cms_dev_user
+      POSTGRES_PASSWORD: "${CMS_DB_PASSWORD:?CMS_DB_PASSWORD required}"
+    volumes:
+      - cms-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synthesis_cms_dev_user -d synthesis_cms_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  cms-storage:
+    container_name: synthesis_cms_dev_storage
+    image: minio/minio:RELEASE.2024-01-28T22-44-53Z
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: synthesis_cms_dev_admin
+      MINIO_ROOT_PASSWORD: "${CMS_STORAGE_ADMIN_PASSWORD:?CMS_STORAGE_ADMIN_PASSWORD required}"
+    volumes:
+      - cms-storage-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
 networks:
   internal:
     name: synthesis_cms_dev_internal
@@ -49,3 +97,9 @@ networks:
   edge:
     external: true
     name: "${CMS_EDGE_NETWORK:?CMS_EDGE_NETWORK required}"
+
+volumes:
+  cms-db-data:
+    name: synthesis_cms_dev_db_data
+  cms-storage-data:
+    name: synthesis_cms_dev_storage_data
