@@ -175,9 +175,7 @@ services:
       fi;
       if ! /garage key info "$$CMS_STORAGE_ACCESS_KEY" >/dev/null 2>&1; then
         echo "Importing app storage credentials...";
-        if ! /garage key import --access-key-id "$$CMS_STORAGE_ACCESS_KEY" --secret-access-key "$$CMS_STORAGE_SECRET_KEY" --name cms-app-key --confirm >/dev/null 2>&1; then
-          /garage key import "$$CMS_STORAGE_ACCESS_KEY" "$$CMS_STORAGE_SECRET_KEY" --name cms-app-key --confirm;
-        fi;
+        /garage key import "$$CMS_STORAGE_ACCESS_KEY" "$$CMS_STORAGE_SECRET_KEY" -n cms-app-key --yes;
       else
         echo "Storage key $$CMS_STORAGE_ACCESS_KEY already imported.";
       fi;
