@@ -80,7 +80,6 @@ services:
     container_name: synthesis_cms_dev_storage
     image: dxflrs/garage:v2.3.0
     restart: unless-stopped
-    command: server
     environment:
       GARAGE_CONFIG_FILE: /etc/garage.toml
       GARAGE_RPC_SECRET: "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET required}"
