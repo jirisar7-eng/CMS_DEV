@@ -15,10 +15,12 @@ import { SynthesisLogo } from '@/components/brand/SynthesisLogo';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from "../theme/theme-toggle";
 import { HelpTrigger } from '@/components/help/HelpTrigger';
+import { LogoutButton } from './auth/LogoutButton';
 import { useI18n } from '@/lib/i18n';
 import { ADMIN_NAV_GROUPS, getNavItemByPath } from '@/lib/navigation/adminNav';
+import type { UserContext } from '@/lib/auth/session';
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, user }: { children: React.ReactNode, user?: UserContext }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -190,14 +192,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         {/* User profile footer */}
         <div className="p-3 border-t shrink-0 bg-card/80">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-              JS
+            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0 uppercase">
+              {user?.displayName?.substring(0, 2) || user?.email?.substring(0, 2) || 'AD'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-foreground truncate">Jiří Šár</p>
-              <p className="text-[11px] text-muted-foreground truncate">Správce ekosystému</p>
+              <p className="text-xs font-bold text-foreground truncate">{user?.displayName || user?.email || 'Správce'}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{user?.email || 'Správce ekosystému'}</p>
             </div>
             <HelpTrigger helpKey="system.settings.view" size="sm" align="right" />
+            <LogoutButton />
           </div>
         </div>
       </aside>
