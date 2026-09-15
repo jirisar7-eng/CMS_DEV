@@ -28,7 +28,7 @@ services:
       PORT: "3000"
       CMS_GIT_SHA: "${CMS_GIT_SHA}"
       DATABASE_URL: "${DATABASE_URL}"
-      CMS_STORAGE_ENDPOINT: "http://cms-storage:9000"
+      CMS_STORAGE_ENDPOINT: "http://cms-storage:3900"
       CMS_STORAGE_BUCKET: "synthesis-cms-dev"
       CMS_STORAGE_ACCESS_KEY: "${CMS_STORAGE_ACCESS_KEY}"
       CMS_STORAGE_SECRET_KEY: "${CMS_STORAGE_SECRET_KEY}"
@@ -78,16 +78,18 @@ services:
 
   cms-storage:
     container_name: synthesis_cms_dev_storage
-    image: minio/minio:RELEASE.2024-01-28T22-44-53Z
+    image: dxflrs/garage:v2.3.0
     restart: unless-stopped
-    command: server /data
+    command: server
     environment:
-      MINIO_ROOT_USER: synthesis_cms_dev_admin
-      MINIO_ROOT_PASSWORD: "${CMS_STORAGE_ADMIN_PASSWORD:?CMS_STORAGE_ADMIN_PASSWORD required}"
+      GARAGE_CONFIG_FILE: /etc/garage.toml
+      GARAGE_RPC_SECRET: "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET required}"
     volumes:
-      - cms-storage-data:/data
+      - ./garage.toml:/etc/garage.toml:ro
+      - cms-storage-meta:/var/lib/garage/meta
+      - cms-storage-data:/var/lib/garage/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      test: ["CMD", "/garage", "status"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -109,61 +111,88 @@ services:
 
   cms-storage-init:
     container_name: synthesis_cms_dev_storage_init
-    image: minio/mc:RELEASE.2024-01-28T16-08-53Z
+    image: dxflrs/garage:v2.3.0
     restart: "no"
     depends_on:
       cms-storage:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      set -eu;
-      /usr/bin/mc alias set local http://cms-storage:9000 synthesis_cms_dev_admin \"$${CMS_STORAGE_ADMIN_PASSWORD}\";
-      /usr/bin/mc mb --ignore-existing local/synthesis-cms-dev;
-      /usr/bin/mc anonymous set none local/synthesis-cms-dev;
-      if ! /usr/bin/mc admin user info local \"$${CMS_STORAGE_ACCESS_KEY}\" >/dev/null 2>&1; then
-        /usr/bin/mc admin user add local \"$${CMS_STORAGE_ACCESS_KEY}\" \"$${CMS_STORAGE_SECRET_KEY}\";
-      else
-        /usr/bin/mc admin user enable local \"$${CMS_STORAGE_ACCESS_KEY}\";
-        if /usr/bin/mc admin user add local \"$${CMS_STORAGE_ACCESS_KEY}\" \"$${CMS_STORAGE_SECRET_KEY}\" >/dev/null 2>&1; then
-          echo 'App user secret synchronized via mc admin user add.';
-        elif /usr/bin/mc admin accesskey edit local \"$${CMS_STORAGE_ACCESS_KEY}\" --secret-key \"$${CMS_STORAGE_SECRET_KEY}\" >/dev/null 2>&1; then
-          echo 'App user secret synchronized via mc admin accesskey edit.';
-        elif /usr/bin/mc admin user svcacct edit local \"$${CMS_STORAGE_ACCESS_KEY}\" --secret-key \"$${CMS_STORAGE_SECRET_KEY}\" >/dev/null 2>&1; then
-          echo 'App user secret synchronized via mc admin user svcacct edit.';
-        else
-          echo 'SECURITY ERROR: Failed to synchronize existing app user secret!' >&2; exit 1;
-        fi;
-      fi;
-      echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:GetBucketLocation\",\"s3:ListBucket\",\"s3:ListBucketMultipartUploads\"],\"Resource\":[\"arn:aws:s3:::synthesis-cms-dev\"]},{\"Effect\":\"Allow\",\"Action\":[\"s3:AbortMultipartUpload\",\"s3:DeleteObject\",\"s3:GetObject\",\"s3:ListMultipartUploadParts\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::synthesis-cms-dev/*\"]}]}' > /tmp/cms-app-policy.json;
-      /usr/bin/mc admin policy create local synthesis_cms_dev_app_policy /tmp/cms-app-policy.json;
-      /usr/bin/mc admin policy attach local synthesis_cms_dev_app_policy --user \"$${CMS_STORAGE_ACCESS_KEY}\";
-      /usr/bin/mc stat local/synthesis-cms-dev;
-      ANON_POLICY=\"$$(/usr/bin/mc anonymous get local/synthesis-cms-dev)\";
-      case \"$${ANON_POLICY}\" in
-        *none*) echo 'Bucket privacy verified: anonymous access is none.' ;;
-        *) echo 'SECURITY VIOLATION: Bucket is not private!' >&2; exit 1 ;;
-      esac;
-      /usr/bin/mc admin policy info local synthesis_cms_dev_app_policy;
-      USER_INFO=\"$$(/usr/bin/mc admin user info local \"$${CMS_STORAGE_ACCESS_KEY}\")\";
-      case \"$${USER_INFO}\" in
-        *synthesis_cms_dev_app_policy*) echo 'Policy attachment verified: synthesis_cms_dev_app_policy is attached.' ;;
-        *) echo 'SECURITY VIOLATION: synthesis_cms_dev_app_policy not attached to user!' >&2; exit 1 ;;
-      esac;
-      case \"$${USER_INFO}\" in
-        *readwrite*|*consoleAdmin*) echo 'SECURITY VIOLATION: Excessive generic policy attached to app user!' >&2; exit 1 ;;
-        *) echo 'User privilege boundary verified: no excessive permissions.' ;;
-      esac;
-      /usr/bin/mc alias set apptest http://cms-storage:9000 \"$${CMS_STORAGE_ACCESS_KEY}\" \"$${CMS_STORAGE_SECRET_KEY}\";
-      /usr/bin/mc ls apptest/synthesis-cms-dev;
-      /usr/bin/mc alias rm apptest;
-      echo 'cms-storage-init completed successfully.'
-      "
+    network_mode: "service:cms-storage"
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - cms-storage-meta:/var/lib/garage/meta:ro
     environment:
-      CMS_STORAGE_ADMIN_PASSWORD: "${CMS_STORAGE_ADMIN_PASSWORD:?CMS_STORAGE_ADMIN_PASSWORD required}"
+      GARAGE_CONFIG_FILE: /etc/garage.toml
+      GARAGE_RPC_SECRET: "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET required}"
       CMS_STORAGE_ACCESS_KEY: "${CMS_STORAGE_ACCESS_KEY:?CMS_STORAGE_ACCESS_KEY required}"
       CMS_STORAGE_SECRET_KEY: "${CMS_STORAGE_SECRET_KEY:?CMS_STORAGE_SECRET_KEY required}"
-    networks:
-      - internal
+    entrypoint: >
+      /bin/sh -c '
+      set -eu;
+      case "$$CMS_STORAGE_ACCESS_KEY" in
+        GK*) ;;
+        *) echo "SECURITY ERROR: CMS_STORAGE_ACCESS_KEY must start with GK" >&2; exit 1 ;;
+      esac;
+      echo "Waiting for Garage daemon to be ready...";
+      for i in $$(seq 1 30); do
+        if /garage status >/dev/null 2>&1; then
+          break;
+        fi;
+        if [ "$$i" -eq 30 ]; then
+          echo "FAIL: Timed out waiting for Garage daemon" >&2;
+          exit 1;
+        fi;
+        sleep 1;
+      done;
+      NODE_ID="$$(\
+        /garage node id -q 2>/dev/null || \
+        /garage status 2>/dev/null | awk "/^[0-9a-f]{16,}/ {print \$$1; exit}" || \
+        /garage status 2>/dev/null | grep -E -o "^[0-9a-f]{16,}" | head -n1\
+      )";
+      if [ -z "$$NODE_ID" ]; then
+        echo "FAIL: Could not identify Garage node ID" >&2;
+        exit 1;
+      fi;
+      echo "Identified Garage node ID: $$NODE_ID";
+      STATUS_OUTPUT="$$(\
+        /garage status 2>&1\
+      )";
+      if echo "$$STATUS_OUTPUT" | grep -qi "NO ROLE ASSIGNED"; then
+        echo "Assigning single-node layout for node $$NODE_ID...";
+        /garage layout assign -z dc1 -c 100G "$$NODE_ID";
+        /garage layout apply --version 1;
+      elif ! echo "$$STATUS_OUTPUT" | grep -qi "$$NODE_ID"; then
+        echo "Node $$NODE_ID not found in active layout, assigning...";
+        /garage layout assign -z dc1 -c 100G "$$NODE_ID";
+        /garage layout apply --version 1;
+      else
+        echo "Single-node layout already assigned.";
+      fi;
+      if ! /garage bucket info synthesis-cms-dev >/dev/null 2>&1; then
+        echo "Creating bucket synthesis-cms-dev...";
+        /garage bucket create synthesis-cms-dev;
+      else
+        echo "Bucket synthesis-cms-dev already exists.";
+      fi;
+      if ! /garage key info "$$CMS_STORAGE_ACCESS_KEY" >/dev/null 2>&1; then
+        echo "Importing app storage credentials...";
+        /garage key import "$$CMS_STORAGE_ACCESS_KEY" "$$CMS_STORAGE_SECRET_KEY" -n cms-app-key --yes;
+      else
+        echo "Storage key $$CMS_STORAGE_ACCESS_KEY already imported.";
+      fi;
+      echo "Configuring permissions on synthesis-cms-dev...";
+      /garage bucket allow --read --write synthesis-cms-dev --key "$$CMS_STORAGE_ACCESS_KEY";
+      echo "Verifying bootstrap...";
+      /garage bucket info synthesis-cms-dev;
+      KEY_INFO="$$(\
+        /garage key info "$$CMS_STORAGE_ACCESS_KEY"\
+      )";
+      echo "$$KEY_INFO";
+      case "$$KEY_INFO" in
+        *admin*|*all_buckets*) echo "SECURITY VIOLATION: Excessive permissions detected on app key!" >&2; exit 1 ;;
+        *) echo "Least-privilege boundary verified: read/write to synthesis-cms-dev only." ;;
+      esac;
+      echo "Garage storage bootstrap completed successfully."
+      '
 
 networks:
   internal:
@@ -176,5 +205,7 @@ networks:
 volumes:
   cms-db-data:
     name: synthesis_cms_dev_db_data
+  cms-storage-meta:
+    name: synthesis_cms_dev_storage_meta
   cms-storage-data:
     name: synthesis_cms_dev_storage_data
