@@ -1,6 +1,17 @@
 import assert from 'assert';
 import { MediaService } from '../service';
 import { MockStorageProvider } from '../mockProviders';
+
+class StatefulMockStorage extends MockStorageProvider {
+  store = new Map<string, any>();
+  async putObject(key: string, data: any, options: any) { this.store.set(key, { data, options }); }
+  async getObject(key: string) { 
+    if (!this.store.has(key)) throw new Error('Not found');
+    return this.store.get(key).options;
+  }
+  async deleteObject(key: string) { this.store.delete(key); }
+  async exists(key: string) { return this.store.has(key); }
+}
 import { MediaRepository } from '../repository';
 import { prepareSvgAssetDraft } from '../svgAssetLifecycle.server';
 import { MediaAsset } from '../types';
@@ -13,7 +24,7 @@ const TESTS = [
     name: '1. Service successfully uploads valid non-SVG image',
     run: async () => {
       const mockRepo = new MediaRepository([]);
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       const service = new MediaService(mockRepo, mockStorage);
 
       const file = { name: 'test.jpg', type: 'image/jpeg', size: 1024, data: Buffer.from('fake-image-data') };
@@ -33,7 +44,7 @@ const TESTS = [
     name: '1b. Service fails closed on unknown MIME',
     run: async () => {
       const mockRepo = new MediaRepository([]);
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       const service = new MediaService(mockRepo, mockStorage);
 
       const file = { name: 'test.unknown', type: 'application/unknown', size: 1024, data: Buffer.from('fake') };
@@ -53,7 +64,7 @@ const TESTS = [
     name: '2. Service fails closed on unsafe SVG upload',
     run: async () => {
       const mockRepo = new MediaRepository([]);
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       const service = new MediaService(mockRepo, mockStorage);
 
       const unsafeSvg = `<svg xmlns="http://www.w3.org/2000/svg"><script>alert('xss')</script></svg>`;
@@ -74,7 +85,7 @@ const TESTS = [
     name: '3. Service succeeds on safe SVG and saves canonical checksum',
     run: async () => {
       const mockRepo = new MediaRepository([]);
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       const service = new MediaService(mockRepo, mockStorage);
 
       const safeSvg = `<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" /></svg>`;
@@ -96,7 +107,7 @@ const TESTS = [
     name: '4. Service rejects QUARANTINED -> PUBLISHED transition',
     run: async () => {
       const mockRepo = new MediaRepository([]);
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       const service = new MediaService(mockRepo, mockStorage);
 
       const asset = await mockRepo.createAsset({
@@ -138,7 +149,7 @@ const TESTS = [
       };
 
       let deletedStorageKey: string | null = null;
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       mockStorage.deleteObject = async (key: string) => {
         deletedStorageKey = key;
       };
@@ -163,7 +174,7 @@ const TESTS = [
     name: '6. Service checks usage before hard delete',
     run: async () => {
       const mockRepo = new MediaRepository([]);
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       const service = new MediaService(mockRepo, mockStorage);
 
       const file = { name: 'safe.svg', type: 'image/svg+xml', size: 100, data: Buffer.from('<svg></svg>') };
@@ -190,7 +201,7 @@ const TESTS = [
     name: '7. Service halts hard delete if storage deletion fails',
     run: async () => {
       const mockRepo = new MediaRepository([]);
-      const mockStorage = new MockStorageProvider();
+      const mockStorage = new StatefulMockStorage();
       const service = new MediaService(mockRepo, mockStorage);
 
       const file = { name: 'safe.svg', type: 'image/svg+xml', size: 100, data: Buffer.from('<svg></svg>') };
@@ -256,6 +267,88 @@ const TESTS = [
         mediaService.getAsset = originalGetAsset;
         mediaService.getAssetDownload = originalGetDownload;
       }
+    }
+  },
+  {
+    id: 'svc-09-db-delete-failure-rollback',
+    name: '9. Service restores storage object if DB delete fails',
+    run: async () => {
+      const mockRepo = new MediaRepository([]);
+      const mockStorage = new StatefulMockStorage();
+      const service = new MediaService(mockRepo, mockStorage);
+
+      const file = { name: 'test.jpg', type: 'image/jpeg', size: 100, data: Buffer.from('data') };
+      const metadata = { title: 'Test', altText: '', description: '', tags: [] };
+      const asset = await service.uploadAsset(file, metadata, 'proj-1');
+      
+      const originalDeleteAsset = mockRepo.deleteAsset;
+      mockRepo.deleteAsset = async (id: string) => {
+        throw new Error('DB connection lost');
+      };
+
+      try {
+        await service.deleteAsset(asset.id);
+        assert.fail('Should fail on DB error');
+      } catch (err) {
+        assert.ok(err instanceof Error);
+        assert.ok(err.message.includes('Failed to delete asset from database'));
+      }
+
+      // Assert storage object is restored
+      const exists = await mockStorage.exists(asset.storageKey);
+      assert.ok(exists, 'Storage object must be restored if DB delete fails');
+      
+      mockRepo.deleteAsset = originalDeleteAsset;
+    }
+  },
+  {
+    id: 'svc-10-compensation-failure',
+    name: '10. Service throws DATA_INTEGRITY_ERROR if compensation fails',
+    run: async () => {
+      const mockRepo = new MediaRepository([]);
+      const mockStorage = new StatefulMockStorage();
+      const service = new MediaService(mockRepo, mockStorage);
+
+      const file = { name: 'test.jpg', type: 'image/jpeg', size: 100, data: Buffer.from('data') };
+      const metadata = { title: 'Test', altText: '', description: '', tags: [] };
+      const asset = await service.uploadAsset(file, metadata, 'proj-1');
+      
+      mockRepo.deleteAsset = async (id: string) => {
+        throw new Error('DB error');
+      };
+      
+      mockStorage.putObject = async (key: string, data: any, options: any) => {
+        throw new Error('Storage outage during rollback');
+      };
+
+      try {
+        await service.deleteAsset(asset.id);
+        assert.fail('Should fail on DB error and compensation error');
+      } catch (err) {
+        assert.ok(err instanceof Error);
+        assert.ok(err.message.includes('DATA_INTEGRITY_ERROR'));
+      }
+    }
+  },
+  {
+    id: 'svc-11-delete-success',
+    name: '11. Service successfully removes both storage and DB',
+    run: async () => {
+      const mockRepo = new MediaRepository([]);
+      const mockStorage = new StatefulMockStorage();
+      const service = new MediaService(mockRepo, mockStorage);
+
+      const file = { name: 'test.jpg', type: 'image/jpeg', size: 100, data: Buffer.from('data') };
+      const metadata = { title: 'Test', altText: '', description: '', tags: [] };
+      const asset = await service.uploadAsset(file, metadata, 'proj-1');
+
+      await service.deleteAsset(asset.id);
+
+      const existsInStorage = await mockStorage.exists(asset.storageKey);
+      assert.strictEqual(existsInStorage, false, 'Storage object must be deleted');
+      
+      const dbAsset = await mockRepo.getById(asset.id);
+      assert.strictEqual(dbAsset, undefined, 'DB record must be deleted');
     }
   }
 ];

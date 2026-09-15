@@ -158,11 +158,34 @@ export class MediaService {
       throw new Error('Asset not found');
     }
 
-    // 2. Delete from Storage FIRST to ensure fail-closed
+    // 2. Load storage object BEFORE deletion for compensation
+    let backupObject: { data: Buffer | Uint8Array | Blob; mimeType: string; sizeBytes: number } | null = null;
+    try {
+      backupObject = await this.storageProvider.getObject(asset.storageKey);
+    } catch (err) {
+      throw new Error(`Failed to retrieve storage object for compensation backup: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // 3. Delete from Storage FIRST to ensure fail-closed
     await this.storageProvider.deleteObject(asset.storageKey);
 
-    // 3. Delete from DB (if this fails, it throws, so the caller knows it failed, avoiding a false sense of success)
-    await this.repository.deleteAsset(id);
+    // 4. Delete from DB 
+    try {
+      await this.repository.deleteAsset(id);
+    } catch (dbErr) {
+      // Rollback: restore the storage object
+      try {
+        await this.storageProvider.putObject(asset.storageKey, backupObject.data, {
+          mimeType: backupObject.mimeType,
+          sizeBytes: backupObject.sizeBytes,
+          checksumSha256: asset.security.checksumSha256,
+        });
+      } catch (restoreErr) {
+        throw new Error(`DATA_INTEGRITY_ERROR: DB delete failed AND storage compensation failed. Asset DB record is intact but storage is lost for key ${asset.storageKey}. DB Err: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}. Restore Err: ${restoreErr instanceof Error ? restoreErr.message : String(restoreErr)}`);
+      }
+      
+      throw new Error(`Failed to delete asset from database: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`);
+    }
   }
 
   async getAssetDownload(id: string): Promise<{ data: Buffer; mimeType: string; sizeBytes: number; filename: string }> {

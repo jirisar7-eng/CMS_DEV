@@ -1,6 +1,34 @@
 {
+  "version": "1.0.0",
   "task_id": "SYN-CONTENT-001A-MEDIA-RUNTIME-R1",
   "environment": "CMS_DEV",
   "base_sha": "0df15257cbde9deb7462b62bf0fbb46f429b828e",
-  "expected_branch": "task/SYN-CONTENT-001A-MEDIA-RUNTIME-R1"
+  "expected_branch": "task/SYN-CONTENT-001A-MEDIA-RUNTIME-R1",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/api/media/[id]/route.ts",
+    "lib/domain/media/mockProviders.ts",
+    "lib/domain/media/prismaRepository.ts",
+    "lib/domain/media/repository.ts",
+    "lib/domain/media/s3StorageProvider.ts",
+    "lib/domain/media/service.ts",
+    "lib/domain/media/tests/service.test.ts",
+    "lib/domain/media/types.ts"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "deploy/*",
+    "infra/*",
+    "package.json",
+    "bun.lock"
+  ]
 }
