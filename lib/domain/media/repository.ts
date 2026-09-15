@@ -465,7 +465,7 @@ export class MediaRepository implements IMediaRepository {
       mediaType,
       sizeBytes: file.size,
       dimensions: mediaType === 'image' ? { width: 1200, height: 800, aspectRatio: '3:2' } : undefined,
-      url: storageResult.url,
+      url: "",
       status: 'ready',
       metadata: {
         title: metadata.title || file.name.replace(/\.[^/.]+$/, ''),
@@ -494,6 +494,14 @@ export class MediaRepository implements IMediaRepository {
       success: true,
       asset: newAsset,
     };
+  }
+
+  updateUrl(id: string, url: string): MediaAsset | undefined {
+    const asset = this.getById(id);
+    if (!asset) return undefined;
+    asset.url = url;
+    asset.updatedAt = new Date().toISOString();
+    return asset;
   }
 
   /**
@@ -561,7 +569,7 @@ export class MediaRepository implements IMediaRepository {
     asset.mimeType = file.type;
     asset.sizeBytes = file.size;
     asset.mediaType = resolveMediaType(file.type, file.name);
-    asset.url = storageResult.url;
+    // asset.url = storageResult.url; // url is updated later
     asset.updatedAt = new Date().toISOString();
     asset.security.activeContent = file.type === 'image/svg+xml' || ext === 'svg';
     asset.security.scannedAt = scan.scannedAt;

@@ -49,6 +49,7 @@ export interface MediaSecurityInfo {
   activeContent: boolean; // e.g. SVG containing potential scripts
   checksumSha256: string;
   scannedAt: string;
+  pipelineId?: string;
 }
 
 export interface MediaAsset {
@@ -79,9 +80,8 @@ export interface StorageProvider {
   upload(
     file: { name: string; type: string; size: number; data?: Blob | ArrayBuffer },
     storageKey: string
-  ): Promise<{ url: string; storageKey: string; sizeBytes: number }>;
+  ): Promise<{ storageKey: string; sizeBytes: number }>;
   delete(storageKey: string): Promise<void>;
-  getUrl(storageKey: string): Promise<string>;
 
   // Pluggable S3/MinIO conceptual capabilities
   putObject(
@@ -203,6 +203,7 @@ export interface IMediaRepository {
   getById(id: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
   list(filters?: MediaFilterOptions): Promise<MediaAsset[]> | MediaAsset[];
   updateMetadata(id: string, metadata: Partial<MediaMetadata>): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  updateUrl(id: string, url: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
   createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>): Promise<MediaAssetVersion> | MediaAssetVersion;
   listVersions(assetId: string): Promise<MediaAssetVersion[]> | MediaAssetVersion[];
   setCurrentVersion(assetId: string, versionId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
