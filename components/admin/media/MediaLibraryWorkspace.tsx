@@ -25,7 +25,7 @@ import {
   MediaSortOption,
   MediaType,
 } from '@/lib/domain/media/types';
-import { mediaRepository } from '@/lib/domain/media/repository';
+import { listMediaAssets } from '@/app/admin/media/actions';
 import { MediaGrid } from './MediaGrid';
 import { MediaList } from './MediaList';
 import { MediaDetailDrawer } from './MediaDetailDrawer';
@@ -37,7 +37,12 @@ import { HelpTrigger } from '@/components/help/HelpTrigger';
 import { formatBytes } from './MediaAssetCard';
 
 export function MediaLibraryWorkspace() {
-  const [assets, setAssets] = useState<MediaAsset[]>(() => mediaRepository.getAll());
+  const [assets, setAssets] = useState<MediaAsset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    refreshAssets();
+  }, []);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -62,8 +67,16 @@ export function MediaLibraryWorkspace() {
     setTimeout(() => setNotification(null), 3500);
   };
 
-  const refreshAssets = () => {
-    setAssets(mediaRepository.getAll());
+  const refreshAssets = async () => {
+    setIsLoading(true);
+    try {
+      const data = await listMediaAssets({});
+      setAssets(data);
+    } catch (e) {
+      showToast('Nepodařilo se načíst média', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Filtered and sorted assets
@@ -71,7 +84,7 @@ export function MediaLibraryWorkspace() {
     let result = [...assets];
 
     if (!showArchived) {
-      result = result.filter((a) => a.status === 'ready');
+      result = result.filter((a) => (a.status as string).toUpperCase() !== 'ARCHIVED');
     }
 
     if (selectedType !== 'all') {
@@ -118,7 +131,7 @@ export function MediaLibraryWorkspace() {
   const stats = useMemo(() => {
     const totalBytes = assets.reduce((sum, a) => sum + a.sizeBytes, 0);
     const totalUsage = assets.reduce((sum, a) => sum + a.usageCount, 0);
-    const archivedCount = assets.filter((a) => a.status === 'archived').length;
+    const archivedCount = assets.filter((a) => (a.status as string).toUpperCase() === 'ARCHIVED').length;
     return {
       count: assets.length,
       totalBytes,
@@ -134,26 +147,11 @@ export function MediaLibraryWorkspace() {
   };
 
   const handleUpdateMetadata = (assetId: string, metadata: Partial<MediaAsset['metadata']>) => {
-    const updated = mediaRepository.updateMetadata(assetId, metadata);
-    if (updated) {
-      refreshAssets();
-      setSelectedAsset(updated);
-      showToast('Metadata aktiva byla úspěšně aktualizována.');
-    }
+    showToast('Vyžaduje aktivní oprávnění správce', 'error');
   };
 
   const handleToggleArchive = (assetId: string, currentlyArchived: boolean) => {
-    if (currentlyArchived) {
-      mediaRepository.restore(assetId);
-      showToast('Médium bylo obnoveno z archivu.');
-    } else {
-      mediaRepository.archive(assetId);
-      showToast('Médium bylo přesunuto do archivu.');
-    }
-    refreshAssets();
-    if (selectedAsset?.id === assetId) {
-      setSelectedAsset(mediaRepository.getById(assetId) || null);
-    }
+    showToast('Vyžaduje aktivní oprávnění správce', 'error');
   };
 
   const handleOpenReplace = (asset: MediaAsset) => {
@@ -167,26 +165,13 @@ export function MediaLibraryWorkspace() {
   };
 
   const handleConfirmDelete = (assetId: string) => {
-    const result = mediaRepository.delete(assetId);
-    if (result.success) {
-      refreshAssets();
-      if (selectedAsset?.id === assetId) {
-        setSelectedAsset(null);
-        setIsDetailOpen(false);
-      }
-      showToast('Médium bylo trvale smazáno.');
-    } else {
-      showToast(result.error || 'Smazání se nezdařilo.', 'error');
-    }
+    showToast('Vyžaduje aktivní oprávnění správce', 'error');
+    setIsDeleteOpen(false);
   };
 
   const handleArchiveInstead = (assetId: string) => {
-    mediaRepository.archive(assetId);
-    refreshAssets();
-    if (selectedAsset?.id === assetId) {
-      setSelectedAsset(mediaRepository.getById(assetId) || null);
-    }
-    showToast('Médium bylo bezpečně archivováno (reference na stránkách zachovány).', 'info');
+    showToast('Vyžaduje aktivní oprávnění správce', 'error');
+    setIsDeleteOpen(false);
   };
 
   return (
@@ -243,10 +228,9 @@ export function MediaLibraryWorkspace() {
       <div className="p-3.5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 text-indigo-900 dark:text-indigo-200 text-xs flex items-start gap-3">
         <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
         <div className="space-y-0.5">
-          <span className="font-bold block">PROTOTYP: Běží nad in-memory adaptérem</span>
+          <span className="font-bold block">PROTOTYP: Reálná data (Oprávnění správce chybí)</span>
           <p className="text-[11px] leading-relaxed opacity-90">
-            Knihovna médií je plně interaktivní (vyhledávání, nahrávání, editace ALT textů, bezpečná ochrana před smazáním při aktivním využití na stránkách). Úložištní a antivirové adaptéry jsou připraveny formou rozhraní <code className="font-mono">StorageProvider</code> a <code className="font-mono">MalwareScanner</code>.
-          </p>
+            Zobrazení je nyní napojeno na skutečnou databázi. Operace pro zápis jsou však dočasně uzamčeny (fail-closed), protože projekt dosud nedefinuje bezpečnou RBAC (Role-Based Access Control) hranici.</p>
         </div>
       </div>
 
@@ -454,7 +438,7 @@ export function MediaLibraryWorkspace() {
           setIsDetailOpen(true);
           showToast(`Médium „${newAsset.metadata.title}“ bylo úspěšně nahráno.`);
         }}
-        onUploadFile={(params) => mediaRepository.upload(params)}
+        onUploadFile={(params) => { showToast('Vyžaduje aktivní oprávnění správce', 'error'); return { success: false, error: 'Vyžaduje aktivní oprávnění správce' } as any; }}
       />
 
       <MediaReplaceModal
@@ -469,7 +453,7 @@ export function MediaLibraryWorkspace() {
           setSelectedAsset(updated);
           showToast(`Soubor pro médium „${updated.metadata.title}“ byl úspěšně nahrazen.`);
         }}
-        onReplaceFile={(id, file) => mediaRepository.replaceFile(id, file)}
+        onReplaceFile={(id, file) => { showToast('Vyžaduje aktivní oprávnění správce', 'error'); return Promise.resolve({ success: false, error: 'Vyžaduje aktivní oprávnění správce' }); }}
       />
 
       <MediaDeleteModal
