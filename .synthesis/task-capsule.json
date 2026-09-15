@@ -1,9 +1,9 @@
 {
   "version": "1.0",
-  "task_id": "SYN-MEDIA-001A-PERSISTENCE-FOUNDATION",
+  "task_id": "SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
   "environment": "CMS_DEV",
-  "base_sha": "b82c8d7d1190ccb8d0594a050f2eab618be39bee",
-  "expected_branch": "task/SYN-MEDIA-001A-PERSISTENCE-FOUNDATION",
+  "base_sha": "948a9fe75d4c5fdcab333341c594333436106c1d",
+  "expected_branch": "task/SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
   "owner": "AI_STUDIO",
   "status": "COMPLETED",
   "allowed_mutation_types": [
@@ -13,13 +13,19 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "lib/domain/media/types.ts",
-    "lib/domain/media/repository.ts",
-    "lib/domain/media/mockProviders.ts",
-    "lib/domain/media/tests/persistence.test.ts"
+    ".env.example",
+    "package.json",
+    "package-lock.json",
+    "prisma/schema.prisma",
+    "lib/domain/media/prismaRepository.ts",
+    "lib/domain/media/s3StorageProvider.ts",
+    "deploy/cms-dev/compose.yml"
   ],
   "forbidden_paths": [
-    ".env*",
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
     "docs/environment/ENV-LEGACY-*",
     "infra/*"
   ]

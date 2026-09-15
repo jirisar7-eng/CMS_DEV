@@ -1,7 +1,4 @@
-import postgres from '@prisma/orm-postgres/runtime';
-import type { Contract } from '../../../prisma/schema.d';
-import contractJson from '../../../prisma/schema.json' with { type: 'json' };
-
+import { PrismaClient, Prisma } from '@prisma/client';
 import {
   IMediaRepository,
   MediaAsset,
@@ -15,25 +12,22 @@ import {
   MediaAssetVersionSecurity
 } from './types';
 
-let dbInstance: ReturnType<typeof postgres<Contract>> | null = null;
+let prismaInstance: PrismaClient | null = null;
 
-export function getDbClient() {
-  if (!dbInstance) {
+export function getPrismaClient(): PrismaClient {
+  if (!prismaInstance) {
     const url = process.env['DATABASE_URL'];
     if (!url) {
       throw new Error('DATABASE_URL is not defined in the environment');
     }
-    dbInstance = postgres<Contract>({
-      contractJson: contractJson as any,
-      url,
-    });
+    prismaInstance = new PrismaClient();
   }
-  return dbInstance;
+  return prismaInstance;
 }
 
 export class PrismaMediaRepository implements IMediaRepository {
-  private get db() {
-    return getDbClient();
+  private get prisma(): PrismaClient {
+    return getPrismaClient();
   }
 
   private mapAsset(dbAsset: any): MediaAsset {
@@ -87,75 +81,89 @@ export class PrismaMediaRepository implements IMediaRepository {
   }
 
   async createAsset(assetInput: Omit<MediaAsset, 'id' | 'createdAt' | 'updatedAt' | 'usageCount' | 'usageReferences'>): Promise<MediaAsset> {
-    const dbAsset = await this.db.orm.public.MediaAsset.create({
-      storageKey: assetInput.storageKey,
-      filename: assetInput.filename,
-      mimeType: assetInput.mimeType,
-      mediaType: assetInput.mediaType,
-      sizeBytes: assetInput.sizeBytes,
-      dimensions: assetInput.dimensions ? (assetInput.dimensions as any) : null,
-      url: assetInput.url,
-      status: assetInput.status,
-      metadata: assetInput.metadata as any,
-      projectId: assetInput.projectId,
-      security: assetInput.security as any,
-      usageCount: 0,
+    const dbAsset = await this.prisma.mediaAsset.create({
+      data: {
+        storageKey: assetInput.storageKey,
+        filename: assetInput.filename,
+        mimeType: assetInput.mimeType,
+        mediaType: assetInput.mediaType,
+        sizeBytes: assetInput.sizeBytes,
+        dimensions: (assetInput.dimensions as any) ?? Prisma.JsonNull,
+        url: assetInput.url,
+        status: assetInput.status,
+        metadata: (assetInput.metadata as any) ?? Prisma.JsonNull,
+        projectId: assetInput.projectId,
+        security: (assetInput.security as any) ?? Prisma.JsonNull,
+        usageCount: 0,
+      },
+      include: {
+        usageReferences: true,
+      },
     });
-    return this.mapAsset({ ...dbAsset, usageReferences: [] });
+    return this.mapAsset(dbAsset);
   }
 
   async getById(id: string): Promise<MediaAsset | undefined> {
-    const dbAsset = await this.db.orm.public.MediaAsset
-      .where({ id })
-      .include('usageReferences', (ref) => ref)
-      .first();
+    const dbAsset = await this.prisma.mediaAsset.findUnique({
+      where: { id },
+      include: {
+        usageReferences: true,
+      },
+    });
     if (!dbAsset) return undefined;
     return this.mapAsset(dbAsset);
   }
 
   async list(filters?: MediaFilterOptions): Promise<MediaAsset[]> {
-    let query = this.db.orm.public.MediaAsset.include('usageReferences', (ref) => ref);
+    const where: Prisma.MediaAssetWhereInput = {};
 
     if (filters) {
       if (filters.status && filters.status !== 'all') {
-        const statusVal = filters.status;
-        query = query.where((a) => a.status.eq(statusVal));
+        where.status = filters.status;
       }
       if (filters.mediaType && filters.mediaType !== 'all') {
-        const mediaTypeVal = filters.mediaType;
-        query = query.where((a) => a.mediaType.eq(mediaTypeVal));
+        where.mediaType = filters.mediaType;
       }
       if (filters.search) {
-        const searchVal = `%${filters.search}%`;
-        query = query.where((a) => a.filename.ilike(searchVal));
+        where.filename = {
+          contains: filters.search,
+          mode: 'insensitive',
+        };
       }
     }
 
-    let sortChain = query.orderBy((a) => a.createdAt.desc());
+    let orderBy: Prisma.MediaAssetOrderByWithRelationInput = { createdAt: 'desc' };
     if (filters?.sort) {
       switch (filters.sort) {
         case 'createdAt_asc':
-          sortChain = query.orderBy((a) => a.createdAt.asc());
+          orderBy = { createdAt: 'asc' };
           break;
         case 'createdAt_desc':
-          sortChain = query.orderBy((a) => a.createdAt.desc());
+          orderBy = { createdAt: 'desc' };
           break;
         case 'size_asc':
-          sortChain = query.orderBy((a) => a.sizeBytes.asc());
+          orderBy = { sizeBytes: 'asc' };
           break;
         case 'size_desc':
-          sortChain = query.orderBy((a) => a.sizeBytes.desc());
+          orderBy = { sizeBytes: 'desc' };
           break;
         case 'usage_desc':
-          sortChain = query.orderBy((a) => a.usageCount.desc());
+          orderBy = { usageCount: 'desc' };
           break;
         default:
-          sortChain = query.orderBy((a) => a.createdAt.desc());
+          orderBy = { createdAt: 'desc' };
           break;
       }
     }
 
-    const dbAssets = await sortChain.all();
+    const dbAssets = await this.prisma.mediaAsset.findMany({
+      where,
+      orderBy,
+      include: {
+        usageReferences: true,
+      },
+    });
+
     return dbAssets.map(asset => this.mapAsset(asset));
   }
 
@@ -168,118 +176,135 @@ export class PrismaMediaRepository implements IMediaRepository {
       ...metadata,
     };
 
-    await this.db.orm.public.MediaAsset
-      .where({ id })
-      .update({
+    const updated = await this.prisma.mediaAsset.update({
+      where: { id },
+      data: {
         metadata: mergedMetadata as any,
-      });
+      },
+      include: {
+        usageReferences: true,
+      },
+    });
 
-    return this.getById(id);
+    return this.mapAsset(updated);
   }
 
   async createVersion(
     assetId: string,
     versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>
   ): Promise<MediaAssetVersion> {
-    const aggregate = await this.db.orm.public.MediaAssetVersion
-      .where({ assetId })
-      .aggregate((a) => ({
-        maxVersion: a.max('versionNumber'),
-      }));
+    const aggregate = await this.prisma.mediaAssetVersion.aggregate({
+      where: { assetId },
+      _max: { versionNumber: true },
+    });
+    const nextVersion = (aggregate._max.versionNumber ?? 0) + 1;
 
-    const nextVersion = (aggregate.maxVersion ?? 0) + 1;
-
-    const dbVersion = await this.db.orm.public.MediaAssetVersion.create({
-      assetId,
-      versionNumber: nextVersion,
-      status: versionInput.status,
-      mimeType: versionInput.mimeType,
-      sizeBytes: versionInput.sizeBytes,
-      storageKey: versionInput.storageKey || null,
-      security: versionInput.security as any,
-      originalFilename: versionInput.originalFilename || null,
+    const dbVersion = await this.prisma.mediaAssetVersion.create({
+      data: {
+        assetId,
+        versionNumber: nextVersion,
+        status: versionInput.status,
+        mimeType: versionInput.mimeType,
+        sizeBytes: versionInput.sizeBytes,
+        storageKey: versionInput.storageKey || null,
+        security: versionInput.security as any,
+        originalFilename: versionInput.originalFilename || null,
+      },
     });
 
     return this.mapVersion(dbVersion);
   }
 
   async listVersions(assetId: string): Promise<MediaAssetVersion[]> {
-    const dbVersions = await this.db.orm.public.MediaAssetVersion
-      .where({ assetId })
-      .orderBy((v) => v.versionNumber.desc())
-      .all();
+    const dbVersions = await this.prisma.mediaAssetVersion.findMany({
+      where: { assetId },
+      orderBy: { versionNumber: 'desc' },
+    });
     return dbVersions.map(v => this.mapVersion(v));
   }
 
   async setCurrentVersion(assetId: string, versionId: string): Promise<MediaAsset | undefined> {
-    const version = await this.db.orm.public.MediaAssetVersion
-      .where({ id: versionId, assetId })
-      .first();
+    const version = await this.prisma.mediaAssetVersion.findFirst({
+      where: { id: versionId, assetId },
+    });
     if (!version) return undefined;
 
-    await this.db.orm.public.MediaAsset
-      .where({ id: assetId })
-      .update({
+    const updated = await this.prisma.mediaAsset.update({
+      where: { id: assetId },
+      data: {
         storageKey: version.storageKey || undefined,
         mimeType: version.mimeType,
         sizeBytes: version.sizeBytes,
-      });
+      },
+      include: {
+        usageReferences: true,
+      },
+    });
 
-    return this.getById(assetId);
+    return this.mapAsset(updated);
   }
 
   async changeStatus(id: string, status: MediaStatus): Promise<MediaAsset | undefined> {
-    await this.db.orm.public.MediaAsset
-      .where({ id })
-      .update({
-        status,
-      });
-    return this.getById(id);
+    const updated = await this.prisma.mediaAsset.update({
+      where: { id },
+      data: { status },
+      include: {
+        usageReferences: true,
+      },
+    });
+    return this.mapAsset(updated);
   }
 
   async addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>): Promise<MediaUsageReference> {
-    const dbRef = await this.db.orm.public.MediaUsageReference.create({
-      assetId,
-      pageId: reference.pageId,
-      pageTitle: reference.pageTitle,
-      pageSlug: reference.pageSlug,
-      blockId: reference.blockId || null,
-      blockType: reference.blockType || null,
-      field: reference.field || null,
+    const dbRef = await this.prisma.mediaUsageReference.create({
+      data: {
+        assetId,
+        pageId: reference.pageId,
+        pageTitle: reference.pageTitle,
+        pageSlug: reference.pageSlug,
+        blockId: reference.blockId || null,
+        blockType: reference.blockType || null,
+        field: reference.field || null,
+      },
     });
 
-    const asset = await this.getById(assetId);
-    if (asset) {
-      await this.db.orm.public.MediaAsset
-        .where({ id: assetId })
-        .update({
-          usageCount: (asset.usageCount || 0) + 1,
-        });
-    }
+    await this.prisma.mediaAsset.update({
+      where: { id: assetId },
+      data: {
+        usageCount: {
+          increment: 1,
+        },
+      },
+    });
 
     return this.mapUsageReference(dbRef);
   }
 
   async removeUsageReference(assetId: string, referenceId: string): Promise<void> {
-    await this.db.orm.public.MediaUsageReference
-      .where({ id: referenceId })
-      .delete();
+    await this.prisma.mediaUsageReference.delete({
+      where: { id: referenceId },
+    });
 
-    const asset = await this.getById(assetId);
+    const asset = await this.prisma.mediaAsset.findUnique({
+      where: { id: assetId },
+      select: { usageCount: true },
+    });
+
     if (asset) {
-      await this.db.orm.public.MediaAsset
-        .where({ id: assetId })
-        .update({
+      await this.prisma.mediaAsset.update({
+        where: { id: assetId },
+        data: {
           usageCount: Math.max(0, (asset.usageCount || 0) - 1),
-        });
+        },
+      });
     }
   }
 
   async listUsageReferences(assetId: string): Promise<MediaUsageReference[]> {
-    const dbRefs = await this.db.orm.public.MediaUsageReference
-      .where({ assetId })
-      .orderBy((r) => r.usedAt.desc())
-      .all();
+    const dbRefs = await this.prisma.mediaUsageReference.findMany({
+      where: { assetId },
+      orderBy: { usedAt: 'desc' },
+    });
     return dbRefs.map(r => this.mapUsageReference(r));
   }
 
@@ -298,9 +323,8 @@ export class PrismaMediaRepository implements IMediaRepository {
     if (!allowed) {
       throw new Error('Deletion is not allowed for this asset (it is either published or still in use)');
     }
-
-    await this.db.orm.public.MediaAsset
-      .where({ id })
-      .delete();
+    await this.prisma.mediaAsset.delete({
+      where: { id },
+    });
   }
 }
