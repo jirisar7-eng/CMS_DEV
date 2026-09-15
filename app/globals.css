@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Support Tailwind dark: variant in both dark and extra-dark modes */
+@custom-variant dark (&:where(.dark, .extra-dark, .dark *, .extra-dark *));
+
 @theme {
   --color-brand: var(--brand-primary);
   --color-brand-soft: var(--brand-primary-soft);
@@ -17,7 +20,6 @@
   --color-background: var(--surface-canvas);
   --color-foreground: var(--text-primary);
   
-  /* Map generic primary to action for contrast */
   --color-primary: var(--action-primary);
   --color-primary-foreground: var(--action-primary-text);
   
@@ -41,7 +43,8 @@
 }
 
 @layer base {
-  :root {
+  /* Default/Light Mode Tokens */
+  :root, .light {
     --brand-primary: #FF7A00;
     --brand-primary-soft: #FFE4CC;
     --action-primary: #C25700;
@@ -69,35 +72,62 @@
     --radius: 0.5rem;
   }
   
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --brand-primary: #FF7A00;
-      --brand-primary-soft: #4A2805;
-      
-      /* In dark mode, light text on brand primary is not enough, but dark text on bright orange is very accessible */
-      --action-primary: #FF7A00;
-      --action-primary-hover: #E66E00;
-      --action-primary-active: #CC6200;
-      --action-primary-text: #1F1F1F;
-      
-      --surface-canvas: #09090B;
-      --surface-default: #18181B;
-      --surface-subtle: #27272A;
-      
-      --text-primary: #FAFAFA;
-      --text-secondary: #A1A1AA;
-      --text-muted: #71717A;
-      
-      --border-default: #27272A;
-      --border-strong: #3F3F46;
-      
-      --state-success: #059669;
-      --state-warning: #D97706;
-      --state-danger: #DC2626;
-      --state-info: #2563EB;
-      
-      --focus-ring: #FF7A00;
-    }
+  /* Dark Mode Tokens (Comfortable dark-grey) */
+  .dark {
+    --brand-primary: #FF7A00;
+    --brand-primary-soft: #4A2805;
+    
+    --action-primary: #FF7A00;
+    --action-primary-hover: #E66E00;
+    --action-primary-active: #CC6200;
+    --action-primary-text: #1F1F1F;
+    
+    --surface-canvas: #09090B;
+    --surface-default: #18181B;
+    --surface-subtle: #27272A;
+    
+    --text-primary: #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    
+    --border-default: #27272A;
+    --border-strong: #3F3F46;
+    
+    --state-success: #059669;
+    --state-warning: #D97706;
+    --state-danger: #DC2626;
+    --state-info: #2563EB;
+    
+    --focus-ring: #FF7A00;
+  }
+
+  /* Extra Dark Mode Tokens (OLED) */
+  .extra-dark {
+    --brand-primary: #FF7A00;
+    --brand-primary-soft: #4A2805;
+    
+    --action-primary: #FF7A00;
+    --action-primary-hover: #E66E00;
+    --action-primary-active: #CC6200;
+    --action-primary-text: #1F1F1F;
+    
+    --surface-canvas: #000000;
+    --surface-default: #0A0A0C;
+    --surface-subtle: #121214;
+    
+    --text-primary: #EDEDED;
+    --text-secondary: #888888;
+    --text-muted: #555555;
+    
+    --border-default: #1A1A1A;
+    --border-strong: #2A2A2A;
+    
+    --state-success: #059669;
+    --state-warning: #D97706;
+    --state-danger: #DC2626;
+    --state-info: #2563EB;
+    
+    --focus-ring: #FF7A00;
   }
 
   * {

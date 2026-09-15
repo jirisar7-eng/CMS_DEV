@@ -23,7 +23,8 @@
     "components/admin/AdminDashboard.tsx",
     "components/admin/AdminShell.tsx",
     "components/admin/svg-editor/SvgEditor.tsx",
-    "docs/architecture/SYN-BRAND-FOUNDATION.md"
+    "docs/architecture/SYN-BRAND-FOUNDATION.md",
+    "components/theme/theme-toggle.tsx"
   ],
   "forbidden_paths": [
     ".env",
