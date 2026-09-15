@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "task_id": "SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
+  "task_id": "SYN-DATA-002-PROVISIONING",
   "environment": "CMS_DEV",
-  "base_sha": "948a9fe75d4c5fdcab333341c594333436106c1d",
-  "expected_branch": "task/SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
+  "base_sha": "fbe30b9cb81e2e5cebd569ebf405bce558698770",
+  "expected_branch": "task/SYN-DATA-002-PROVISIONING",
   "owner": "AI_STUDIO",
-  "status": "COMPLETED",
+  "status": "IN_PROGRESS",
   "allowed_mutation_types": [
     "CODE",
     "CONFIG",
@@ -13,12 +13,9 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "package.json",
-    "package-lock.json",
-    "prisma/schema.prisma",
-    "lib/domain/media/prismaRepository.ts",
-    "lib/domain/media/s3StorageProvider.ts",
-    "deploy/cms-dev/compose.yml"
+    "deploy/cms-dev/compose.yml",
+    "deploy/cms-dev/Dockerfile",
+    "prisma/migrations/*"
   ],
   "forbidden_paths": [
     ".env",

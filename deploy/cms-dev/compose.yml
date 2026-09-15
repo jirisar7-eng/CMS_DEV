@@ -16,6 +16,10 @@ services:
         condition: service_healthy
       cms-storage:
         condition: service_healthy
+      cms-migration:
+        condition: service_completed_successfully
+      cms-storage-init:
+        condition: service_completed_successfully
 
     environment:
       NODE_ENV: production
@@ -87,6 +91,44 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - internal
+
+  cms-migration:
+    container_name: synthesis_cms_dev_migration
+    image: "synthesis-cms-dev:${CMS_GIT_SHA:?CMS_GIT_SHA required}"
+    restart: "no"
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      cms-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "${DATABASE_URL:?DATABASE_URL required}"
+    networks:
+      - internal
+
+  cms-storage-init:
+    container_name: synthesis_cms_dev_storage_init
+    image: minio/mc:RELEASE.2024-01-28T16-08-53Z
+    restart: "no"
+    depends_on:
+      cms-storage:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://cms-storage:9000 synthesis_cms_dev_admin \"$${CMS_STORAGE_ADMIN_PASSWORD}\";
+      /usr/bin/mc mb --ignore-existing local/synthesis-cms-dev;
+      /usr/bin/mc anonymous set none local/synthesis-cms-dev;
+      /usr/bin/mc admin user add local \"$${CMS_STORAGE_ACCESS_KEY}\" \"$${CMS_STORAGE_SECRET_KEY}\" || true;
+      echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:GetBucketLocation\",\"s3:ListBucket\",\"s3:ListBucketMultipartUploads\"],\"Resource\":[\"arn:aws:s3:::synthesis-cms-dev\"]},{\"Effect\":\"Allow\",\"Action\":[\"s3:AbortMultipartUpload\",\"s3:DeleteObject\",\"s3:GetObject\",\"s3:ListMultipartUploadParts\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::synthesis-cms-dev/*\"]}]}' > /tmp/cms-app-policy.json;
+      /usr/bin/mc admin policy create local synthesis_cms_dev_app_policy /tmp/cms-app-policy.json || /usr/bin/mc admin policy update local synthesis_cms_dev_app_policy /tmp/cms-app-policy.json || true;
+      /usr/bin/mc admin policy attach local synthesis_cms_dev_app_policy --user \"$${CMS_STORAGE_ACCESS_KEY}\" || /usr/bin/mc admin policy attach local readwrite --user \"$${CMS_STORAGE_ACCESS_KEY}\";
+      exit 0;
+      "
+    environment:
+      CMS_STORAGE_ADMIN_PASSWORD: "${CMS_STORAGE_ADMIN_PASSWORD:?CMS_STORAGE_ADMIN_PASSWORD required}"
+      CMS_STORAGE_ACCESS_KEY: "${CMS_STORAGE_ACCESS_KEY:?CMS_STORAGE_ACCESS_KEY required}"
+      CMS_STORAGE_SECRET_KEY: "${CMS_STORAGE_SECRET_KEY:?CMS_STORAGE_SECRET_KEY required}"
     networks:
       - internal
 
