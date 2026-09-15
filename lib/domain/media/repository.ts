@@ -499,6 +499,14 @@ export class MediaRepository implements IMediaRepository {
   /**
    * Update Asset Metadata (Title, ALT, Description, Tags)
    */
+  updateUrl(id: string, url: string): MediaAsset | undefined {
+    const asset = this.getById(id);
+    if (!asset) return undefined;
+    asset.url = url;
+    asset.updatedAt = new Date().toISOString();
+    return asset;
+  }
+
   updateMetadata(
     id: string,
     metadataUpdate: Partial<MediaAsset['metadata']>
