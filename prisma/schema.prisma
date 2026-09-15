@@ -1,0 +1,64 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model MediaAsset {
+  id              String                @id @default(uuid())
+  storageKey      String                @unique
+  filename        String
+  mimeType        String
+  mediaType       String
+  sizeBytes       Int
+  dimensions      Json?
+  url             String
+  status          String
+  metadata        Json
+  projectId       String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @default(now())
+  usageCount      Int                   @default(0)
+  security        Json
+  versions        MediaAssetVersion[]
+  usageReferences MediaUsageReference[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model MediaAssetVersion {
+  id               String      @id @default(uuid())
+  assetId          String
+  versionNumber    Int
+  status           String
+  mimeType         String
+  sizeBytes        Int
+  storageKey       String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @default(now())
+  security         Json
+  originalFilename String?
+  asset            MediaAsset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, versionNumber])
+  @@index([assetId])
+}
+
+model MediaUsageReference {
+  id        String     @id @default(uuid())
+  assetId   String
+  pageId    String
+  pageTitle String
+  pageSlug  String
+  blockId   String?
+  blockType String?
+  field     String?
+  usedAt    DateTime   @default(now())
+  asset     MediaAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([assetId])
+}
