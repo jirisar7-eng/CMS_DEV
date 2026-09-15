@@ -163,8 +163,8 @@ services:
         /garage layout assign -z dc1 -c 100G "$$NODE_ID";
         /garage layout apply --version 1;
       else
-        LAYOUT_OUTPUT="$$(/garage layout show 2>&1)";
-        if echo "$$LAYOUT_OUTPUT" | grep -qi "$$NODE_SHORT"; then
+        LAYOUT_OUTPUT="$$(/garage layout show)";
+        if printf "%s\n" "$$LAYOUT_OUTPUT" | grep -Eq "^$${NODE_SHORT}[[:space:]]"; then
           echo "Single-node layout already assigned.";
         else
           echo "FAIL: Node role exists but node $$NODE_SHORT not found in active layout" >&2;
