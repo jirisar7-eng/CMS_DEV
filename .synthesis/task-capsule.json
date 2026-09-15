@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-CONTENT-001B-MEDIA-ADMIN-UI",
+  "task_id": "SYN-PUBLIC-001-SYNTHESIS-CMS-HOMEPAGE",
   "environment": "CMS_DEV",
-  "base_sha": "8617330d878707d3d234e2ccb3ea27f348870cdf",
-  "expected_branch": "task/SYN-CONTENT-001B-MEDIA-ADMIN-UI",
+  "base_sha": "b9952fec44e245bac3de5aff6ad53fce28f0c579",
+  "expected_branch": "task/SYN-PUBLIC-001-SYNTHESIS-CMS-HOMEPAGE",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
@@ -12,11 +12,16 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "app/admin/media/actions.ts",
-    "components/admin/media/MediaLibraryWorkspace.tsx",
-    "components/admin/media/MediaAssetCard.tsx",
-    "components/admin/media/MediaList.tsx",
-    "components/admin/media/MediaDetailDrawer.tsx"
+    "app/page.tsx",
+    "components/public/Documentation.tsx",
+    "components/public/Features.tsx",
+    "components/public/Hero.tsx",
+    "components/public/Pricing.tsx",
+    "components/public/PublicFooter.tsx",
+    "components/public/PublicHeader.tsx",
+    "components/public/Security.tsx",
+    "components/public/TechRequirements.tsx",
+    "components/public/WhySynthesis.tsx"
   ],
   "forbidden_paths": [
     ".env",
