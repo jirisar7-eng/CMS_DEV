@@ -167,6 +167,17 @@ export class PrismaMediaRepository implements IMediaRepository {
     return dbAssets.map(asset => this.mapAsset(asset));
   }
 
+  async updateUrl(id: string, url: string): Promise<MediaAsset | undefined> {
+    const updated = await this.prisma.mediaAsset.update({
+      where: { id },
+      data: { url },
+      include: {
+        usageReferences: true,
+      },
+    });
+    return this.mapAsset(updated);
+  }
+
   async updateMetadata(id: string, metadata: Partial<MediaMetadata>): Promise<MediaAsset | undefined> {
     const current = await this.getById(id);
     if (!current) return undefined;

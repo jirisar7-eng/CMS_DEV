@@ -66,7 +66,7 @@ export class MockStorageProvider implements StorageProvider {
   async upload(
     file: { name: string; type: string; size: number; data?: Blob | ArrayBuffer },
     storageKey: string
-  ): Promise<{ url: string; storageKey: string; sizeBytes: number }> {
+  ): Promise<{ storageKey: string; sizeBytes: number }> {
     // Generate a simulated object URL for preview
     let url = '';
     if (file.type.startsWith('image/')) {
@@ -77,7 +77,6 @@ export class MockStorageProvider implements StorageProvider {
     }
 
     return {
-      url,
       storageKey,
       sizeBytes: file.size,
     };
@@ -86,10 +85,6 @@ export class MockStorageProvider implements StorageProvider {
   async delete(storageKey: string): Promise<void> {
     // Simulated deletion
     return Promise.resolve();
-  }
-
-  async getUrl(storageKey: string): Promise<string> {
-    return `https://picsum.photos/seed/${encodeURIComponent(storageKey)}/1200/800`;
   }
 
   async putObject(

@@ -40,7 +40,7 @@ export class S3StorageProvider implements StorageProvider {
   async upload(
     file: { name: string; type: string; size: number; data?: Blob | ArrayBuffer | Buffer },
     storageKey: string
-  ): Promise<{ url: string; storageKey: string; sizeBytes: number }> {
+  ): Promise<{ storageKey: string; sizeBytes: number }> {
     const s3 = this.getClient();
     let body: Buffer;
 
@@ -66,10 +66,7 @@ export class S3StorageProvider implements StorageProvider {
       })
     );
 
-    const url = await this.getUrl(storageKey);
-
     return {
-      url,
       storageKey,
       sizeBytes: file.size,
     };
@@ -83,14 +80,6 @@ export class S3StorageProvider implements StorageProvider {
         Key: storageKey,
       })
     );
-  }
-
-  async getUrl(storageKey: string): Promise<string> {
-    const endpoint = process.env.CMS_STORAGE_ENDPOINT;
-    if (endpoint) {
-      return `${endpoint}/${this.bucket}/${storageKey}`;
-    }
-    return `https://${this.bucket}.s3.amazonaws.com/${storageKey}`;
   }
 
   async putObject(
