@@ -13,7 +13,6 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    ".env.example",
     "package.json",
     "package-lock.json",
     "prisma/schema.prisma",
