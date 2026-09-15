@@ -124,6 +124,15 @@ services:
         /usr/bin/mc admin user add local \"$${CMS_STORAGE_ACCESS_KEY}\" \"$${CMS_STORAGE_SECRET_KEY}\";
       else
         /usr/bin/mc admin user enable local \"$${CMS_STORAGE_ACCESS_KEY}\";
+        if /usr/bin/mc admin user add local \"$${CMS_STORAGE_ACCESS_KEY}\" \"$${CMS_STORAGE_SECRET_KEY}\" >/dev/null 2>&1; then
+          echo 'App user secret synchronized via mc admin user add.';
+        elif /usr/bin/mc admin accesskey edit local \"$${CMS_STORAGE_ACCESS_KEY}\" --secret-key \"$${CMS_STORAGE_SECRET_KEY}\" >/dev/null 2>&1; then
+          echo 'App user secret synchronized via mc admin accesskey edit.';
+        elif /usr/bin/mc admin user svcacct edit local \"$${CMS_STORAGE_ACCESS_KEY}\" --secret-key \"$${CMS_STORAGE_SECRET_KEY}\" >/dev/null 2>&1; then
+          echo 'App user secret synchronized via mc admin user svcacct edit.';
+        else
+          echo 'SECURITY ERROR: Failed to synchronize existing app user secret!' >&2; exit 1;
+        fi;
       fi;
       echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:GetBucketLocation\",\"s3:ListBucket\",\"s3:ListBucketMultipartUploads\"],\"Resource\":[\"arn:aws:s3:::synthesis-cms-dev\"]},{\"Effect\":\"Allow\",\"Action\":[\"s3:AbortMultipartUpload\",\"s3:DeleteObject\",\"s3:GetObject\",\"s3:ListMultipartUploadParts\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::synthesis-cms-dev/*\"]}]}' > /tmp/cms-app-policy.json;
       /usr/bin/mc admin policy create local synthesis_cms_dev_app_policy /tmp/cms-app-policy.json;
@@ -144,6 +153,9 @@ services:
         *readwrite*|*consoleAdmin*) echo 'SECURITY VIOLATION: Excessive generic policy attached to app user!' >&2; exit 1 ;;
         *) echo 'User privilege boundary verified: no excessive permissions.' ;;
       esac;
+      /usr/bin/mc alias set apptest http://cms-storage:9000 \"$${CMS_STORAGE_ACCESS_KEY}\" \"$${CMS_STORAGE_SECRET_KEY}\";
+      /usr/bin/mc ls apptest/synthesis-cms-dev;
+      /usr/bin/mc alias rm apptest;
       echo 'cms-storage-init completed successfully.'
       "
     environment:
