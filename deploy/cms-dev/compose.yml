@@ -110,7 +110,9 @@ services:
 
   cms-storage-init:
     container_name: synthesis_cms_dev_storage_init
-    image: dxflrs/garage:v2.3.0
+    build:
+      context: .
+      dockerfile: Dockerfile.garage-init
     restart: "no"
     depends_on:
       cms-storage:
