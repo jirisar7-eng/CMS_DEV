@@ -39,7 +39,7 @@ export function MediaAssetCard({
   onSelect,
   onOpenDetail,
 }: MediaAssetCardProps) {
-  const isArchived = asset.status === 'archived';
+  const isArchived = (asset.status as string).toUpperCase() === 'ARCHIVED';
   const isImage = asset.mediaType === 'image';
   const isVector = asset.mediaType === 'vector';
 
@@ -59,7 +59,7 @@ export function MediaAssetCard({
         {isImage ? (
           <div className="relative w-full h-full">
             <Image
-              src={asset.url}
+              src={(asset.status as string).toUpperCase() === 'PUBLISHED' ? asset.url : 'https://picsum.photos/seed/placeholder/400/300?grayscale'}
               alt={asset.metadata.altText || asset.metadata.title}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
@@ -101,6 +101,16 @@ export function MediaAssetCard({
           {isArchived && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted/90 backdrop-blur-xs text-muted-foreground border border-border shadow-xs">
               Archiv
+            </span>
+          )}
+          {(asset.status as string).toUpperCase() === 'QUARANTINED' && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/90 backdrop-blur-xs text-white shadow-xs">
+              Karanténa
+            </span>
+          )}
+          {(asset.status as string).toUpperCase() === 'PUBLISHED' && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-500/90 backdrop-blur-xs text-white shadow-xs">
+              Veřejné
             </span>
           )}
 

@@ -54,7 +54,7 @@ export function MediaList({
           <tbody className="divide-y divide-border/60">
             {assets.map((asset) => {
               const isSelected = selectedAsset?.id === asset.id;
-              const isArchived = asset.status === 'archived';
+              const isArchived = (asset.status as string).toUpperCase() === 'ARCHIVED';
 
               return (
                 <tr
@@ -70,7 +70,7 @@ export function MediaList({
                     <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center relative border border-border/50 shrink-0">
                       {asset.mediaType === 'image' ? (
                         <Image
-                          src={asset.url}
+                          src={(asset.status as string).toUpperCase() === 'PUBLISHED' ? asset.url : 'https://picsum.photos/seed/placeholder/400/300?grayscale'}
                           alt={asset.metadata.altText || asset.metadata.title}
                           fill
                           sizes="40px"

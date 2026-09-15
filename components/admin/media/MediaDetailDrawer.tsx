@@ -163,7 +163,7 @@ export function MediaDetailDrawer({
 
   if (!isOpen || !asset) return null;
 
-  const isArchived = asset.status === 'archived';
+  const isArchived = (asset.status as string).toUpperCase() === 'ARCHIVED';
   const isImage = asset.mediaType === 'image';
   const isVector = asset.mediaType === 'vector';
 
@@ -208,7 +208,7 @@ export function MediaDetailDrawer({
             {isImage ? (
               <div className="relative w-full h-56">
                 <Image
-                  src={asset.url}
+                  src={(asset.status as string).toUpperCase() === 'PUBLISHED' ? asset.url : 'https://picsum.photos/seed/placeholder/400/300?grayscale'}
                   alt={asset.metadata.altText || asset.metadata.title}
                   fill
                   sizes="480px"
@@ -238,6 +238,16 @@ export function MediaDetailDrawer({
               {isArchived && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
                   Archivováno
+                </span>
+              )}
+              {(asset.status as string).toUpperCase() === 'QUARANTINED' && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500 text-white shadow-sm">
+                  V Karanténě (Čeká na kontrolu)
+                </span>
+              )}
+              {(asset.status as string).toUpperCase() === 'PUBLISHED' && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500 text-white shadow-sm">
+                  Veřejné
                 </span>
               )}
               {asset.security.activeContent && (
