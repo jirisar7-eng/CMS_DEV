@@ -1,9 +1,9 @@
 {
   "version": "1.0",
-  "task_id": "SYN-DATA-005-GARAGE-INIT-IMAGE",
+  "task_id": "SYN-DATA-006-GARAGE-IDEMPOTENCY-FIX",
   "environment": "CMS_DEV",
-  "base_sha": "a8b860b32ce427b819a2b4b7114a653b992a4740",
-  "expected_branch": "task/SYN-DATA-005-GARAGE-INIT-IMAGE",
+  "base_sha": "d6a2630da35f4e68dc10ece789255f30cd34d7cd",
+  "expected_branch": "task/SYN-DATA-006-GARAGE-IDEMPOTENCY-FIX",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
@@ -13,8 +13,7 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "deploy/cms-dev/compose.yml",
-    "deploy/cms-dev/Dockerfile.garage-init"
+    "deploy/cms-dev/compose.yml"
   ],
   "forbidden_paths": [
     ".env",

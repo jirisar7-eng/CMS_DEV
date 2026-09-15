@@ -154,6 +154,7 @@ services:
         exit 1;
       fi;
       echo "Identified Garage node ID: $$NODE_ID";
+      NODE_SHORT="$$(echo "$$NODE_ID" | cut -c 1-16)";
       STATUS_OUTPUT="$$(\
         /garage status 2>&1\
       )";
@@ -161,12 +162,14 @@ services:
         echo "Assigning single-node layout for node $$NODE_ID...";
         /garage layout assign -z dc1 -c 100G "$$NODE_ID";
         /garage layout apply --version 1;
-      elif ! echo "$$STATUS_OUTPUT" | grep -qi "$$NODE_ID"; then
-        echo "Node $$NODE_ID not found in active layout, assigning...";
-        /garage layout assign -z dc1 -c 100G "$$NODE_ID";
-        /garage layout apply --version 1;
       else
-        echo "Single-node layout already assigned.";
+        LAYOUT_OUTPUT="$$(/garage layout show)";
+        if printf "%s\n" "$$LAYOUT_OUTPUT" | grep -Eq "^$${NODE_SHORT}[[:space:]]"; then
+          echo "Single-node layout already assigned.";
+        else
+          echo "FAIL: Node role exists but node $$NODE_SHORT not found in active layout" >&2;
+          exit 1;
+        fi;
       fi;
       if ! /garage bucket info synthesis-cms-dev >/dev/null 2>&1; then
         echo "Creating bucket synthesis-cms-dev...";
