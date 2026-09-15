@@ -25,10 +25,10 @@ import { ADMIN_NAV_GROUPS } from '@/lib/navigation/adminNav';
 
 export function AdminDashboard() {
   const quickStats = [
-    { label: 'Stav prostředí', value: 'PROTOTYP', detail: 'In-memory adaptér • Ukázková data', icon: FlaskConical, color: 'text-indigo-500' },
-    { label: 'Obsahové schéma', value: '4 stránky', detail: 'Lokální fixture data', icon: FileText, color: 'text-blue-500' },
-    { label: 'Perzistentní databáze', value: 'Není připojeno', detail: 'Fáze návrhu rozhraní', icon: Send, color: 'text-amber-500' },
-    { label: 'Bezpečnostní telemetrie', value: 'Neověřeno', detail: 'Vývojový sandbox (G2 slice)', icon: ShieldCheck, color: 'text-slate-500' },
+    { label: 'Stav prostředí', value: 'PROTOTYP', detail: 'In-memory adaptér • Ukázková data', icon: FlaskConical, color: 'text-brand' },
+    { label: 'Obsahové schéma', value: '4 stránky', detail: 'Lokální fixture data', icon: FileText, color: 'text-state-info' },
+    { label: 'Perzistentní databáze', value: 'Není připojeno', detail: 'Fáze návrhu rozhraní', icon: Send, color: 'text-state-warning' },
+    { label: 'Bezpečnostní telemetrie', value: 'Neověřeno', detail: 'Vývojový sandbox (G2 slice)', icon: ShieldCheck, color: 'text-muted-foreground' },
   ];
 
   return (

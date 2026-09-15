@@ -11,6 +11,7 @@ import {
   Layers
 } from 'lucide-react';
 import Link from 'next/link';
+import { SynthesisLogo } from '@/components/brand/SynthesisLogo';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from "../theme/theme-toggle";
 import { HelpTrigger } from '@/components/help/HelpTrigger';
@@ -149,19 +150,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                           href={item.href}
                           className={`flex items-center justify-between gap-2.5 px-2.5 py-2 text-xs font-medium rounded-lg transition-colors min-h-[38px] ${
                             isActive
-                              ? 'bg-primary text-primary-foreground font-semibold shadow-2xs'
+                              ? 'bg-primary/10 text-primary font-bold border-l-4 border-l-primary shadow-sm'
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
                           }`}
                           onClick={() => setSidebarOpen(false)}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                             <span className="truncate">{item.name}</span>
                           </div>
                           {item.status === 'FUNKČNÍ' && (
                             <span
                               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                isActive ? 'bg-primary-foreground' : 'bg-emerald-500'
+                                isActive ? 'bg-primary' : 'bg-emerald-500'
                               }`}
                               title="Funkční"
                             />
@@ -169,8 +170,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                           {item.status === 'PLÁNOVÁNO' && (
                             <span
                               className={`text-[9px] px-1 py-0.2 rounded border uppercase shrink-0 font-bold ${
-                                isActive
-                                  ? 'border-primary-foreground/40 text-primary-foreground'
+                                isActive ? 'border-primary/40 text-primary'
                                   : 'border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10'
                               }`}
                             >
