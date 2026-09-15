@@ -1,10 +1,13 @@
 'use server';
 
-import { mediaService } from '@/lib/domain/media/service';
-import { MediaFilterOptions } from '@/lib/domain/media/types';
+import { MediaFilterOptions, MediaAsset } from '@/lib/domain/media/types';
 
-export async function listMediaAssets(filters: MediaFilterOptions) {
-  // Returns all assets from DB (including QUARANTINED, DRAFT, etc.)
-  const assets = await mediaService.listAssets(filters);
-  return assets;
+export async function listMediaAssets(filters: MediaFilterOptions): Promise<{ data: MediaAsset[], error?: string }> {
+  // FAIL-CLOSED SECURITY BOUNDARY:
+  // Admin auth boundary is missing. Unauthenticated users cannot read private media.
+  // Returning empty array and an explicit error.
+  return { 
+    data: [], 
+    error: 'Přístup k neveřejným médiím vyžaduje přihlášení správce.'
+  };
 }

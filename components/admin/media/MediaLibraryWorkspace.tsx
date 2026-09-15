@@ -39,10 +39,8 @@ import { formatBytes } from './MediaAssetCard';
 export function MediaLibraryWorkspace() {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    refreshAssets();
-  }, []);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -62,22 +60,51 @@ export function MediaLibraryWorkspace() {
   // Notification feedback
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+  const showToast = React.useCallback((message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3500);
-  };
+  }, []);
 
-  const refreshAssets = async () => {
+  const refreshAssets = React.useCallback(async () => {
     setIsLoading(true);
+    setAuthError(null);
     try {
-      const data = await listMediaAssets({});
-      setAssets(data);
+      const response = await listMediaAssets({});
+      if (response.error) {
+        setAuthError(response.error);
+        setAssets([]);
+      } else {
+        setAssets(response.data || []);
+      }
     } catch (e) {
       showToast('Nepodařilo se načíst média', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const initialLoad = async () => {
+      try {
+        const response = await listMediaAssets({});
+        if (!mounted) return;
+        if (response.error) {
+          setAuthError(response.error);
+          setAssets([]);
+        } else {
+          setAssets(response.data || []);
+        }
+      } catch (e) {
+        if (mounted) showToast('Nepodařilo se načíst média', 'error');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    initialLoad();
+    return () => { mounted = false; };
+  }, [showToast]);
+
 
   // Filtered and sorted assets
   const filteredAssets = useMemo(() => {
@@ -228,9 +255,10 @@ export function MediaLibraryWorkspace() {
       <div className="p-3.5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 text-indigo-900 dark:text-indigo-200 text-xs flex items-start gap-3">
         <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
         <div className="space-y-0.5">
-          <span className="font-bold block">PROTOTYP: Reálná data (Oprávnění správce chybí)</span>
-          <p className="text-[11px] leading-relaxed opacity-90">
-            Zobrazení je nyní napojeno na skutečnou databázi. Operace pro zápis jsou však dočasně uzamčeny (fail-closed), protože projekt dosud nedefinuje bezpečnou RBAC (Role-Based Access Control) hranici.</p>
+          <span className="font-bold block text-destructive">BEZPEČNOSTNÍ BLOK: Chybí Auth Hranice</span>
+          <p className="text-[11px] leading-relaxed opacity-90 text-destructive/80">
+            Knihovna médií je připravena na reálná data. Čtení i zápis jsou však dočasně uzamčeny (fail-closed), protože projekt dosud nedefinuje bezpečnou admin RBAC (Role-Based Access Control) hranici.
+          </p>
         </div>
       </div>
 
