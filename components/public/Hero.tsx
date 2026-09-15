@@ -23,14 +23,14 @@ export function Hero() {
         
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
           <Link 
-            href="#funkce" 
+            href="/features" 
             className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm transition-all"
           >
             Prozkoumat CMS
             <ArrowRight className="ml-2 -mr-1 w-5 h-5" />
           </Link>
           <Link 
-            href="#dokumentace" 
+            href="/docs" 
             className="inline-flex items-center justify-center px-6 py-3 border border-border text-base font-medium rounded-xl text-foreground bg-background hover:bg-muted shadow-sm transition-all"
           >
             <BookOpen className="mr-2 -ml-1 w-5 h-5" />

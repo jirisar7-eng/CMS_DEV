@@ -31,7 +31,7 @@ export function Pricing() {
                 Povinný odkaz &quot;Powered by Synthesis CMS&quot;
               </li>
             </ul>
-            <Link href="#dokumentace" className="w-full py-2.5 px-4 text-center border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors">
+            <Link href="/docs" className="w-full py-2.5 px-4 text-center border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors">
               Zjistit více o licenci
             </Link>
           </div>
@@ -60,7 +60,7 @@ export function Pricing() {
                 Základní technická podpora
               </li>
             </ul>
-            <Link href="#dokumentace" className="w-full py-2.5 px-4 text-center bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm">
+            <Link href="/docs" className="w-full py-2.5 px-4 text-center bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm">
               Zjistit více o licenci
             </Link>
           </div>
@@ -85,7 +85,7 @@ export function Pricing() {
                 Obnova dle individuální dohody
               </li>
             </ul>
-            <Link href="#dokumentace" className="w-full py-2.5 px-4 text-center border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors">
+            <Link href="/docs" className="w-full py-2.5 px-4 text-center border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors">
               Zjistit více o licenci
             </Link>
           </div>
