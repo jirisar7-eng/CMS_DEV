@@ -130,8 +130,8 @@ export function SvgEditor({ initialSvgString, onChange }: SvgEditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-100" ref={containerRef}>
-      <div className="flex p-2 bg-slate-200 gap-2 border-b">
+    <div className="flex flex-col h-full w-full bg-muted/50" ref={containerRef}>
+      <div className="flex p-2 bg-muted gap-2 border-b">
         <button onClick={() => dispatch({ type: 'UNDO' })} disabled={state.historyIndex <= 0} className="px-3 py-1 bg-white border rounded shadow-sm disabled:opacity-50">Undo</button>
         <button onClick={() => dispatch({ type: 'REDO' })} disabled={state.historyIndex >= state.history.length - 1} className="px-3 py-1 bg-white border rounded shadow-sm disabled:opacity-50">Redo</button>
         <button onClick={() => dispatch({ type: 'DELETE_SELECTION' })} disabled={state.selection.length === 0} className="px-3 py-1 bg-white border rounded shadow-sm disabled:opacity-50 text-red-600">Delete</button>

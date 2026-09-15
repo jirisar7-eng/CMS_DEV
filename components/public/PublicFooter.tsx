@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { SynthesisLogo } from '@/components/brand/SynthesisLogo';
 
 export function PublicFooter() {
   const links = [
@@ -16,7 +17,7 @@ export function PublicFooter() {
     <footer className="bg-background border-t border-border py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center md:items-start gap-2">
-          <span className="text-lg font-bold tracking-tight text-foreground">Synthesis CMS</span>
+          <SynthesisLogo className="text-lg" />
           <span className="text-sm text-muted-foreground">© {new Date().getFullYear()} Synthesis. Všechna práva vyhrazena.</span>
         </div>
         

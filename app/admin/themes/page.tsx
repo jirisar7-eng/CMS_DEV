@@ -15,17 +15,18 @@ import {
 } from 'lucide-react';
 
 export default function ThemesPage() {
-  const [selectedTheme, setSelectedTheme] = useState<string>('modern-clean');
+  const [selectedTheme, setSelectedTheme] = useState<string>('synthesis-orange');
 
   const themes = [
     {
-      id: 'modern-clean',
-      name: 'Modern Clean (Výchozí)',
-      description: 'Čistý a minimalistický design s důrazem na vysoký kontrast a vzdušné rozvržení.',
-      primaryColor: '#2563eb',
-      accentColor: '#0ea5e9',
-      neutralBg: '#f8fafc',
+      id: 'synthesis-orange',
+      name: 'Synthesis Orange (Výchozí)',
+      description: 'Základní vizuální identita Synthesis CMS. Čistý a minimalistický design s důrazem na vysoký kontrast a vzdušné rozvržení.',
+      primaryColor: '#FF7A00',
+      accentColor: '#C25700',
+      neutralBg: '#F5F5F5',
       active: true,
+      modes: ['Světlý', 'Tmavý', 'Extra tmavý']
     },
     {
       id: 'corporate-slate',
@@ -35,6 +36,7 @@ export default function ThemesPage() {
       accentColor: '#38bdf8',
       neutralBg: '#f1f5f9',
       active: false,
+      modes: ['Světlý', 'Tmavý']
     },
     {
       id: 'warm-editorial',
@@ -44,6 +46,7 @@ export default function ThemesPage() {
       accentColor: '#d97706',
       neutralBg: '#fafaf9',
       active: false,
+      modes: ['Světlý', 'Tmavý']
     },
   ];
 
@@ -92,10 +95,18 @@ export default function ThemesPage() {
                       </span>
                     ) : null}
                   </div>
-
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  
+                  <p className="text-xs text-muted-foreground leading-relaxed h-10">
                     {theme.description}
                   </p>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1 pb-1">
+                    {theme.modes.map(mode => (
+                       <span key={mode} className="text-[10px] px-2 py-0.5 bg-muted rounded-md text-muted-foreground border border-border">
+                         {mode}
+                       </span>
+                    ))}
+                  </div>
 
                   {/* Color Palette Preview */}
                   <div className="flex items-center gap-2 pt-2">

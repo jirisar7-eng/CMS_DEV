@@ -1,8 +1,11 @@
 import type {Metadata} from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme/theme-provider';
 import { HelpProvider } from '@/components/help/HelpProvider';
 import { HelpPanel } from '@/components/help/HelpPanel';
+
+const inter = Inter({ subsets: ['latin', 'latin-ext'] });
 
 export const metadata: Metadata = {
   title: 'Synthesis CMS',
@@ -12,11 +15,8 @@ export const metadata: Metadata = {
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="cs" suppressHydrationWarning>
-      <body suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
+      <body className={inter.className} suppressHydrationWarning>
+        <ThemeProvider attribute="class" defaultTheme="light" themes={["light", "dark", "extra-dark", "system"]} enableSystem
           disableTransitionOnChange
         >
           <HelpProvider>
