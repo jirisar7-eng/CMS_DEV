@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "task_id": "SYN-BRAND-003-COMPLETE-SYNTHESIS-CMS-BRAND",
   "environment": "CMS_DEV",
-  "base_sha": "4835b35523e185a76e85aefe724e1f6584a4b3d1",
+  "base_sha": "50e2d61b36b5dd4345a6034678177519d939d1bc",
   "expected_branch": "task/SYN-BRAND-003-COMPLETE-SYNTHESIS-CMS-BRAND",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",

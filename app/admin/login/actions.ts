@@ -6,8 +6,13 @@ import { logAudit } from '@/lib/auth/audit';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isDatabaseConfigured } from '@/lib/runtime/database';
 
 export async function loginAction(state: any, formData: FormData) {
+  if (!isDatabaseConfigured()) {
+    return { error: 'Administrace není v tomto prostředí dostupná.' };
+  }
+
   const email = formData.get('email')?.toString().toLowerCase().trim();
   const password = formData.get('password')?.toString();
 
@@ -40,6 +45,7 @@ export async function loginAction(state: any, formData: FormData) {
   }
 
   const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+
   if (!isValidPassword) {
     await logAudit({
       action: 'AUTH_LOGIN_FAILURE',
@@ -52,7 +58,7 @@ export async function loginAction(state: any, formData: FormData) {
 
   // Success
   const sessionId = await createSession(user.id);
-
+  
   await logAudit({
     action: 'AUTH_LOGIN_SUCCESS',
     scopeType: 'SYSTEM',
@@ -67,10 +73,12 @@ export async function logoutAction() {
   const sessionId = cookieStore.get('syn_admin_session')?.value;
 
   if (sessionId) {
-    await logAudit({
-      action: 'AUTH_LOGOUT',
-      scopeType: 'SYSTEM',
-    });
+    if (isDatabaseConfigured()) {
+      await logAudit({
+        action: 'AUTH_LOGOUT',
+        scopeType: 'SYSTEM',
+      });
+    }
     await invalidateSession(sessionId);
   }
 
