@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 export const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-
 const hexColor = z.string().regex(hexColorRegex, "Must be a valid hex color");
 
 export const SemanticTokensSchema = z.object({
@@ -92,7 +91,7 @@ const synthesisLightTokens: SemanticTokens = {
 };
 
 const synthesisDarkTokens: SemanticTokens = {
-  brand: { primary: '#FF7A00', soft: '#FFE4CC' },
+  brand: { primary: '#FF7A00', soft: '#4A2805' },
   action: { primary: '#FF9E40', primaryText: '#121212' },
   text: { primary: '#FFFFFF', secondary: '#A3A3A3', muted: '#888888' },
   canvas: '#121212',
@@ -110,7 +109,7 @@ const synthesisDarkTokens: SemanticTokens = {
 };
 
 const synthesisExtraDarkTokens: SemanticTokens = {
-  brand: { primary: '#FF7A00', soft: '#FFE4CC' },
+  brand: { primary: '#FF7A00', soft: '#4A2805' },
   action: { primary: '#FF9E40', primaryText: '#000000' },
   text: { primary: '#FFFFFF', secondary: '#A3A3A3', muted: '#888888' },
   canvas: '#000000',
