@@ -144,4 +144,60 @@ describe('Brand Book and Accessibility Matrix Verification', () => {
     const brandBook = fs.readFileSync(brandBookPath, 'utf8');
     assert.doesNotMatch(brandBook, /<path d="/);
   });
+
+  it('Brand Book and globals.css have motion parity', () => {
+    const globals = fs.readFileSync(path.join(process.cwd(), 'app/globals.css'), 'utf8');
+    const brandBook = fs.readFileSync(brandBookPath, 'utf8');
+    
+    const extractCssVariable = (name: string) => {
+      const regex = new RegExp(`${name}:\\s*([^;]+);`);
+      const match = globals.match(regex);
+      return match ? match[1].trim() : null;
+    };
+
+    const vars = [
+      '--space-1', '--space-2', '--space-3', '--space-4', '--space-5', '--space-6', '--space-8', '--space-10', '--space-12', '--space-16', '--space-20',
+      '--content-max', '--content-wide',
+      '--page-gutter-mobile', '--page-gutter-tablet', '--page-gutter-desktop',
+      '--section-gap-mobile', '--section-gap-desktop',
+      '--touch-target-min',
+      '--radius-xs', '--radius-sm', '--radius-md', '--radius-lg', '--radius-xl', '--radius-pill',
+      '--shadow-sm', '--shadow-md', '--shadow-lg',
+      '--duration-fast', '--duration-normal', '--duration-slow',
+      '--ease-standard', '--ease-emphasized'
+    ];
+
+    for (const v of vars) {
+      const val = extractCssVariable(v);
+      assert.ok(val, `Variable ${v} not found in globals.css`);
+      assert.match(brandBook, new RegExp(v), `Variable ${v} missing in Brand Book`);
+      assert.ok(brandBook.includes(val.replace(/\s+/g, ' ')), `Value ${val} for ${v} missing in Brand Book`);
+    }
+  });
+
+  it('Brand Book no longer claims stale values', () => {
+    const brandBook = fs.readFileSync(brandBookPath, 'utf8');
+    const sectionMatch = brandBook.match(/## 8\. Spacing \/ Radius \/ Motion[\s\S]*?## 9\. Theme Behavior/);
+    assert.ok(sectionMatch);
+    const section = sectionMatch[0];
+    
+    assert.doesNotMatch(section, /150ms/);
+    assert.doesNotMatch(section, /250ms/);
+    assert.doesNotMatch(section, /350ms/);
+    assert.doesNotMatch(section, /1024px/);
+    assert.doesNotMatch(section, /1280px/);
+    assert.doesNotMatch(section, /--max-w-content/);
+    assert.doesNotMatch(section, /--max-w-wide/);
+    assert.doesNotMatch(section, /--gutter-mobile/);
+    assert.doesNotMatch(section, /--gutter-desktop/);
+  });
+
+  it('globals.css and Brand Book support reduced motion', () => {
+    const globals = fs.readFileSync(path.join(process.cwd(), 'app/globals.css'), 'utf8');
+    const brandBook = fs.readFileSync(brandBookPath, 'utf8');
+    
+    assert.match(globals, /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/);
+    assert.match(brandBook, /prefers-reduced-motion:\s*reduce/);
+  });
+
 });

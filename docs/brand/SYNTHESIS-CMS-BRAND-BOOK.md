@@ -186,16 +186,41 @@ Do not invent utilities absent from `globals.css`.
 ## 8. Spacing / Radius / Motion
 
 The actual values defined in `app/globals.css`:
-- **Spacing Grid:** Based on standard variables (`--spacing-1` to `--spacing-12` scaling by `0.25rem` up to `3rem`)
-- **Content Max Width:** `--max-w-content` (`64rem` / `1024px`)
-- **Wide Max Width:** `--max-w-wide` (`80rem` / `1280px`)
-- **Responsive Gutters:** `--gutter-mobile` (`1rem`) and `--gutter-desktop` (`2rem`)
-- **Section Gaps:** `--section-gap-mobile` (`3rem`) and `--section-gap-desktop` (`5rem`)
-- **Radius Scale:** `--radius-sm` (`0.25rem`), `--radius-md` (`0.5rem`), `--radius-lg` (`0.75rem`), `--radius-pill` (`9999px`)
-- **Shadow Scale:** `--shadow-sm`, `--shadow-md`, `--shadow-lg`
-- **Touch Target:** `44px` minimum interactive height
-- **Motion Durations:** `--duration-fast` (`150ms`), `--duration-normal` (`250ms`), `--duration-slow` (`350ms`)
-- **Easing:** `--ease-standard` (`cubic-bezier(0.4, 0.0, 0.2, 1)`)
+- **Spacing Grid:**
+  - `--space-1`: 0.25rem
+  - `--space-2`: 0.5rem
+  - `--space-3`: 0.75rem
+  - `--space-4`: 1rem
+  - `--space-5`: 1.25rem
+  - `--space-6`: 1.5rem
+  - `--space-8`: 2rem
+  - `--space-10`: 2.5rem
+  - `--space-12`: 3rem
+  - `--space-16`: 4rem
+  - `--space-20`: 5rem
+- **Content Max Width:** `--content-max` (1200px)
+- **Wide Max Width:** `--content-wide` (1440px)
+- **Responsive Gutters:** `--page-gutter-mobile` (1rem), `--page-gutter-tablet` (1.5rem), and `--page-gutter-desktop` (2rem)
+- **Section Gaps:** `--section-gap-mobile` (3rem) and `--section-gap-desktop` (5rem)
+- **Radius Scale:**
+  - `--radius-xs`: 0.375rem
+  - `--radius-sm`: 0.5rem
+  - `--radius-md`: 0.625rem
+  - `--radius-lg`: 0.75rem
+  - `--radius-xl`: 1rem
+  - `--radius-pill`: 999px
+- **Shadow Scale:**
+  - `--shadow-sm`: 0 1px 2px rgb(0 0 0 / 0.06)
+  - `--shadow-md`: 0 4px 12px rgb(0 0 0 / 0.08)
+  - `--shadow-lg`: 0 12px 30px rgb(0 0 0 / 0.12)
+- **Touch Target:** `--touch-target-min` (2.75rem / 44px)
+- **Motion Durations:**
+  - `--duration-fast`: 120ms
+  - `--duration-normal`: 180ms
+  - `--duration-slow`: 240ms
+- **Easing:**
+  - `--ease-standard`: `cubic-bezier(0.2, 0, 0, 1)`
+  - `--ease-emphasized`: `cubic-bezier(0.2, 0, 0, 1.2)`
 - **Reduced-Motion Contract:** Enforced via media query targeting `@media (prefers-reduced-motion: reduce)`.
 
 **Explicit prohibition:** `transition-all` is prohibited for ordinary Brand UI.
