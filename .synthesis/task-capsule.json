@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-BRAND-002-BRAND-STUDIO",
+  "task_id": "SYN-SEC-002-ADMIN-NODB-FALLBACK",
   "environment": "CMS_DEV",
-  "base_sha": "81d89522fe5ac0bd5a5521750a8d5c08df641048",
-  "expected_branch": "task/SYN-BRAND-002-BRAND-STUDIO",
+  "base_sha": "4835b35523e185a76e85aefe724e1f6584a4b3d1",
+  "expected_branch": "task/SYN-SEC-002-ADMIN-NODB-FALLBACK",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
@@ -12,32 +12,23 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "prisma/schema.prisma",
-    "prisma/migrations/*",
-    "lib/domain/brand/*",
-    "app/admin/brands/*",
-    "app/admin/themes/*",
-    "components/admin/brand/*",
-    "components/theme/theme-provider.tsx",
-    "app/layout.tsx",
-    "lib/auth/rbac.ts",
-    "lib/auth/audit.ts",
-    "docs/architecture/SYN-BRAND-002.md",
-    "tests/brand-studio.test.ts",
-    "tests/brand-authorization.test.ts",
-    "tests/brand-lifecycle.test.ts",
-    "package.json",
-    "package-lock.json",
-    "lib/domain/brand/runtime.ts",
-    "tests/brand-runtime.test.ts",
-    "tests/brand-repository.test.ts",
-    "lib/domain/brand/repository.ts"
+    "lib/runtime/database.ts",
+    "lib/auth/session.ts",
+    "app/admin/login/page.tsx",
+    "app/admin/login/actions.ts",
+    "tests/admin-nodb-fallback.test.ts"
   ],
   "forbidden_paths": [
     ".env",
     ".env.local",
-    "deploy/*",
+    "deployment/*",
     "infra/*",
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "middleware.ts",
+    "components/admin/AdminShell.tsx",
+    "components/brand/*",
+    "app/globals.css",
     "bun.lock"
   ]
 }

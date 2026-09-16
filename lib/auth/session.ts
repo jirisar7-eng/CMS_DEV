@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
+import { isDatabaseConfigured } from '@/lib/runtime/database';
 
 const SESSION_COOKIE_NAME = 'syn_admin_session';
 const SESSION_EXPIRATION_DAYS = 30;
@@ -19,6 +20,10 @@ export interface UserContext {
 }
 
 export async function createSession(userId: string): Promise<string> {
+  if (!isDatabaseConfigured()) {
+    throw new Error('DATABASE_UNAVAILABLE');
+  }
+
   const sessionId = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
@@ -47,6 +52,10 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
   const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!sessionId) {
+    return { session: null, user: null };
+  }
+
+  if (!isDatabaseConfigured()) {
     return { session: null, user: null };
   }
 
@@ -88,6 +97,7 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
       where: { id: sessionId },
       data: { expiresAt: newExpiresAt },
     });
+
     cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -104,17 +114,22 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
 }
 
 export async function invalidateSession(sessionId: string): Promise<void> {
-  await prisma.session.deleteMany({
-    where: { id: sessionId },
-  });
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
+
+  if (isDatabaseConfigured()) {
+    await prisma.session.deleteMany({
+      where: { id: sessionId },
+    });
+  }
 }
 
 export async function requireAuthenticatedUser(): Promise<UserContext> {
   const { user } = await getSession();
+
   if (!user || user.status !== 'ACTIVE') {
     throw new Error('UNAUTHENTICATED');
   }
+
   return user;
 }
