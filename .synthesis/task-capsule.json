@@ -25,9 +25,19 @@
     "app/page.tsx",
     "components/preview/*",
     "lib/domain/brand/*",
-    "tests/brand-*.test.ts",
     "docs/brand/*",
-    "docs/architecture/SYN-BRAND-003*"
+    "docs/architecture/SYN-BRAND-003*",
+    "components/public/PublicHeader.tsx",
+    "components/public/CompactFooter.tsx",
+    "components/public/CompactHero.tsx",
+    "components/public/CompactBenefits.tsx",
+    "components/public/CompactStatus.tsx",
+    "components/public/CompactFinalCta.tsx",
+    "tests/brand-compact-homepage.test.ts",
+    "tests/brand-logo.test.ts",
+    "tests/brand-public-shell.test.ts",
+    "tests/brand-token-parity.test.ts",
+    "tests/brand-visual-grammar.test.ts"
   ],
   "forbidden_paths": [
     ".env",
