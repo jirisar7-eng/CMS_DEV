@@ -39,7 +39,9 @@ async function bootstrap() {
     'users.view', 'users.manage',
     'roles.view', 'roles.manage',
     'audit.view',
-    'system.manage'
+    'system.manage',
+    'content.view', 'content.create', 'content.edit', 'content.review',
+    'content.approve', 'content.publish', 'content.rollback', 'content.archive'
   ];
 
   for (const permKey of initialPermissions) {

@@ -16,11 +16,14 @@
     "tests/content-contract.test.ts",
     "prisma/schema.prisma",
     "prisma/migrations/*",
-    "tests/content-schema-foundation.test.ts"
+    "tests/content-schema-foundation.test.ts",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "tests/content-rbac-foundation.test.ts"
   ],
   "forbidden_paths": [
-    "lib/auth/*",
-    "scripts/bootstrap-admin.ts",
+    "lib/auth/session.ts",
+    "lib/auth/audit.ts",
     "lib/domain/pagesFixture.ts",
     "app/*",
     "components/*",
