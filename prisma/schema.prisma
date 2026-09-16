@@ -12,18 +12,18 @@ generator client {
 // -----------------------------------------------------------------------------
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
+  id           String   @id @default(uuid())
+  email        String   @unique
   displayName  String?
   passwordHash String
-  status       String    @default("ACTIVE") // ACTIVE, SUSPENDED, DISABLED
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  status       String   @default("ACTIVE") // ACTIVE, SUSPENDED, DISABLED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  sessions     Session[]
-  roles        UserRole[]
-  overrides    UserPermissionOverride[]
-  auditLogs    AuditLog[]
+  sessions  Session[]
+  roles     UserRole[]
+  overrides UserPermissionOverride[]
+  auditLogs AuditLog[]
 
   @@index([status])
   @@index([email])
@@ -35,7 +35,7 @@ model Session {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -58,8 +58,8 @@ model Permission {
   description String?
   createdAt   DateTime @default(now())
 
-  roles       RolePermission[]
-  overrides   UserPermissionOverride[]
+  roles     RolePermission[]
+  overrides UserPermissionOverride[]
 }
 
 model RolePermission {
@@ -67,8 +67,8 @@ model RolePermission {
   permissionId String
   createdAt    DateTime @default(now())
 
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }
@@ -77,11 +77,11 @@ model UserRole {
   id        String   @id @default(uuid())
   userId    String
   roleId    String
-  projectId String?  // Optional scope. If null, applies to SYSTEM/Global.
+  projectId String? // Optional scope. If null, applies to SYSTEM/Global.
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId, projectId])
   @@index([userId])
@@ -93,11 +93,11 @@ model UserPermissionOverride {
   userId       String
   permissionId String
   projectId    String?
-  isGranted    Boolean  // true = explicit ALLOW, false = explicit DENY
+  isGranted    Boolean // true = explicit ALLOW, false = explicit DENY
   createdAt    DateTime @default(now())
 
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, permissionId, projectId])
   @@index([userId])
@@ -108,14 +108,14 @@ model AuditLog {
   id           String   @id @default(uuid())
   actorId      String?
   action       String
-  scopeType    String   // e.g., "SYSTEM", "PROJECT"
+  scopeType    String // e.g., "SYSTEM", "PROJECT"
   scopeId      String?
-  resourceType String?  // e.g., "USER", "BRAND"
+  resourceType String? // e.g., "USER", "BRAND"
   resourceId   String?
   metadata     Json?
   createdAt    DateTime @default(now())
 
-  actor        User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([actorId])
   @@index([action])
@@ -150,18 +150,18 @@ model MediaAsset {
 }
 
 model MediaAssetVersion {
-  id               String      @id @default(uuid())
+  id               String     @id @default(uuid())
   assetId          String
   versionNumber    Int
   status           String
   mimeType         String
   sizeBytes        Int
   storageKey       String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @default(now())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @default(now())
   security         Json
   originalFilename String?
-  asset            MediaAsset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset            MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   @@unique([assetId, versionNumber])
   @@index([assetId])
@@ -180,4 +180,45 @@ model MediaUsageReference {
   asset     MediaAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
 
   @@index([assetId])
+}
+
+// -----------------------------------------------------------------------------
+// BRAND STUDIO
+// -----------------------------------------------------------------------------
+model Brand {
+  id              String   @id @default(uuid())
+  scope           String // "SYSTEM" or "PROJECT"
+  projectId       String?
+  name            String
+  key             String   @unique
+  activeVersionId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  versions      BrandVersion[]
+  activeVersion BrandVersion?  @relation("BrandActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+
+  @@index([scope, projectId])
+}
+
+model BrandVersion {
+  id                   String    @id @default(uuid())
+  brandId              String
+  version              Int
+  status               String // "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  tokens               Json
+  typography           Json
+  assets               Json
+  themeModes           Json
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  publishedAt          DateTime?
+  derivedFromVersionId String?
+
+  brand           Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  activeForBrands Brand[] @relation("BrandActiveVersion")
+
+  @@unique([brandId, version])
+  @@index([brandId])
+  @@index([status])
 }
