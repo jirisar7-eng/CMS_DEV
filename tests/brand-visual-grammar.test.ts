@@ -79,9 +79,35 @@ test('Visual Grammar: Motion System', () => {
   assert.ok(css.includes('@media (prefers-reduced-motion: reduce)'));
 });
 
+test('Visual Grammar: No Circular Custom Properties', () => {
+  const css = fs.readFileSync(globalsCssPath, 'utf8');
+  
+  // Find lines with self-reference like --foo: var(--foo)
+  const lines = css.split('\n');
+  const circularRefs = lines.filter(line => {
+    const match = line.match(/--([a-zA-Z0-9-]+):\s*var\(--\1\)/);
+    return match !== null;
+  });
+
+  assert.strictEqual(circularRefs.length, 0, `Found circular references: \n${circularRefs.join('\n')}`);
+});
+
 test('Visual Grammar: Color Safety', () => {
   const css = fs.readFileSync(globalsCssPath, 'utf8');
-  // we ensure no NEW brand palette hardcoding happened.
-  // We can just rely on the brand-token-parity test to confirm this.
-  assert.ok(true);
+  
+  // Verify that the brand colors #FF7A00, #C25700, #FF9E40 are only defined inside
+  // the appropriate mode blocks, meaning they aren't leaking out as general UI colors.
+  
+  const extractOutsideBlocks = (cssContent: string) => {
+    return cssContent
+      .replace(/:root,\s*\.light\s*\{[^}]+\}/g, '')
+      .replace(/\.dark\s*\{[^}]+\}/g, '')
+      .replace(/\.extra-dark\s*\{[^}]+\}/g, '');
+  };
+
+  const strippedCss = extractOutsideBlocks(css);
+  
+  assert.ok(!strippedCss.includes('#FF7A00'), 'Brand primary color should not appear outside mode blocks');
+  assert.ok(!strippedCss.includes('#C25700'), 'Action primary color should not appear outside mode blocks');
+  assert.ok(!strippedCss.includes('#FF9E40'), 'Action primary (dark) color should not appear outside mode blocks');
 });

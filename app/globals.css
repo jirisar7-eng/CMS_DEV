@@ -44,17 +44,17 @@
   --color-link: var(--link-color);
 
   /* Radius Aliases */
-  --radius-xs: var(--radius-xs);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-  --radius-xl: var(--radius-xl);
-  --radius-pill: var(--radius-pill);
+  --radius-xs: 0.375rem;   /* 6px */
+  --radius-sm: 0.5rem;     /* 8px */
+  --radius-md: 0.625rem;   /* 10px */
+  --radius-lg: 0.75rem;    /* 12px */
+  --radius-xl: 1rem;       /* 16px */
+  --radius-pill: 999px;
 
   /* Shadow Aliases */
-  --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 12px 30px rgb(0 0 0 / 0.12);
 }
 
 @layer base {
@@ -111,21 +111,8 @@
     --section-gap-mobile: 3rem;
     --section-gap-desktop: 5rem;
 
-    /* Radius System */
-    --radius-xs: 0.375rem;   /* 6px */
-    --radius-sm: 0.5rem;     /* 8px */
-    --radius-md: 0.625rem;   /* 10px */
-    --radius-lg: 0.75rem;    /* 12px */
-    --radius-xl: 1rem;       /* 16px */
-    --radius-pill: 999px;
-    
     /* Touch Target Contract */
     --touch-target-min: 2.75rem; /* 44px */
-
-    /* Surface / Shadow Grammar */
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
-    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
-    --shadow-lg: 0 12px 30px rgb(0 0 0 / 0.12);
 
     /* Motion System */
     --duration-fast: 120ms;
