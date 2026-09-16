@@ -7,6 +7,11 @@ export class BrandRepository {
    * If not found, falls back to SYNTHESIS_ORANGE_DEFAULT.
    */
   static async getActiveBrandData(scope: string, projectId?: string | null): Promise<BrandVersionData> {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl || databaseUrl.trim() === '') {
+      return SYNTHESIS_ORANGE_DEFAULT;
+    }
+
     const brand = await prisma.brand.findFirst({
       where: {
         scope,

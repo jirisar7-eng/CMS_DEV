@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { test, mock, afterEach } from 'node:test';
+import { test, mock, afterEach, beforeEach } from 'node:test';
 import * as assert from 'node:assert';
 import { SYNTHESIS_ORANGE_DEFAULT } from '../lib/domain/brand/contracts';
 
@@ -20,17 +20,40 @@ Module.prototype.require = function (id) {
 
 const { BrandRepository } = require('../lib/domain/brand/repository');
 
+let originalDbUrl;
+
+beforeEach(() => {
+  originalDbUrl = process.env.DATABASE_URL;
+});
+
 afterEach(() => {
+  process.env.DATABASE_URL = originalDbUrl;
   mockPrisma.brand.findFirst.mock.resetCalls();
 });
 
+test('Repository - DATABASE_URL undefined', async () => {
+  delete process.env.DATABASE_URL;
+  const data = await BrandRepository.getActiveBrandData('SYSTEM');
+  assert.deepStrictEqual(data, SYNTHESIS_ORANGE_DEFAULT);
+  assert.strictEqual(mockPrisma.brand.findFirst.mock.callCount(), 0);
+});
+
+test('Repository - DATABASE_URL empty', async () => {
+  process.env.DATABASE_URL = '';
+  const data = await BrandRepository.getActiveBrandData('SYSTEM');
+  assert.deepStrictEqual(data, SYNTHESIS_ORANGE_DEFAULT);
+  assert.strictEqual(mockPrisma.brand.findFirst.mock.callCount(), 0);
+});
+
 test('Repository - Missing brand fallback', async () => {
+  process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
   mockPrisma.brand.findFirst.mock.mockImplementationOnce(() => Promise.resolve(null));
   const data = await BrandRepository.getActiveBrandData('SYSTEM');
   assert.deepStrictEqual(data, SYNTHESIS_ORANGE_DEFAULT);
 });
 
 test('Repository - Missing active version fallback', async () => {
+  process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
   mockPrisma.brand.findFirst.mock.mockImplementationOnce(() => Promise.resolve({
     id: 'b1', activeVersion: null
   }));
@@ -39,6 +62,7 @@ test('Repository - Missing active version fallback', async () => {
 });
 
 test('Repository - Non-PUBLISHED active version fallback', async () => {
+  process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
   mockPrisma.brand.findFirst.mock.mockImplementationOnce(() => Promise.resolve({
     id: 'b1', activeVersion: { status: 'DRAFT', tokens: {} }
   }));
@@ -47,6 +71,7 @@ test('Repository - Non-PUBLISHED active version fallback', async () => {
 });
 
 test('Repository - Malformed persisted JSON fallback', async () => {
+  process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
   mockPrisma.brand.findFirst.mock.mockImplementationOnce(() => Promise.resolve({
     id: 'b1', activeVersion: { 
       status: 'PUBLISHED', 
@@ -59,6 +84,7 @@ test('Repository - Malformed persisted JSON fallback', async () => {
 });
 
 test('Repository - Valid PUBLISHED version returns parsed data', async () => {
+  process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
   mockPrisma.brand.findFirst.mock.mockImplementationOnce(() => Promise.resolve({
     id: 'b1', activeVersion: { 
       status: 'PUBLISHED', 
