@@ -211,6 +211,9 @@ export interface ActorPermissions {
   canView: boolean;
   canEdit: boolean;
   canPublish: boolean;
+  canReview: boolean;
+  canApprove: boolean;
+  canRollback: boolean;
 }
 
 /**
@@ -221,7 +224,9 @@ export function calculateCapabilities(
   activeRevision: PersistencePageRevision
 ): PageCapabilities {
   const isDraft = activeRevision.status === 'DRAFT';
+  const isInReview = activeRevision.status === 'IN_REVIEW';
   const isApproved = activeRevision.status === 'APPROVED';
+  const isPublished = activeRevision.status === 'PUBLISHED';
 
   return {
     canOpen: perms.canView,
@@ -233,6 +238,10 @@ export function calculateCapabilities(
     canPublish: perms.canPublish && isApproved,
     canSave: perms.canEdit && isDraft,
     canSubmitReview: perms.canEdit && isDraft,
+    canReview: perms.canReview && isInReview,
+    canApprove: perms.canApprove && isInReview,
+    canRollback: perms.canRollback && isPublished,
+    canReopenDraft: perms.canEdit && isPublished,
   };
 }
 

@@ -83,15 +83,38 @@ export class AdminPagesService {
       );
     }
 
-    const [canEdit, canPublish] = await Promise.all([
-      this.checkPermission(params.actorId, 'content.edit', params.projectId),
-      this.checkPermission(params.actorId, 'content.publish', params.projectId),
-    ]);
+    const [canEdit, canPublish, canReview, canApprove, canRollback] =
+      await Promise.all([
+        this.checkPermission(params.actorId, 'content.edit', params.projectId),
+        this.checkPermission(
+          params.actorId,
+          'content.publish',
+          params.projectId
+        ),
+        this.checkPermission(
+          params.actorId,
+          'content.review',
+          params.projectId
+        ),
+        this.checkPermission(
+          params.actorId,
+          'content.approve',
+          params.projectId
+        ),
+        this.checkPermission(
+          params.actorId,
+          'content.rollback',
+          params.projectId
+        ),
+      ]);
 
     const perms: ActorPermissions = {
       canView: true,
       canEdit,
       canPublish,
+      canReview,
+      canApprove,
+      canRollback,
     };
 
     const pages = await this.store.listProjectPages(params.projectId);
@@ -215,11 +238,22 @@ export class AdminPagesService {
     const derivedPath = pathsMap.get(page.id) || '/';
 
     // Retrieve revisions and audit logs
-    const [revisions, auditLogs, canEdit, canPublish] = await Promise.all([
+    const [
+      revisions,
+      auditLogs,
+      canEdit,
+      canPublish,
+      canReview,
+      canApprove,
+      canRollback,
+    ] = await Promise.all([
       this.store.listPageRevisions(params.pageId),
       this.store.listPageAuditEvents(params.projectId, params.pageId),
       this.checkPermission(params.actorId, 'content.edit', params.projectId),
       this.checkPermission(params.actorId, 'content.publish', params.projectId),
+      this.checkPermission(params.actorId, 'content.review', params.projectId),
+      this.checkPermission(params.actorId, 'content.approve', params.projectId),
+      this.checkPermission(params.actorId, 'content.rollback', params.projectId),
     ]);
 
     const activeRev = resolveActiveRevision(page);
@@ -240,6 +274,9 @@ export class AdminPagesService {
       canView: true,
       canEdit,
       canPublish,
+      canReview,
+      canApprove,
+      canRollback,
     };
     const caps = calculateCapabilities(perms, activeRev);
 

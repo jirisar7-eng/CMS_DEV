@@ -169,6 +169,9 @@ describe('SYN-CONTENT-002B1: Admin Pages Server Read API', () => {
     permissionMap.set('user-admin:content.view:proj-alpha', true);
     permissionMap.set('user-admin:content.edit:proj-alpha', true);
     permissionMap.set('user-admin:content.publish:proj-alpha', true);
+    permissionMap.set('user-admin:content.review:proj-alpha', true);
+    permissionMap.set('user-admin:content.approve:proj-alpha', true);
+    permissionMap.set('user-admin:content.rollback:proj-alpha', true);
 
     service = new AdminPagesService(
       fakeStore,
@@ -581,6 +584,10 @@ describe('SYN-CONTENT-002B1: Admin Pages Server Read API', () => {
       assert.strictEqual(caps.canPublish, false, 'DRAFT must not be publishable directly');
       assert.strictEqual(caps.canSave, true);
       assert.strictEqual(caps.canSubmitReview, true);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
     });
 
     it('IN_REVIEW: canEdit === false, canPublish === false', async () => {
@@ -589,6 +596,10 @@ describe('SYN-CONTENT-002B1: Admin Pages Server Read API', () => {
       assert.strictEqual(caps.canPublish, false, 'IN_REVIEW must not be publishable');
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, true);
+      assert.strictEqual(caps.canApprove, true);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
     });
 
     it('APPROVED: canEdit === false, canPublish === true (with content.publish)', async () => {
@@ -597,6 +608,10 @@ describe('SYN-CONTENT-002B1: Admin Pages Server Read API', () => {
       assert.strictEqual(caps.canPublish, true, 'APPROVED must be publishable by publisher');
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
     });
 
     it('PUBLISHED: canEdit === false, canPublish === false', async () => {
@@ -605,6 +620,10 @@ describe('SYN-CONTENT-002B1: Admin Pages Server Read API', () => {
       assert.strictEqual(caps.canPublish, false, 'PUBLISHED cannot be published again directly');
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canRollback, true);
+      assert.strictEqual(caps.canReopenDraft, true);
     });
   });
 

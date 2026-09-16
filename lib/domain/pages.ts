@@ -40,6 +40,10 @@ export interface PageCapabilities {
   canPublish?: boolean;
   canSave?: boolean;
   canSubmitReview?: boolean;
+  canReview?: boolean;
+  canApprove?: boolean;
+  canRollback?: boolean;
+  canReopenDraft?: boolean;
 }
 
 export interface PageSummary {

@@ -471,7 +471,7 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
   });
 
   describe('CAPABILITIES', () => {
-    it('A. DRAFT + all permissions: canPublish === false, canSave === true, canSubmitReview === true, canEdit === true', async () => {
+    it('1. DRAFT + all permissions: canEdit, canSave, canSubmitReview === true; others === false', async () => {
       const store = new FakeAdminPagesReadStore();
       const draftRev = createValidRevision({ status: 'DRAFT' });
       const page = createValidPage({ draftRevision: draftRev });
@@ -482,13 +482,96 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       const pages = await service.getPages({ actorId: 'user-admin', projectId: 'proj-alpha' });
       const caps = pages[0].capabilities;
 
-      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canOpen, true);
+      assert.strictEqual(caps.canPreview, true);
+      assert.strictEqual(caps.canEdit, true);
       assert.strictEqual(caps.canSave, true);
       assert.strictEqual(caps.canSubmitReview, true);
-      assert.strictEqual(caps.canEdit, true);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
+      assert.strictEqual(caps.canDuplicate, false);
+      assert.strictEqual(caps.canMove, false);
+      assert.strictEqual(caps.canArchive, false);
     });
 
-    it('B. IN_REVIEW + all permissions: canPublish === false, canSave === false, canSubmitReview === false, canEdit === false', async () => {
+    it('2. DRAFT without content.edit: canEdit, canSave, canSubmitReview === false', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const draftRev = createValidRevision({ status: 'DRAFT' });
+      const page = createValidPage({ draftRevision: draftRev });
+      store.pages = [page];
+      store.revisions = [draftRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm) => perm === 'content.view'
+      );
+      const pages = await service.getPages({ actorId: 'user-viewer', projectId: 'proj-alpha' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canOpen, true);
+      assert.strictEqual(caps.canPreview, true);
+      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canSave, false);
+      assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
+    });
+
+    it('3. IN_REVIEW + content.review only: canReview === true, canApprove === false', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const inReviewRev = createValidRevision({ status: 'IN_REVIEW' });
+      const page = createValidPage({ draftRevision: inReviewRev });
+      store.pages = [page];
+      store.revisions = [inReviewRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm) => perm === 'content.view' || perm === 'content.review'
+      );
+      const pages = await service.getPages({ actorId: 'user-reviewer', projectId: 'proj-alpha' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canReview, true);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canSave, false);
+      assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
+    });
+
+    it('4. IN_REVIEW + content.approve only: canReview === false, canApprove === true', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const inReviewRev = createValidRevision({ status: 'IN_REVIEW' });
+      const page = createValidPage({ draftRevision: inReviewRev });
+      store.pages = [page];
+      store.revisions = [inReviewRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm) => perm === 'content.view' || perm === 'content.approve'
+      );
+      const pages = await service.getPages({ actorId: 'user-approver', projectId: 'proj-alpha' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, true);
+      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canSave, false);
+      assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
+    });
+
+    it('5. IN_REVIEW + both content.review and content.approve: canReview === true, canApprove === true', async () => {
       const store = new FakeAdminPagesReadStore();
       const inReviewRev = createValidRevision({ status: 'IN_REVIEW' });
       const page = createValidPage({ draftRevision: inReviewRev });
@@ -496,16 +579,44 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       store.revisions = [inReviewRev];
 
       const service = new AdminPagesService(store, async () => true);
-      const pages = await service.getPages({ actorId: 'user-admin', projectId: 'proj-alpha' });
+      const pages = await service.getPages({ actorId: 'user-lead', projectId: 'proj-alpha' });
       const caps = pages[0].capabilities;
 
-      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canReview, true);
+      assert.strictEqual(caps.canApprove, true);
+      assert.strictEqual(caps.canEdit, false);
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
-      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
     });
 
-    it('C. APPROVED + content.publish: canPublish === true, canSave === false, canSubmitReview === false, canEdit === false', async () => {
+    it('6. IN_REVIEW without review/approve: canReview === false, canApprove === false', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const inReviewRev = createValidRevision({ status: 'IN_REVIEW' });
+      const page = createValidPage({ draftRevision: inReviewRev });
+      store.pages = [page];
+      store.revisions = [inReviewRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm) => perm === 'content.view' || perm === 'content.edit'
+      );
+      const pages = await service.getPages({ actorId: 'user-author', projectId: 'proj-alpha' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canSave, false);
+      assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
+    });
+
+    it('7. APPROVED + content.publish: canPublish === true, others === false', async () => {
       const store = new FakeAdminPagesReadStore();
       const approvedRev = createValidRevision({ status: 'APPROVED' });
       const page = createValidPage({ draftRevision: approvedRev });
@@ -519,29 +630,92 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       assert.strictEqual(caps.canPublish, true);
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
       assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
     });
 
-    it('D. APPROVED without content.publish: canPublish === false, canEdit === false', async () => {
+    it('8. APPROVED without content.publish: canPublish === false', async () => {
       const store = new FakeAdminPagesReadStore();
       const approvedRev = createValidRevision({ status: 'APPROVED' });
       const page = createValidPage({ draftRevision: approvedRev });
       store.pages = [page];
       store.revisions = [approvedRev];
 
-      // Has view and edit, but lacks content.publish
       const service = new AdminPagesService(
         store,
-        async (actorId, perm) => perm === 'content.view' || perm === 'content.edit'
+        async (_actorId, perm) => perm === 'content.view' || perm === 'content.edit'
       );
       const pages = await service.getPages({ actorId: 'user-editor', projectId: 'proj-alpha' });
       const caps = pages[0].capabilities;
 
       assert.strictEqual(caps.canPublish, false);
       assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
     });
 
-    it('E. PUBLISHED + all permissions: canPublish === false, canEdit === false', async () => {
+    it('9. PUBLISHED + content.rollback only: canRollback === true, canReopenDraft === false', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const pubRev = createValidRevision({ status: 'PUBLISHED' });
+      const page = createValidPage({
+        draftRevisionId: null,
+        publishedRevisionId: 'rev-1',
+        publishedRevision: pubRev,
+      });
+      store.pages = [page];
+      store.revisions = [pubRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm) => perm === 'content.view' || perm === 'content.rollback'
+      );
+      const pages = await service.getPages({ actorId: 'user-admin', projectId: 'proj-alpha' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canRollback, true);
+      assert.strictEqual(caps.canReopenDraft, false);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canSave, false);
+      assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+    });
+
+    it('10. PUBLISHED + content.edit only: canReopenDraft === true, canRollback === false', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const pubRev = createValidRevision({ status: 'PUBLISHED' });
+      const page = createValidPage({
+        draftRevisionId: null,
+        publishedRevisionId: 'rev-1',
+        publishedRevision: pubRev,
+      });
+      store.pages = [page];
+      store.revisions = [pubRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm) => perm === 'content.view' || perm === 'content.edit'
+      );
+      const pages = await service.getPages({ actorId: 'user-editor', projectId: 'proj-alpha' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, true);
+      assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canSave, false);
+      assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+    });
+
+    it('11. PUBLISHED + both content.rollback and content.edit: canRollback === true, canReopenDraft === true', async () => {
       const store = new FakeAdminPagesReadStore();
       const pubRev = createValidRevision({ status: 'PUBLISHED' });
       const page = createValidPage({
@@ -556,10 +730,65 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       const pages = await service.getPages({ actorId: 'user-admin', projectId: 'proj-alpha' });
       const caps = pages[0].capabilities;
 
+      assert.strictEqual(caps.canRollback, true);
+      assert.strictEqual(caps.canReopenDraft, true);
       assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canEdit, false);
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canReview, false);
+      assert.strictEqual(caps.canApprove, false);
+    });
+
+    it('12. PUBLISHED without rollback/edit perms: canRollback === false, canReopenDraft === false', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const pubRev = createValidRevision({ status: 'PUBLISHED' });
+      const page = createValidPage({
+        draftRevisionId: null,
+        publishedRevisionId: 'rev-1',
+        publishedRevision: pubRev,
+      });
+      store.pages = [page];
+      store.revisions = [pubRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm) => perm === 'content.view'
+      );
+      const pages = await service.getPages({ actorId: 'user-viewer', projectId: 'proj-alpha' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canRollback, false);
+      assert.strictEqual(caps.canReopenDraft, false);
+      assert.strictEqual(caps.canPublish, false);
       assert.strictEqual(caps.canEdit, false);
+    });
+
+    it('13. Project isolation on permissions: actor has permissions in proj-alpha but not proj-beta', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const draftRev = createValidRevision({ status: 'DRAFT' });
+      const page = createValidPage({
+        projectId: 'proj-beta',
+        draftRevision: draftRev,
+      });
+      store.pages = [page];
+      store.revisions = [draftRev];
+
+      const service = new AdminPagesService(
+        store,
+        async (_actorId, perm, projId) => {
+          if (projId === 'proj-beta' && perm === 'content.view') return true;
+          if (projId === 'proj-alpha') return true; // full perms in alpha only
+          return false;
+        }
+      );
+      const pages = await service.getPages({ actorId: 'user-editor', projectId: 'proj-beta' });
+      const caps = pages[0].capabilities;
+
+      assert.strictEqual(caps.canOpen, true);
+      assert.strictEqual(caps.canEdit, false);
+      assert.strictEqual(caps.canSave, false);
+      assert.strictEqual(caps.canSubmitReview, false);
     });
   });
 
