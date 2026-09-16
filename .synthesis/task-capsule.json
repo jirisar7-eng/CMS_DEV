@@ -41,7 +41,10 @@
     "tests/brand-admin-shell.test.ts",
     "tests/brand-admin-login.test.ts",
     "app/manifest.ts",
-    "tests/brand-metadata-icons.test.ts"
+    "tests/brand-metadata-icons.test.ts",
+    "docs/brand/SYNTHESIS-CMS-BRAND-BOOK.md",
+    "docs/architecture/SYN-BRAND-003-SYSTEM-PROJECT-BOUNDARY.md",
+    "tests/brand-book-accessibility.test.ts"
   ],
   "forbidden_paths": [
     ".env",
