@@ -11,6 +11,10 @@ import {
   CreatePublishedReleaseParams,
   CreateReleaseItemParams,
   SetPublishedPagePointersAtomicParams,
+  PublishedReleaseLineage,
+  CreateRollbackReleaseParams,
+  SetRollbackPublishedPointerAtomicParams,
+  SetDraftFromPublishedPointerAtomicParams,
   RecordLifecycleAuditParams,
 } from './store';
 import {
@@ -342,6 +346,95 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
       data: {
         publishedRevisionId: params.newPublishedRevisionId,
         draftRevisionId: null,
+        updatedAt: params.updatedAt ?? new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    return { updated: true, page: page ?? undefined };
+  }
+
+  async findPublishedReleaseLineage(
+    projectId: string,
+    pageId: string,
+    revisionId: string
+  ): Promise<PublishedReleaseLineage[]> {
+    const items = await (this.db as any).contentReleaseItem.findMany({
+      where: {
+        pageId,
+        revisionId,
+        release: {
+          projectId,
+          status: 'PUBLISHED',
+        },
+      },
+      include: {
+        release: true,
+      },
+    });
+
+    return items.map((item: any) => ({
+      release: this.mapRelease(item.release),
+      item: this.mapReleaseItem(item),
+    }));
+  }
+
+  async createRollbackRelease(
+    params: CreateRollbackReleaseParams
+  ): Promise<LifecycleContentRelease> {
+    const release = await (this.db as any).contentRelease.create({
+      data: {
+        projectId: params.projectId,
+        status: 'ROLLED_BACK',
+        createdById: params.createdById,
+        publishedAt: null,
+        rolledBackAt: params.rolledBackAt,
+      },
+    });
+    return this.mapRelease(release);
+  }
+
+  async setRollbackPublishedPointerAtomic(
+    params: SetRollbackPublishedPointerAtomicParams
+  ): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+        draftRevisionId: null,
+        publishedRevisionId: params.expectedPublishedRevisionId,
+      },
+      data: {
+        publishedRevisionId: params.targetPublishedRevisionId,
+        draftRevisionId: null,
+        updatedAt: params.updatedAt,
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    return { updated: true, page: page ?? undefined };
+  }
+
+  async setDraftFromPublishedPointerAtomic(
+    params: SetDraftFromPublishedPointerAtomicParams
+  ): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+        draftRevisionId: null,
+        publishedRevisionId: params.expectedPublishedRevisionId,
+      },
+      data: {
+        draftRevisionId: params.newDraftRevisionId,
         updatedAt: params.updatedAt ?? new Date(),
       },
     });

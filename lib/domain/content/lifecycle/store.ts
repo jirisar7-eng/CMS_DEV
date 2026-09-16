@@ -91,6 +91,33 @@ export interface SetPublishedPagePointersAtomicParams {
   updatedAt?: Date;
 }
 
+export interface PublishedReleaseLineage {
+  release: LifecycleContentRelease;
+  item: LifecycleContentReleaseItem;
+}
+
+export interface CreateRollbackReleaseParams {
+  projectId: string;
+  createdById: string;
+  rolledBackAt: Date;
+}
+
+export interface SetRollbackPublishedPointerAtomicParams {
+  projectId: string;
+  pageId: string;
+  expectedPublishedRevisionId: string;
+  targetPublishedRevisionId: string;
+  updatedAt: Date;
+}
+
+export interface SetDraftFromPublishedPointerAtomicParams {
+  projectId: string;
+  pageId: string;
+  expectedPublishedRevisionId: string;
+  newDraftRevisionId: string;
+  updatedAt?: Date;
+}
+
 export interface RecordLifecycleAuditParams {
   action:
     | 'CONTENT_PAGE_CREATED'
@@ -98,7 +125,9 @@ export interface RecordLifecycleAuditParams {
     | 'CONTENT_REVIEW_SUBMITTED'
     | 'CONTENT_CHANGES_REQUESTED'
     | 'CONTENT_REVIEW_APPROVED'
-    | 'CONTENT_RELEASE_PUBLISHED';
+    | 'CONTENT_RELEASE_PUBLISHED'
+    | 'CONTENT_RELEASE_ROLLED_BACK'
+    | 'CONTENT_DRAFT_REOPENED';
   scopeType: 'PROJECT';
   scopeId: string;
   resourceType: 'PAGE' | 'PAGE_REVISION' | 'CONTENT_RELEASE';
@@ -122,5 +151,9 @@ export interface ContentLifecycleStore {
   createPublishedRelease(params: CreatePublishedReleaseParams): Promise<LifecycleContentRelease>;
   createReleaseItem(params: CreateReleaseItemParams): Promise<LifecycleContentReleaseItem>;
   setPublishedPagePointersAtomic(params: SetPublishedPagePointersAtomicParams): Promise<{ updated: boolean; page?: LifecyclePage }>;
+  findPublishedReleaseLineage?(projectId: string, pageId: string, revisionId: string): Promise<PublishedReleaseLineage[]>;
+  createRollbackRelease?(params: CreateRollbackReleaseParams): Promise<LifecycleContentRelease>;
+  setRollbackPublishedPointerAtomic?(params: SetRollbackPublishedPointerAtomicParams): Promise<{ updated: boolean; page?: LifecyclePage }>;
+  setDraftFromPublishedPointerAtomic?(params: SetDraftFromPublishedPointerAtomicParams): Promise<{ updated: boolean; page?: LifecyclePage }>;
   recordAudit(params: RecordLifecycleAuditParams): Promise<void>;
 }

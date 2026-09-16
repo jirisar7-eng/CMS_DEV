@@ -10,7 +10,10 @@ export type ContentLifecycleErrorCode =
   | 'LOCK_CONFLICT'
   | 'POINTER_INTEGRITY_VIOLATION'
   | 'KEY_CONFLICT'
-  | 'STATE_TRANSITION_INVALID';
+  | 'STATE_TRANSITION_INVALID'
+  | 'NO_PUBLISHED_REVISION'
+  | 'ROLLBACK_NOT_AVAILABLE'
+  | 'ACTIVE_DRAFT_EXISTS';
 
 export class ContentLifecycleError extends Error {
   readonly code: ContentLifecycleErrorCode;
@@ -167,4 +170,35 @@ export interface PublishApprovedResult {
   release: LifecycleContentRelease;
   releaseItem: LifecycleContentReleaseItem;
 }
+
+export interface RollbackPublishedInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedPublishedRevisionId: string;
+}
+
+export interface RollbackPublishedResult {
+  page: LifecyclePage;
+  fromRevision: LifecyclePageRevision;
+  restoredRevision: LifecyclePageRevision;
+  sourcePublishRelease: LifecycleContentRelease;
+  sourcePublishReleaseItem: LifecycleContentReleaseItem;
+  rollbackRelease: LifecycleContentRelease;
+  rollbackReleaseItem: LifecycleContentReleaseItem;
+}
+
+export interface CreateDraftFromPublishedInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedPublishedRevisionId: string;
+}
+
+export interface CreateDraftFromPublishedResult {
+  page: LifecyclePage;
+  publishedRevision: LifecyclePageRevision;
+  draftRevision: LifecyclePageRevision;
+}
+
 

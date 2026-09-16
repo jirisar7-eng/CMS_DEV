@@ -13,6 +13,10 @@ import {
   RequestChangesResult,
   PublishApprovedInput,
   PublishApprovedResult,
+  RollbackPublishedInput,
+  RollbackPublishedResult,
+  CreateDraftFromPublishedInput,
+  CreateDraftFromPublishedResult,
 } from './types';
 import { validatePageContent, validateSlugSegment } from '../validation';
 import { PageContent } from '../contracts';
@@ -838,6 +842,295 @@ export class ContentLifecycleService {
         revision: transitionResult.revision,
         release,
         releaseItem,
+      };
+    });
+  }
+
+  async rollbackPublished(input: RollbackPublishedInput): Promise<RollbackPublishedResult> {
+    // 1. Context validation
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim() ||
+      !input.expectedPublishedRevisionId ||
+      !input.expectedPublishedRevisionId.trim()
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'actorId, projectId, pageId and expectedPublishedRevisionId are required'
+      );
+    }
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+    const expectedPublishedRevisionId = input.expectedPublishedRevisionId.trim();
+
+    // 2. Authorization check (content.rollback)
+    const allowed = await this.hasPermission(actorId, 'content.rollback', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError('FORBIDDEN', 'Permission content.rollback required');
+    }
+
+    // 3. Atomic transaction
+    return this.store.transaction(async (txStore) => {
+      if (
+        !txStore.findPublishedReleaseLineage ||
+        !txStore.createRollbackRelease ||
+        !txStore.setRollbackPublishedPointerAtomic
+      ) {
+        throw new Error('Store does not implement rollback primitives');
+      }
+
+      // Scoped page lookup
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+      }
+
+      // Active draft check (must be null)
+      if (page.draftRevisionId !== null) {
+        throw new ContentLifecycleError(
+          'ACTIVE_DRAFT_EXISTS',
+          'Cannot rollback while active draft revision exists'
+        );
+      }
+
+      // Current published pointer check
+      if (!page.publishedRevisionId) {
+        throw new ContentLifecycleError('NO_PUBLISHED_REVISION', 'Page has no published revision');
+      }
+
+      if (page.publishedRevisionId !== expectedPublishedRevisionId) {
+        throw new ContentLifecycleError('LOCK_CONFLICT', 'Published revision changed concurrently');
+      }
+
+      // Load current revision
+      const currentRevision = await txStore.findRevisionById(page.publishedRevisionId);
+      if (
+        !currentRevision ||
+        currentRevision.id !== page.publishedRevisionId ||
+        currentRevision.pageId !== page.id ||
+        currentRevision.status !== 'PUBLISHED'
+      ) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Current published revision pointer is invalid'
+        );
+      }
+
+      // Find publish lineage
+      const lineages = await txStore.findPublishedReleaseLineage(projectId, page.id, currentRevision.id);
+      if (!lineages || lineages.length !== 1) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Corrupt or ambiguous publish lineage records for current revision'
+        );
+      }
+
+      const { release: sourcePublishRelease, item: sourcePublishReleaseItem } = lineages[0];
+      const previousRevisionId = sourcePublishReleaseItem.previousRevisionId;
+
+      if (!previousRevisionId) {
+        throw new ContentLifecycleError('ROLLBACK_NOT_AVAILABLE', 'Cannot rollback first publication');
+      }
+
+      // Load previous revision
+      const previousRevision = await txStore.findRevisionById(previousRevisionId);
+      if (
+        !previousRevision ||
+        previousRevision.id !== previousRevisionId ||
+        previousRevision.pageId !== page.id ||
+        previousRevision.status !== 'PUBLISHED'
+      ) {
+        throw new ContentLifecycleError('POINTER_INTEGRITY_VIOLATION', 'Target rollback revision is invalid');
+      }
+
+      // Rollback timestamp
+      const rolledBackAt = new Date();
+
+      // Create new ContentRelease with status ROLLED_BACK
+      const rollbackRelease = await txStore.createRollbackRelease({
+        projectId,
+        createdById: actorId,
+        rolledBackAt,
+      });
+
+      // Create ContentReleaseItem
+      const rollbackReleaseItem = await txStore.createReleaseItem({
+        releaseId: rollbackRelease.id,
+        pageId: page.id,
+        revisionId: previousRevision.id,
+        previousRevisionId: currentRevision.id,
+      });
+
+      // Page pointer CAS
+      const pointerResult = await txStore.setRollbackPublishedPointerAtomic({
+        projectId,
+        pageId: page.id,
+        expectedPublishedRevisionId: currentRevision.id,
+        targetPublishedRevisionId: previousRevision.id,
+        updatedAt: rolledBackAt,
+      });
+
+      if (!pointerResult.updated || !pointerResult.page) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Concurrent change to page pointers during rollback'
+        );
+      }
+
+      // Record audit inside transaction
+      await txStore.recordAudit({
+        action: 'CONTENT_RELEASE_ROLLED_BACK',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'CONTENT_RELEASE',
+        resourceId: rollbackRelease.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          rollbackReleaseId: rollbackRelease.id,
+          sourcePublishReleaseId: sourcePublishRelease.id,
+          fromRevisionId: currentRevision.id,
+          toRevisionId: previousRevision.id,
+          fromRevisionNumber: currentRevision.revisionNumber,
+          toRevisionNumber: previousRevision.revisionNumber,
+        },
+      });
+
+      return {
+        page: pointerResult.page,
+        fromRevision: currentRevision,
+        restoredRevision: previousRevision,
+        sourcePublishRelease,
+        sourcePublishReleaseItem,
+        rollbackRelease,
+        rollbackReleaseItem,
+      };
+    });
+  }
+
+  async createDraftFromPublished(
+    input: CreateDraftFromPublishedInput
+  ): Promise<CreateDraftFromPublishedResult> {
+    // 1. Context validation
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim() ||
+      !input.expectedPublishedRevisionId ||
+      !input.expectedPublishedRevisionId.trim()
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'actorId, projectId, pageId and expectedPublishedRevisionId are required'
+      );
+    }
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+    const expectedPublishedRevisionId = input.expectedPublishedRevisionId.trim();
+
+    // 2. Authorization check (content.edit)
+    const allowed = await this.hasPermission(actorId, 'content.edit', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError('FORBIDDEN', 'Permission content.edit required');
+    }
+
+    // 3. Atomic transaction
+    return this.store.transaction(async (txStore) => {
+      if (!txStore.setDraftFromPublishedPointerAtomic) {
+        throw new Error('Store does not implement setDraftFromPublishedPointerAtomic');
+      }
+
+      // Scoped page lookup
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+      }
+
+      // Require publishedRevisionId
+      if (!page.publishedRevisionId) {
+        throw new ContentLifecycleError('NO_PUBLISHED_REVISION', 'Page has no published revision');
+      }
+
+      if (page.publishedRevisionId !== expectedPublishedRevisionId) {
+        throw new ContentLifecycleError('LOCK_CONFLICT', 'Published revision changed concurrently');
+      }
+
+      // Require draftRevisionId === null
+      if (page.draftRevisionId !== null) {
+        throw new ContentLifecycleError('ACTIVE_DRAFT_EXISTS', 'Active draft already exists on this page');
+      }
+
+      // Load published source revision
+      const sourceRevision = await txStore.findRevisionById(page.publishedRevisionId);
+      if (
+        !sourceRevision ||
+        sourceRevision.id !== page.publishedRevisionId ||
+        sourceRevision.pageId !== page.id ||
+        sourceRevision.status !== 'PUBLISHED'
+      ) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Published source revision pointer is invalid'
+        );
+      }
+
+      // Get next revision number
+      const nextRevisionNumber = await txStore.getNextRevisionNumber(page.id);
+
+      // Create new draft revision from source
+      const draftRevision = await txStore.createDraftRevisionFromSource({
+        pageId: page.id,
+        revisionNumber: nextRevisionNumber,
+        actorId,
+        derivedFromRevisionId: sourceRevision.id,
+        sourceRevision,
+      });
+
+      // Atomically set draftRevisionId pointer
+      const pointerResult = await txStore.setDraftFromPublishedPointerAtomic({
+        projectId,
+        pageId: page.id,
+        expectedPublishedRevisionId: sourceRevision.id,
+        newDraftRevisionId: draftRevision.id,
+      });
+
+      if (!pointerResult.updated || !pointerResult.page) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Concurrent modification of page draft or published pointer'
+        );
+      }
+
+      // Record audit
+      await txStore.recordAudit({
+        action: 'CONTENT_DRAFT_REOPENED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'PAGE_REVISION',
+        resourceId: draftRevision.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          sourcePublishedRevisionId: sourceRevision.id,
+          newDraftRevisionId: draftRevision.id,
+          newDraftRevisionNumber: draftRevision.revisionNumber,
+          lockVersion: draftRevision.lockVersion,
+        },
+      });
+
+      return {
+        page: pointerResult.page,
+        publishedRevision: sourceRevision,
+        draftRevision,
       };
     });
   }
