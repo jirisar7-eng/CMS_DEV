@@ -527,3 +527,53 @@ export function validateActionBody(
 
   return { expectedLockVersion };
 }
+
+export interface ValidatedPublishedRevisionActionBody {
+  expectedPublishedRevisionId: string;
+}
+
+export function validatePublishedRevisionActionBody(
+  body: Record<string, unknown>
+): ValidatedPublishedRevisionActionBody {
+  const forbiddenKeys = [
+    'actorId',
+    'userId',
+    'role',
+    'permissions',
+    'projectId',
+    'pageId',
+    'status',
+    'revisionId',
+    'publishedRevisionId',
+    'draftRevisionId',
+    'expectedLockVersion',
+    'lockVersion',
+    'revisionNumber',
+  ];
+  for (const k of forbiddenKeys) {
+    if (k in body) {
+      throw new ApiError(
+        'INVALID_INPUT',
+        `Field '${k}' cannot be provided in request body`,
+        400
+      );
+    }
+  }
+
+  const { expectedPublishedRevisionId } = body;
+  if (
+    typeof expectedPublishedRevisionId !== 'string' ||
+    expectedPublishedRevisionId.trim().length === 0 ||
+    expectedPublishedRevisionId.trim().length > 128 ||
+    /[\x00-\x1f\x7f<>]/.test(expectedPublishedRevisionId)
+  ) {
+    throw new ApiError(
+      'INVALID_INPUT',
+      'expectedPublishedRevisionId must be a non-empty string with maximum 128 characters without control characters',
+      400
+    );
+  }
+
+  return { expectedPublishedRevisionId: expectedPublishedRevisionId.trim() };
+}
+
