@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createBrandDraft, updateBrandDraft, publishBrandDraft, discardBrandDraft, rollbackBrand } from '@/app/admin/brands/actions';
-import { validateThemeAccessibility } from '@/lib/domain/brand/accessibility';
+import { validateAllThemesAccessibility } from '@/lib/domain/brand/accessibility';
 import { BrandEditor } from './BrandEditor';
 import { BrandPreview } from './BrandPreview';
 import { BrandHistory } from './BrandHistory';
@@ -16,20 +16,20 @@ export function BrandStudioClient({ initialBrand }: { initialBrand: any }) {
   const [view, setView] = useState<'editor' | 'preview' | 'history'>('editor');
   
   const handleCreateDraft = async () => {
-    const draft = await createBrandDraft(initialBrand.id, initialBrand.projectId);
+    const draft = await createBrandDraft(initialBrand.id);
     setCurrentDraft(draft);
   };
   
   const handleDiscardDraft = async () => {
     if (!currentDraft) return;
-    await discardBrandDraft(currentDraft.id, initialBrand.projectId);
+    await discardBrandDraft(currentDraft.id);
     setCurrentDraft(null);
   };
   
   const handlePublish = async () => {
     if (!currentDraft) return;
     try {
-      await publishBrandDraft(currentDraft.id, initialBrand.projectId);
+      await publishBrandDraft(currentDraft.id);
       alert("Brand published successfully!");
       window.location.reload();
     } catch (e: any) {
@@ -43,19 +43,23 @@ export function BrandStudioClient({ initialBrand }: { initialBrand: any }) {
 
   const handleRollback = async (versionId: string) => {
     if (confirm("Are you sure you want to rollback to this version? This will create a new published version.")) {
-      await rollbackBrand(initialBrand.id, versionId, initialBrand.projectId);
-      window.location.reload();
+      try {
+        await rollbackBrand(initialBrand.id, versionId);
+        window.location.reload();
+      } catch (e: any) {
+        alert("Error rolling back: " + e.message);
+      }
     }
   };
 
   const handleSaveDraft = async (data: any) => {
     if (!currentDraft) return;
-    const updated = await updateBrandDraft(currentDraft.id, data, initialBrand.projectId);
+    const updated = await updateBrandDraft(currentDraft.id, data);
     setCurrentDraft(updated);
   };
 
-  // Contrast validation checking
-  const accessErrors = currentDraft ? validateThemeAccessibility(currentDraft.tokens, 'light') : [];
+  // Contrast validation checking (All modes)
+  const accessErrors = currentDraft ? validateAllThemesAccessibility(currentDraft) : [];
 
   return (
     <div className="flex h-full">
@@ -112,14 +116,14 @@ export function BrandStudioClient({ initialBrand }: { initialBrand: any }) {
             ) : (
               <div className="space-y-3">
                 {accessErrors.length > 0 && (
-                  <div className="p-3 bg-destructive/10 text-destructive rounded-md text-xs border border-destructive/20">
+                  <div className="p-3 bg-destructive/10 text-destructive rounded-md text-xs border border-destructive/20 max-h-48 overflow-y-auto">
                     <div className="flex items-center gap-1 font-semibold mb-1">
                       <LucideAlertCircle className="w-4 h-4" />
                       Accessibility Warnings
                     </div>
                     <ul className="list-disc pl-4 space-y-1">
                       {accessErrors.map((e, i) => (
-                        <li key={i}>{e.pair}: {e.ratio} (min {e.expected})</li>
+                        <li key={i}>[{e.mode}] {e.pair}: {e.ratio} (min {e.expected})</li>
                       ))}
                     </ul>
                   </div>

@@ -1,7 +1,7 @@
-import { SemanticTokens } from './contracts';
+import { BrandVersionData, SemanticTokens, hexColorRegex } from './contracts';
 
 // Relative luminance calculation
-function getLuminance(r: number, g: number, b: number) {
+export function getLuminance(r: number, g: number, b: number) {
   const a = [r, g, b].map(function (v) {
     v /= 255;
     return v <= 0.03928
@@ -12,13 +12,26 @@ function getLuminance(r: number, g: number, b: number) {
 }
 
 // Parse hex color to rgb
-function hexToRgb(hex: string) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
+export function hexToRgb(hex: string) {
+  if (!hexColorRegex.test(hex)) {
+    throw new Error(`Invalid hex color: ${hex}`);
+  }
+  
+  let cleanHex = hex.replace('#', '');
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+  }
+  
+  const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(cleanHex);
+  if (!result) {
+    throw new Error(`Invalid hex color parsing: ${hex}`);
+  }
+  
+  return {
     r: parseInt(result[1], 16),
     g: parseInt(result[2], 16),
     b: parseInt(result[3], 16)
-  } : { r: 255, g: 255, b: 255 };
+  };
 }
 
 // Calculate contrast ratio
@@ -39,29 +52,58 @@ export interface ContrastFailure {
   mode: string;
 }
 
-export function validateThemeAccessibility(tokens: SemanticTokens, mode: string): ContrastFailure[] {
+export function validateTokensAccessibility(tokens: SemanticTokens, mode: string): ContrastFailure[] {
   const failures: ContrastFailure[] = [];
-  const requiredRatio = 4.5; // AA normal text
+  const normalTextRatio = 4.5; // AA normal text
+  const focusRatio = 3.0; // AA non-text (focus)
 
   const checks = [
-    { name: 'text.primary / canvas', fg: tokens.text.primary, bg: tokens.canvas, expected: requiredRatio },
-    { name: 'text.primary / surface', fg: tokens.text.primary, bg: tokens.surface, expected: requiredRatio },
-    { name: 'text.muted / canvas', fg: tokens.text.muted, bg: tokens.canvas, expected: requiredRatio },
-    { name: 'action.primaryText / action.primary', fg: tokens.action.primaryText, bg: tokens.action.primary, expected: requiredRatio },
-    { name: 'link / canvas', fg: tokens.link, bg: tokens.canvas, expected: requiredRatio }
+    { name: 'text.primary / canvas', fg: tokens.text.primary, bg: tokens.canvas, expected: normalTextRatio },
+    { name: 'text.primary / surface', fg: tokens.text.primary, bg: tokens.surface, expected: normalTextRatio },
+    { name: 'text.muted / canvas', fg: tokens.text.muted, bg: tokens.canvas, expected: normalTextRatio },
+    { name: 'action.primaryText / action.primary', fg: tokens.action.primaryText, bg: tokens.action.primary, expected: normalTextRatio },
+    { name: 'link / canvas', fg: tokens.link, bg: tokens.canvas, expected: normalTextRatio },
+    { name: 'focus / canvas', fg: tokens.focus, bg: tokens.canvas, expected: focusRatio },
+    { name: 'focus / surface', fg: tokens.focus, bg: tokens.surface, expected: focusRatio }
   ];
 
   for (const check of checks) {
-    const ratio = getContrastRatio(check.fg, check.bg);
-    if (ratio < check.expected) {
+    try {
+      const ratio = getContrastRatio(check.fg, check.bg);
+      if (ratio < check.expected) {
+        failures.push({
+          pair: check.name,
+          ratio: Math.round(ratio * 100) / 100,
+          expected: check.expected,
+          mode
+        });
+      }
+    } catch (e: any) {
+      // If parsing fails, it's an automatic contrast failure for the pair
       failures.push({
         pair: check.name,
-        ratio: Math.round(ratio * 100) / 100,
+        ratio: 1.0,
         expected: check.expected,
         mode
       });
     }
   }
 
+  return failures;
+}
+
+export function validateAllThemesAccessibility(data: BrandVersionData): ContrastFailure[] {
+  const failures: ContrastFailure[] = [];
+  
+  if (data.themeModes.light) {
+    failures.push(...validateTokensAccessibility(data.themeModes.light, 'light'));
+  }
+  if (data.themeModes.dark) {
+    failures.push(...validateTokensAccessibility(data.themeModes.dark, 'dark'));
+  }
+  if (data.themeModes.extraDark) {
+    failures.push(...validateTokensAccessibility(data.themeModes.extraDark, 'extraDark'));
+  }
+  
   return failures;
 }

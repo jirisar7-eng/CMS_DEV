@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { BrandVersionData, SYNTHESIS_ORANGE_DEFAULT } from './contracts';
-import { validateThemeAccessibility, ContrastFailure } from './accessibility';
+import { validateTokensAccessibility, ContrastFailure } from './accessibility';
 import { logAudit } from '@/lib/auth/audit';
 
 export class BrandRepository {

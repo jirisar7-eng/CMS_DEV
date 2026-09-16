@@ -4,12 +4,14 @@ import { prisma } from '@/lib/db';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/auth/audit';
 import { getSession } from '@/lib/auth/session';
-import { BrandVersionSchema, BrandVersionData, SYNTHESIS_ORANGE_DEFAULT } from '@/lib/domain/brand/contracts';
-import { validateThemeAccessibility } from '@/lib/domain/brand/accessibility';
+import { BrandVersionSchema, BrandVersionData, SYNTHESIS_ORANGE_DEFAULT, getDerivedPermissionScope, validateScopeInvariant } from '@/lib/domain/brand/contracts';
+import { validateAllThemesAccessibility } from '@/lib/domain/brand/accessibility';
 import { revalidatePath } from 'next/cache';
 
 export async function getOrCreateBrand(scope: string, projectId?: string | null) {
-  await requirePermission('brand.view', projectId);
+  validateScopeInvariant(scope, projectId);
+  const permissionScope = getDerivedPermissionScope(scope, projectId);
+  await requirePermission('brand.view', permissionScope);
 
   let brand = await prisma.brand.findFirst({
     where: { scope, projectId: projectId ?? null },
@@ -20,7 +22,7 @@ export async function getOrCreateBrand(scope: string, projectId?: string | null)
   });
 
   if (!brand) {
-    await requirePermission('brand.edit', projectId);
+    await requirePermission('brand.edit', permissionScope);
     const key = scope === 'SYSTEM' ? 'system-brand' : `project-${projectId}-brand`;
     brand = await prisma.brand.create({
       data: {
@@ -38,17 +40,17 @@ export async function getOrCreateBrand(scope: string, projectId?: string | null)
   return brand;
 }
 
-export async function createBrandDraft(brandId: string, projectId?: string | null) {
-  await requirePermission('brand.edit', projectId);
-  const { user } = await getSession();
-
+export async function createBrandDraft(brandId: string) {
   const brand = await prisma.brand.findUnique({
     where: { id: brandId },
     include: { versions: { orderBy: { version: 'desc' }, take: 1 } }
   });
-
   if (!brand) throw new Error("Brand not found");
 
+  const permissionScope = getDerivedPermissionScope(brand.scope, brand.projectId);
+  await requirePermission('brand.edit', permissionScope);
+  
+  const { user } = await getSession();
   const latestVersion = brand.versions[0];
   const newVersionNumber = latestVersion ? latestVersion.version + 1 : 1;
 
@@ -67,10 +69,10 @@ export async function createBrandDraft(brandId: string, projectId?: string | nul
       brandId,
       version: newVersionNumber,
       status: 'DRAFT',
-      tokens: baseData.tokens,
-      typography: baseData.typography,
-      assets: baseData.assets,
-      themeModes: baseData.themeModes,
+      tokens: baseData.tokens as any,
+      typography: baseData.typography as any,
+      assets: baseData.assets as any,
+      themeModes: baseData.themeModes as any,
       createdById: user?.id,
       derivedFromVersionId: latestVersion?.id || null,
     }
@@ -89,11 +91,12 @@ export async function createBrandDraft(brandId: string, projectId?: string | nul
   return draft;
 }
 
-export async function updateBrandDraft(draftId: string, data: Partial<BrandVersionData>, projectId?: string | null) {
-  await requirePermission('brand.edit', projectId);
-  
+export async function updateBrandDraft(draftId: string, data: Partial<BrandVersionData>) {
   const draft = await prisma.brandVersion.findUnique({ where: { id: draftId }, include: { brand: true } });
   if (!draft || draft.status !== 'DRAFT') throw new Error("Draft not found or not in DRAFT status");
+
+  const permissionScope = getDerivedPermissionScope(draft.brand.scope, draft.brand.projectId);
+  await requirePermission('brand.edit', permissionScope);
 
   const updated = await prisma.brandVersion.update({
     where: { id: draftId },
@@ -106,7 +109,7 @@ export async function updateBrandDraft(draftId: string, data: Partial<BrandVersi
   });
 
   await logAudit({
-    action: 'BRAND_UPDATED',
+    action: 'BRAND_DRAFT_UPDATED',
     scopeType: draft.brand.scope as 'SYSTEM' | 'PROJECT',
     scopeId: draft.brand.projectId,
     resourceType: 'BRAND',
@@ -118,11 +121,12 @@ export async function updateBrandDraft(draftId: string, data: Partial<BrandVersi
   return updated;
 }
 
-export async function publishBrandDraft(draftId: string, projectId?: string | null) {
-  await requirePermission('brand.publish', projectId);
-  
+export async function publishBrandDraft(draftId: string) {
   const draft = await prisma.brandVersion.findUnique({ where: { id: draftId }, include: { brand: true } });
   if (!draft || draft.status !== 'DRAFT') throw new Error("Draft not found or not in DRAFT status");
+
+  const permissionScope = getDerivedPermissionScope(draft.brand.scope, draft.brand.projectId);
+  await requirePermission('brand.publish', permissionScope);
 
   const data: BrandVersionData = {
     tokens: draft.tokens as any,
@@ -136,10 +140,19 @@ export async function publishBrandDraft(draftId: string, projectId?: string | nu
     throw new Error("Invalid brand data structure: " + parsed.error.message);
   }
 
-  const accessErrors = validateThemeAccessibility(data.tokens, 'light');
+  const accessErrors = validateAllThemesAccessibility(data);
   if (accessErrors.length > 0) {
     throw new Error("ACCESSIBILITY_FAILED");
   }
+
+  await logAudit({
+    action: 'BRAND_VALIDATED',
+    scopeType: draft.brand.scope as 'SYSTEM' | 'PROJECT',
+    scopeId: draft.brand.projectId,
+    resourceType: 'BRAND',
+    resourceId: draft.brand.id,
+    metadata: { version: draft.version }
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.brandVersion.update({
@@ -165,43 +178,62 @@ export async function publishBrandDraft(draftId: string, projectId?: string | nu
   revalidatePath('/admin/brands');
 }
 
-export async function rollbackBrand(brandId: string, targetVersionId: string, projectId?: string | null) {
-  await requirePermission('brand.rollback', projectId);
-  const { user } = await getSession();
-
+export async function rollbackBrand(brandId: string, targetVersionId: string) {
   const brand = await prisma.brand.findUnique({
     where: { id: brandId },
     include: { versions: { orderBy: { version: 'desc' }, take: 1 } }
   });
-
   if (!brand) throw new Error("Brand not found");
+
+  const permissionScope = getDerivedPermissionScope(brand.scope, brand.projectId);
+  await requirePermission('brand.rollback', permissionScope);
 
   const targetVersion = await prisma.brandVersion.findUnique({ where: { id: targetVersionId } });
   if (!targetVersion || targetVersion.brandId !== brandId || targetVersion.status !== 'PUBLISHED') {
     throw new Error("Invalid target version for rollback");
   }
 
+  const { user } = await getSession();
   const latestVersion = brand.versions[0];
   const newVersionNumber = latestVersion ? latestVersion.version + 1 : 1;
+  
+  const data: BrandVersionData = {
+    tokens: targetVersion.tokens as any,
+    typography: targetVersion.typography as any,
+    assets: targetVersion.assets as any,
+    themeModes: targetVersion.themeModes as any,
+  };
 
-  const rollbackVersion = await prisma.brandVersion.create({
-    data: {
-      brandId,
-      version: newVersionNumber,
-      status: 'PUBLISHED',
-      tokens: targetVersion.tokens as any,
-      typography: targetVersion.typography as any,
-      assets: targetVersion.assets as any,
-      themeModes: targetVersion.themeModes as any,
-      createdById: user?.id,
-      publishedAt: new Date(),
-      derivedFromVersionId: targetVersion.id,
-    }
-  });
+  const parsed = BrandVersionSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid target version data structure: " + parsed.error.message);
+  }
 
-  await prisma.brand.update({
-    where: { id: brandId },
-    data: { activeVersionId: rollbackVersion.id }
+  const accessErrors = validateAllThemesAccessibility(data);
+  if (accessErrors.length > 0) {
+    throw new Error("ACCESSIBILITY_FAILED: Target version fails current accessibility checks.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const rollbackVersion = await tx.brandVersion.create({
+      data: {
+        brandId,
+        version: newVersionNumber,
+        status: 'PUBLISHED',
+        tokens: targetVersion.tokens as any,
+        typography: targetVersion.typography as any,
+        assets: targetVersion.assets as any,
+        themeModes: targetVersion.themeModes as any,
+        createdById: user?.id,
+        publishedAt: new Date(),
+        derivedFromVersionId: targetVersion.id,
+      }
+    });
+
+    await tx.brand.update({
+      where: { id: brandId },
+      data: { activeVersionId: rollbackVersion.id }
+    });
   });
 
   await logAudit({
@@ -219,21 +251,22 @@ export async function rollbackBrand(brandId: string, targetVersionId: string, pr
   revalidatePath('/admin/brands');
 }
 
-export async function discardBrandDraft(draftId: string, projectId?: string | null) {
-  await requirePermission('brand.edit', projectId);
+export async function discardBrandDraft(draftId: string) {
   const draft = await prisma.brandVersion.findUnique({ where: { id: draftId }, include: { brand: true } });
-  
   if (!draft || draft.status !== 'DRAFT') throw new Error("Only drafts can be discarded");
+
+  const permissionScope = getDerivedPermissionScope(draft.brand.scope, draft.brand.projectId);
+  await requirePermission('brand.edit', permissionScope);
 
   await prisma.brandVersion.delete({ where: { id: draftId } });
 
   await logAudit({
-    action: 'BRAND_UPDATED',
+    action: 'BRAND_DRAFT_DISCARDED',
     scopeType: draft.brand.scope as 'SYSTEM' | 'PROJECT',
     scopeId: draft.brand.projectId,
     resourceType: 'BRAND',
     resourceId: draft.brand.id,
-    metadata: { action: 'DRAFT_DISCARDED', version: draft.version }
+    metadata: { version: draft.version }
   });
 
   revalidatePath('/admin/brands');
