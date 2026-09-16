@@ -13,19 +13,22 @@
     ".synthesis/task-capsule.json",
     "lib/domain/content/*",
     "lib/domain/pages.ts",
-    "tests/content-contract.test.ts"
+    "tests/content-contract.test.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "tests/content-schema-foundation.test.ts"
   ],
   "forbidden_paths": [
-    "prisma/*",
+    "lib/auth/*",
+    "scripts/bootstrap-admin.ts",
+    "lib/domain/pagesFixture.ts",
     "app/*",
     "components/*",
-    "lib/auth/*",
+    "middleware.ts",
     "lib/runtime/*",
-    "lib/domain/pagesFixture.ts",
     "lib/domain/brand/*",
     "lib/domain/media/*",
     "lib/domain/navigation/*",
-    "middleware.ts",
     "package.json",
     "package-lock.json",
     "bun.lock"

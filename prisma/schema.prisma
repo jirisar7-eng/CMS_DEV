@@ -20,10 +20,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions  Session[]
-  roles     UserRole[]
-  overrides UserPermissionOverride[]
-  auditLogs AuditLog[]
+  sessions             Session[]
+  roles                UserRole[]
+  overrides            UserPermissionOverride[]
+  auditLogs            AuditLog[]
+  createdPageRevisions PageRevision[]           @relation("PageRevisionCreatedBy")
+  createdReleases      ContentRelease[]         @relation("ContentReleaseCreatedBy")
 
   @@index([status])
   @@index([email])
@@ -150,25 +152,26 @@ model MediaAsset {
 }
 
 model MediaAssetVersion {
-  id               String     @id @default(uuid())
+  id               String   @id @default(uuid())
   assetId          String
   versionNumber    Int
   status           String
   mimeType         String
   sizeBytes        Int
   storageKey       String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now())
   security         Json
   originalFilename String?
-  asset            MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  asset MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   @@unique([assetId, versionNumber])
   @@index([assetId])
 }
 
 model MediaUsageReference {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   assetId   String
   pageId    String
   pageTitle String
@@ -176,8 +179,9 @@ model MediaUsageReference {
   blockId   String?
   blockType String?
   field     String?
-  usedAt    DateTime   @default(now())
-  asset     MediaAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  usedAt    DateTime @default(now())
+
+  asset MediaAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
 
   @@index([assetId])
 }
@@ -185,6 +189,7 @@ model MediaUsageReference {
 // -----------------------------------------------------------------------------
 // BRAND STUDIO
 // -----------------------------------------------------------------------------
+
 model Brand {
   id              String   @id @default(uuid())
   scope           String // "SYSTEM" or "PROJECT"
@@ -221,4 +226,135 @@ model BrandVersion {
   @@unique([brandId, version])
   @@index([brandId])
   @@index([status])
+}
+
+// -----------------------------------------------------------------------------
+// CONTENT LIFECYCLE FOUNDATION
+// -----------------------------------------------------------------------------
+
+enum PageRevisionStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+}
+
+enum PageVisibility {
+  PUBLIC
+  UNLISTED
+  PASSWORD_PROTECTED
+  INTERNAL
+}
+
+enum ContentReleaseStatus {
+  DRAFT
+  PUBLISHED
+  ROLLED_BACK
+}
+
+model Page {
+  id                  String   @id @default(uuid())
+  projectId           String
+  key                 String
+  parentId            String?
+  sortOrder           Int      @default(0)
+  draftRevisionId     String?
+  publishedRevisionId String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  parent            Page?                @relation("PageHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children          Page[]               @relation("PageHierarchy")
+  revisions         PageRevision[]       @relation("PageToRevisions")
+  draftRevision     PageRevision?        @relation("PageDraftRevision", fields: [draftRevisionId], references: [id], onDelete: SetNull)
+  publishedRevision PageRevision?        @relation("PagePublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
+  releaseItems      ContentReleaseItem[]
+
+  @@unique([projectId, key])
+  @@index([projectId])
+  @@index([parentId])
+  @@index([projectId, parentId, sortOrder])
+}
+
+// =============================================================================
+// REVISION IMMUTABILITY CONTRACT:
+// - DRAFT revision may later be updated only with optimistic lockVersion
+// - IN_REVIEW is immutable snapshot
+// - APPROVED is immutable snapshot
+// - PUBLISHED is immutable forever
+// - editing after submit creates a NEW DRAFT revision
+// - rollback changes Page.publishedRevision pointer
+// - rollback never mutates historical revision content
+// =============================================================================
+model PageRevision {
+  id                    String             @id @default(uuid())
+  pageId                String
+  revisionNumber        Int
+  status                PageRevisionStatus
+  title                 String
+  slug                  String
+  locale                String
+  description           String?
+  visibility            PageVisibility
+  content               Json
+  seo                   Json
+  navigation            Json
+  schemaVersion         String
+  lockVersion           Int                @default(1)
+  createdById           String?
+  createdAt             DateTime           @default(now())
+  submittedAt           DateTime?
+  approvedAt            DateTime?
+  publishedAt           DateTime?
+  derivedFromRevisionId String?
+
+  page             Page           @relation("PageToRevisions", fields: [pageId], references: [id], onDelete: Cascade)
+  createdBy        User?          @relation("PageRevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  derivedFrom      PageRevision?  @relation("RevisionDerivation", fields: [derivedFromRevisionId], references: [id], onDelete: SetNull)
+  derivedRevisions PageRevision[] @relation("RevisionDerivation")
+
+  draftForPages     Page[] @relation("PageDraftRevision")
+  publishedForPages Page[] @relation("PagePublishedRevision")
+
+  releaseItems         ContentReleaseItem[] @relation("ReleaseItemRevision")
+  previousReleaseItems ContentReleaseItem[] @relation("ReleaseItemPreviousRevision")
+
+  @@unique([pageId, revisionNumber])
+  @@index([pageId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ContentRelease {
+  id           String               @id @default(uuid())
+  projectId    String
+  status       ContentReleaseStatus
+  createdById  String?
+  createdAt    DateTime             @default(now())
+  publishedAt  DateTime?
+  rolledBackAt DateTime?
+
+  createdBy User?                @relation("ContentReleaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  items     ContentReleaseItem[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ContentReleaseItem {
+  releaseId          String
+  pageId             String
+  revisionId         String
+  previousRevisionId String?
+
+  release          ContentRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  page             Page           @relation(fields: [pageId], references: [id], onDelete: Restrict)
+  revision         PageRevision   @relation("ReleaseItemRevision", fields: [revisionId], references: [id], onDelete: Restrict)
+  previousRevision PageRevision?  @relation("ReleaseItemPreviousRevision", fields: [previousRevisionId], references: [id], onDelete: Restrict)
+
+  @@id([releaseId, pageId])
+  @@index([pageId])
+  @@index([revisionId])
+  @@index([previousRevisionId])
 }
