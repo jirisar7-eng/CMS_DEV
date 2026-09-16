@@ -26,16 +26,16 @@ export function CompactBenefits() {
   ];
 
   return (
-    <section className="py-16 bg-background border-b border-border">
+    <section className="py-10 sm:py-12 bg-background border-b border-border">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {benefits.map((benefit, i) => (
             <div key={i} className="flex flex-col items-center sm:items-start text-center sm:text-left">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4 shrink-0">
-                <benefit.icon className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-primary mb-3 shrink-0">
+                <benefit.icon className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">{benefit.title}</h3>
-              <p className="text-sm text-muted-foreground">{benefit.description}</p>
+              <h3 className="text-base font-semibold text-foreground mb-1">{benefit.title}</h3>
+              <p className="text-body-small text-muted-foreground">{benefit.description}</p>
             </div>
           ))}
         </div>

@@ -10,24 +10,24 @@ export function CompactStatus() {
   ];
 
   return (
-    <section className="py-20 bg-muted/30 border-b border-border">
+    <section className="py-10 sm:py-12 bg-secondary border-b border-border">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-        <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-8">
-          COMPACT STATUS: Dostupné
+        <h2 className="text-meta text-muted-foreground mb-6">
+          Aktuálně dostupné
         </h2>
         
-        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 sm:gap-6 mb-10">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8">
           {available.map((item, i) => (
-            <div key={i} className="inline-flex items-center gap-2 px-4 py-2 bg-background border border-border rounded-lg shadow-sm">
+            <div key={i} className="inline-flex items-center gap-2 px-3 py-1.5 bg-background border border-border rounded-md shadow-sm">
               <Check className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">{item}</span>
+              <span className="text-ui text-foreground">{item}</span>
             </div>
           ))}
         </div>
         
         <Link 
           href="/features" 
-          className="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors"
+          className="touch-target inline-flex items-center justify-center px-6 border border-transparent text-ui text-primary hover:bg-background rounded-md transition-colors"
         >
           Zobrazit všechny funkce
         </Link>
