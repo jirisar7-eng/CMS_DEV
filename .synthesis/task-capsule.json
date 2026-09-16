@@ -21,7 +21,8 @@
     "scripts/bootstrap-admin.ts",
     "tests/content-rbac-foundation.test.ts",
     "lib/auth/audit.ts",
-    "tests/content-lifecycle-draft.test.ts"
+    "tests/content-lifecycle-draft.test.ts",
+    "tests/content-lifecycle-review.test.ts"
   ],
   "forbidden_paths": [
     "lib/auth/session.ts",

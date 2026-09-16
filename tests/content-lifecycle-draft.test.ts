@@ -164,6 +164,26 @@ class InMemoryContentLifecycleStore implements ContentLifecycleStore {
     return { ...updated };
   }
 
+  async transitionRevisionStatusAtomic(): Promise<{ updated: boolean; revision?: LifecyclePageRevision }> {
+    throw new Error('Not implemented in draft test store');
+  }
+
+  async claimRevisionLockAtomic(): Promise<{ updated: boolean; revision?: LifecyclePageRevision }> {
+    throw new Error('Not implemented in draft test store');
+  }
+
+  async getNextRevisionNumber(): Promise<number> {
+    throw new Error('Not implemented in draft test store');
+  }
+
+  async createDraftRevisionFromSource(): Promise<LifecyclePageRevision> {
+    throw new Error('Not implemented in draft test store');
+  }
+
+  async setPageDraftRevisionPointer(): Promise<LifecyclePage> {
+    throw new Error('Not implemented in draft test store');
+  }
+
   async recordAudit(params: RecordLifecycleAuditParams): Promise<void> {
     this.auditLogs.push(params);
   }

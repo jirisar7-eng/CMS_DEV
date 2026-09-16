@@ -4,6 +4,10 @@ import {
   ContentLifecycleStore,
   CreatePageWithDraftParams,
   UpdateDraftRevisionAtomicParams,
+  TransitionRevisionStatusAtomicParams,
+  ClaimRevisionLockAtomicParams,
+  CreateDraftRevisionFromSourceParams,
+  SetPageDraftRevisionPointerParams,
   RecordLifecycleAuditParams,
 } from './store';
 import { LifecyclePage, LifecyclePageRevision, ContentLifecycleError } from './types';
@@ -138,12 +142,149 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
     return { updated: true, revision: updated ?? undefined };
   }
 
+  async transitionRevisionStatusAtomic(
+    params: TransitionRevisionStatusAtomicParams
+  ): Promise<{ updated: boolean; revision?: LifecyclePageRevision }> {
+    const updateData: Record<string, unknown> = {
+      status: params.targetStatus,
+      lockVersion: { increment: 1 },
+    };
+    if (params.submittedAt !== undefined) {
+      updateData.submittedAt = params.submittedAt;
+    }
+    if (params.approvedAt !== undefined) {
+      updateData.approvedAt = params.approvedAt;
+    }
+
+    const result = await (this.db as any).pageRevision.updateMany({
+      where: {
+        id: params.revisionId,
+        pageId: params.pageId,
+        status: params.expectedStatus,
+        lockVersion: params.expectedLockVersion,
+      },
+      data: updateData,
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const updated = await this.findRevisionById(params.revisionId);
+    return { updated: true, revision: updated ?? undefined };
+  }
+
+  async claimRevisionLockAtomic(
+    params: ClaimRevisionLockAtomicParams
+  ): Promise<{ updated: boolean; revision?: LifecyclePageRevision }> {
+    const result = await (this.db as any).pageRevision.updateMany({
+      where: {
+        id: params.revisionId,
+        pageId: params.pageId,
+        status: params.expectedStatus,
+        lockVersion: params.expectedLockVersion,
+      },
+      data: {
+        lockVersion: { increment: 1 },
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const updated = await this.findRevisionById(params.revisionId);
+    return { updated: true, revision: updated ?? undefined };
+  }
+
+  async getNextRevisionNumber(pageId: string): Promise<number> {
+    const highest = await (this.db as any).pageRevision.findFirst({
+      where: { pageId },
+      orderBy: { revisionNumber: 'desc' },
+      select: { revisionNumber: true },
+    });
+    return (highest?.revisionNumber ?? 0) + 1;
+  }
+
+  async createDraftRevisionFromSource(
+    params: CreateDraftRevisionFromSourceParams
+  ): Promise<LifecyclePageRevision> {
+    const source = params.sourceRevision;
+    try {
+      const created = await (this.db as any).pageRevision.create({
+        data: {
+          pageId: params.pageId,
+          revisionNumber: params.revisionNumber,
+          status: 'DRAFT',
+          title: source.title,
+          slug: source.slug,
+          locale: source.locale,
+          description: source.description,
+          visibility: source.visibility,
+          content: source.content as unknown as Prisma.InputJsonValue,
+          seo: source.seo as unknown as Prisma.InputJsonValue,
+          navigation: source.navigation as unknown as Prisma.InputJsonValue,
+          schemaVersion: source.schemaVersion,
+          lockVersion: 1,
+          createdById: params.actorId,
+          derivedFromRevisionId: params.derivedFromRevisionId,
+          submittedAt: null,
+          approvedAt: null,
+          publishedAt: null,
+        },
+      });
+      return this.mapRevision(created);
+    } catch (err: any) {
+      if (err.code === 'P2002') {
+        throw new ContentLifecycleError('LOCK_CONFLICT', 'Revision number conflict due to concurrent operation');
+      }
+      throw err;
+    }
+  }
+
+  async setPageDraftRevisionPointer(
+    params: SetPageDraftRevisionPointerParams
+  ): Promise<LifecyclePage> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+      },
+      data: {
+        draftRevisionId: params.draftRevisionId,
+        updatedAt: new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    if (!page) {
+      throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+    }
+    return page;
+  }
+
   async touchPageUpdatedAt(projectId: string, pageId: string): Promise<LifecyclePage> {
-    const page = await (this.db as any).page.update({
-      where: { id: pageId },
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: pageId,
+        projectId,
+      },
       data: { updatedAt: new Date() },
     });
-    return this.mapPage(page);
+
+    if (result.count !== 1) {
+      throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+    }
+
+    const page = await this.findPageById(projectId, pageId);
+    if (!page) {
+      throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+    }
+    return page;
   }
 
   async recordAudit(params: RecordLifecycleAuditParams): Promise<void> {

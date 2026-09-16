@@ -5,6 +5,12 @@ import {
   CreatePageDraftResult,
   UpdateDraftInput,
   UpdateDraftResult,
+  SubmitForReviewInput,
+  SubmitForReviewResult,
+  ApproveReviewInput,
+  ApproveReviewResult,
+  RequestChangesInput,
+  RequestChangesResult,
 } from './types';
 import { validatePageContent, validateSlugSegment } from '../validation';
 import { PageContent } from '../contracts';
@@ -319,6 +325,352 @@ export class ContentLifecycleService {
       return {
         page: touchedPage,
         revision: updateResult.revision,
+      };
+    });
+  }
+
+  async submitForReview(input: SubmitForReviewInput): Promise<SubmitForReviewResult> {
+    // 1. Context validation
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim()
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'actorId, projectId and pageId are required');
+    }
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+
+    if (
+      typeof input.expectedLockVersion !== 'number' ||
+      !Number.isInteger(input.expectedLockVersion) ||
+      input.expectedLockVersion < 1
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'expectedLockVersion must be a positive integer');
+    }
+
+    // 2. Authorization check (content.edit)
+    const allowed = await this.hasPermission(actorId, 'content.edit', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError('FORBIDDEN', 'Permission content.edit required');
+    }
+
+    // 3. Atomic transaction
+    return this.store.transaction(async (txStore) => {
+      // Scoped page lookup
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+      }
+
+      if (!page.draftRevisionId) {
+        throw new ContentLifecycleError('NO_DRAFT', 'Page has no draft revision pointer');
+      }
+
+      const activeRevision = await txStore.findRevisionById(page.draftRevisionId);
+      if (!activeRevision) {
+        throw new ContentLifecycleError('NO_DRAFT', 'Draft revision not found');
+      }
+
+      // Pointer integrity
+      if (activeRevision.id !== page.draftRevisionId || activeRevision.pageId !== page.id) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Draft pointer does not match revision pageId'
+        );
+      }
+
+      // Status check (must be DRAFT)
+      if (activeRevision.status !== 'DRAFT') {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          `Cannot submit revision in ${activeRevision.status} status for review`
+        );
+      }
+
+      // Atomic transition
+      const transitionResult = await txStore.transitionRevisionStatusAtomic({
+        pageId: page.id,
+        revisionId: activeRevision.id,
+        expectedStatus: 'DRAFT',
+        targetStatus: 'IN_REVIEW',
+        expectedLockVersion: input.expectedLockVersion,
+        submittedAt: new Date(),
+      });
+
+      if (!transitionResult.updated || !transitionResult.revision) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Revision was modified by another operation or expectedLockVersion mismatch'
+        );
+      }
+
+      // Touch page.updatedAt
+      const touchedPage = await txStore.touchPageUpdatedAt(projectId, page.id);
+
+      // Record audit
+      await txStore.recordAudit({
+        action: 'CONTENT_REVIEW_SUBMITTED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'PAGE_REVISION',
+        resourceId: activeRevision.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          revisionId: activeRevision.id,
+          revisionNumber: activeRevision.revisionNumber,
+          lockVersion: transitionResult.revision.lockVersion,
+          fromStatus: 'DRAFT',
+          toStatus: 'IN_REVIEW',
+        },
+      });
+
+      return {
+        page: touchedPage,
+        revision: transitionResult.revision,
+      };
+    });
+  }
+
+  async approveReview(input: ApproveReviewInput): Promise<ApproveReviewResult> {
+    // 1. Context validation
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim()
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'actorId, projectId and pageId are required');
+    }
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+
+    if (
+      typeof input.expectedLockVersion !== 'number' ||
+      !Number.isInteger(input.expectedLockVersion) ||
+      input.expectedLockVersion < 1
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'expectedLockVersion must be a positive integer');
+    }
+
+    // 2. Authorization check (content.approve)
+    const allowed = await this.hasPermission(actorId, 'content.approve', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError('FORBIDDEN', 'Permission content.approve required');
+    }
+
+    // 3. Atomic transaction
+    return this.store.transaction(async (txStore) => {
+      // Scoped page lookup
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+      }
+
+      if (!page.draftRevisionId) {
+        throw new ContentLifecycleError('NO_DRAFT', 'Page has no draft revision pointer');
+      }
+
+      const activeRevision = await txStore.findRevisionById(page.draftRevisionId);
+      if (!activeRevision) {
+        throw new ContentLifecycleError('NO_DRAFT', 'Draft revision not found');
+      }
+
+      // Pointer integrity
+      if (activeRevision.id !== page.draftRevisionId || activeRevision.pageId !== page.id) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Draft pointer does not match revision pageId'
+        );
+      }
+
+      // Status check (must be IN_REVIEW)
+      if (activeRevision.status !== 'IN_REVIEW') {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          `Cannot approve revision in ${activeRevision.status} status`
+        );
+      }
+
+      // Atomic transition
+      const transitionResult = await txStore.transitionRevisionStatusAtomic({
+        pageId: page.id,
+        revisionId: activeRevision.id,
+        expectedStatus: 'IN_REVIEW',
+        targetStatus: 'APPROVED',
+        expectedLockVersion: input.expectedLockVersion,
+        approvedAt: new Date(),
+      });
+
+      if (!transitionResult.updated || !transitionResult.revision) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Revision was modified by another operation or expectedLockVersion mismatch'
+        );
+      }
+
+      // Touch page.updatedAt
+      const touchedPage = await txStore.touchPageUpdatedAt(projectId, page.id);
+
+      // Record audit
+      await txStore.recordAudit({
+        action: 'CONTENT_REVIEW_APPROVED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'PAGE_REVISION',
+        resourceId: activeRevision.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          revisionId: activeRevision.id,
+          revisionNumber: activeRevision.revisionNumber,
+          lockVersion: transitionResult.revision.lockVersion,
+          fromStatus: 'IN_REVIEW',
+          toStatus: 'APPROVED',
+        },
+      });
+
+      return {
+        page: touchedPage,
+        revision: transitionResult.revision,
+      };
+    });
+  }
+
+  async requestChanges(input: RequestChangesInput): Promise<RequestChangesResult> {
+    // 1. Context validation
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim()
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'actorId, projectId and pageId are required');
+    }
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+
+    if (
+      typeof input.expectedLockVersion !== 'number' ||
+      !Number.isInteger(input.expectedLockVersion) ||
+      input.expectedLockVersion < 1
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'expectedLockVersion must be a positive integer');
+    }
+
+    // 2. Authorization check (content.review)
+    const allowed = await this.hasPermission(actorId, 'content.review', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError('FORBIDDEN', 'Permission content.review required');
+    }
+
+    // 3. Atomic transaction
+    return this.store.transaction(async (txStore) => {
+      // Scoped page lookup
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+      }
+
+      if (!page.draftRevisionId) {
+        throw new ContentLifecycleError('NO_DRAFT', 'Page has no draft revision pointer');
+      }
+
+      const activeRevision = await txStore.findRevisionById(page.draftRevisionId);
+      if (!activeRevision) {
+        throw new ContentLifecycleError('NO_DRAFT', 'Draft revision not found');
+      }
+
+      // Pointer integrity
+      if (activeRevision.id !== page.draftRevisionId || activeRevision.pageId !== page.id) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Draft pointer does not match revision pageId'
+        );
+      }
+
+      // Status check (must be IN_REVIEW)
+      if (activeRevision.status !== 'IN_REVIEW') {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          `Cannot request changes on revision in ${activeRevision.status} status`
+        );
+      }
+
+      // Atomically claim lock on the IN_REVIEW revision
+      const lockClaim = await txStore.claimRevisionLockAtomic({
+        pageId: page.id,
+        revisionId: activeRevision.id,
+        expectedStatus: 'IN_REVIEW',
+        expectedLockVersion: input.expectedLockVersion,
+      });
+
+      if (!lockClaim.updated || !lockClaim.revision) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Revision was modified by another operation or expectedLockVersion mismatch'
+        );
+      }
+
+      const updatedReviewRevision = lockClaim.revision;
+
+      // Get next revision number
+      const nextRevisionNumber = await txStore.getNextRevisionNumber(page.id);
+
+      // Create new DRAFT revision copying snapshot fields
+      const newDraft = await txStore.createDraftRevisionFromSource({
+        pageId: page.id,
+        revisionNumber: nextRevisionNumber,
+        actorId,
+        derivedFromRevisionId: activeRevision.id,
+        sourceRevision: activeRevision,
+      });
+
+      // Move draftRevisionId pointer to new draft
+      const updatedPage = await txStore.setPageDraftRevisionPointer({
+        projectId,
+        pageId: page.id,
+        draftRevisionId: newDraft.id,
+      });
+
+      // Touch page.updatedAt
+      const touchedPage = await txStore.touchPageUpdatedAt(projectId, page.id);
+
+      // Record audit
+      await txStore.recordAudit({
+        action: 'CONTENT_CHANGES_REQUESTED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'PAGE_REVISION',
+        resourceId: activeRevision.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          revisionId: activeRevision.id,
+          revisionNumber: activeRevision.revisionNumber,
+          lockVersion: updatedReviewRevision.lockVersion,
+          newDraftRevisionId: newDraft.id,
+          newDraftRevisionNumber: newDraft.revisionNumber,
+          fromStatus: 'IN_REVIEW',
+          toStatus: 'IN_REVIEW',
+        },
+      });
+
+      return {
+        page: touchedPage,
+        newDraftRevision: newDraft,
+        reviewRevision: updatedReviewRevision,
       };
     });
   }

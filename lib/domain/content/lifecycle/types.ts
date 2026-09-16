@@ -9,7 +9,8 @@ export type ContentLifecycleErrorCode =
   | 'DRAFT_STATE_INVALID'
   | 'LOCK_CONFLICT'
   | 'POINTER_INTEGRITY_VIOLATION'
-  | 'KEY_CONFLICT';
+  | 'KEY_CONFLICT'
+  | 'STATE_TRANSITION_INVALID';
 
 export class ContentLifecycleError extends Error {
   readonly code: ContentLifecycleErrorCode;
@@ -96,3 +97,41 @@ export interface UpdateDraftResult {
   page: LifecyclePage;
   revision: LifecyclePageRevision;
 }
+
+export interface SubmitForReviewInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedLockVersion: number;
+}
+
+export interface SubmitForReviewResult {
+  page: LifecyclePage;
+  revision: LifecyclePageRevision;
+}
+
+export interface ApproveReviewInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedLockVersion: number;
+}
+
+export interface ApproveReviewResult {
+  page: LifecyclePage;
+  revision: LifecyclePageRevision;
+}
+
+export interface RequestChangesInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedLockVersion: number;
+}
+
+export interface RequestChangesResult {
+  page: LifecyclePage;
+  newDraftRevision: LifecyclePageRevision;
+  reviewRevision: LifecyclePageRevision;
+}
+

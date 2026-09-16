@@ -21,7 +21,10 @@ export type AuditAction =
   | 'MEDIA_ASSET_CREATED'
   | 'MEDIA_ASSET_DELETED'
   | 'CONTENT_PAGE_CREATED'
-  | 'CONTENT_DRAFT_UPDATED';
+  | 'CONTENT_DRAFT_UPDATED'
+  | 'CONTENT_REVIEW_SUBMITTED'
+  | 'CONTENT_CHANGES_REQUESTED'
+  | 'CONTENT_REVIEW_APPROVED';
 
 export type ScopeType = 'SYSTEM' | 'PROJECT';
 
@@ -33,7 +36,7 @@ interface AuditLogOptions {
   resourceId?: string | null;
   metadata?: Record<string, any>;
   actorId?: string | null; // Defaults to current session user if not provided
-  tx?: Prisma.TransactionClient | any;
+  tx?: Prisma.TransactionClient;
 }
 
 export async function logAudit(options: AuditLogOptions): Promise<void> {
