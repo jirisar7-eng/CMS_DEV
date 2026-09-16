@@ -8,9 +8,19 @@ import {
   ClaimRevisionLockAtomicParams,
   CreateDraftRevisionFromSourceParams,
   SetPageDraftRevisionPointerParams,
+  CreatePublishedReleaseParams,
+  CreateReleaseItemParams,
+  SetPublishedPagePointersAtomicParams,
   RecordLifecycleAuditParams,
 } from './store';
-import { LifecyclePage, LifecyclePageRevision, ContentLifecycleError } from './types';
+import {
+  LifecyclePage,
+  LifecyclePageRevision,
+  LifecycleContentRelease,
+  LifecycleContentReleaseItem,
+  ContentReleaseStatus,
+  ContentLifecycleError,
+} from './types';
 import { PageContent } from '../contracts';
 import { logAudit } from '@/lib/auth/audit';
 
@@ -155,6 +165,9 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
     if (params.approvedAt !== undefined) {
       updateData.approvedAt = params.approvedAt;
     }
+    if (params.publishedAt !== undefined) {
+      updateData.publishedAt = params.publishedAt;
+    }
 
     const result = await (this.db as any).pageRevision.updateMany({
       where: {
@@ -287,6 +300,60 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
     return page;
   }
 
+  async createPublishedRelease(
+    params: CreatePublishedReleaseParams
+  ): Promise<LifecycleContentRelease> {
+    const release = await (this.db as any).contentRelease.create({
+      data: {
+        projectId: params.projectId,
+        status: params.status,
+        createdById: params.createdById,
+        publishedAt: params.publishedAt,
+        rolledBackAt: null,
+      },
+    });
+    return this.mapRelease(release);
+  }
+
+  async createReleaseItem(
+    params: CreateReleaseItemParams
+  ): Promise<LifecycleContentReleaseItem> {
+    const item = await (this.db as any).contentReleaseItem.create({
+      data: {
+        releaseId: params.releaseId,
+        pageId: params.pageId,
+        revisionId: params.revisionId,
+        previousRevisionId: params.previousRevisionId,
+      },
+    });
+    return this.mapReleaseItem(item);
+  }
+
+  async setPublishedPagePointersAtomic(
+    params: SetPublishedPagePointersAtomicParams
+  ): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+        draftRevisionId: params.expectedDraftRevisionId,
+        publishedRevisionId: params.expectedPreviousPublishedRevisionId,
+      },
+      data: {
+        publishedRevisionId: params.newPublishedRevisionId,
+        draftRevisionId: null,
+        updatedAt: params.updatedAt ?? new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    return { updated: true, page: page ?? undefined };
+  }
+
   async recordAudit(params: RecordLifecycleAuditParams): Promise<void> {
     await logAudit({
       action: params.action,
@@ -336,6 +403,27 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
       approvedAt: raw.approvedAt,
       publishedAt: raw.publishedAt,
       derivedFromRevisionId: raw.derivedFromRevisionId,
+    };
+  }
+
+  private mapRelease(raw: any): LifecycleContentRelease {
+    return {
+      id: raw.id,
+      projectId: raw.projectId,
+      status: raw.status as ContentReleaseStatus,
+      createdById: raw.createdById,
+      createdAt: raw.createdAt,
+      publishedAt: raw.publishedAt,
+      rolledBackAt: raw.rolledBackAt,
+    };
+  }
+
+  private mapReleaseItem(raw: any): LifecycleContentReleaseItem {
+    return {
+      releaseId: raw.releaseId,
+      pageId: raw.pageId,
+      revisionId: raw.revisionId,
+      previousRevisionId: raw.previousRevisionId,
     };
   }
 }

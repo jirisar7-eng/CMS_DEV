@@ -265,6 +265,18 @@ class FakeReviewContentLifecycleStore implements ContentLifecycleStore {
     return { ...updated };
   }
 
+  async createPublishedRelease(): Promise<any> {
+    throw new Error('Not implemented in review test store');
+  }
+
+  async createReleaseItem(): Promise<any> {
+    throw new Error('Not implemented in review test store');
+  }
+
+  async setPublishedPagePointersAtomic(): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    throw new Error('Not implemented in review test store');
+  }
+
   async recordAudit(params: RecordLifecycleAuditParams): Promise<void> {
     this.auditLogs.push(params);
   }

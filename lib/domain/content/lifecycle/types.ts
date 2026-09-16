@@ -135,3 +135,36 @@ export interface RequestChangesResult {
   reviewRevision: LifecyclePageRevision;
 }
 
+export type ContentReleaseStatus = 'DRAFT' | 'PUBLISHED' | 'ROLLED_BACK';
+
+export interface LifecycleContentRelease {
+  id: string;
+  projectId: string;
+  status: ContentReleaseStatus;
+  createdById: string | null;
+  createdAt: Date;
+  publishedAt: Date | null;
+  rolledBackAt: Date | null;
+}
+
+export interface LifecycleContentReleaseItem {
+  releaseId: string;
+  pageId: string;
+  revisionId: string;
+  previousRevisionId: string | null;
+}
+
+export interface PublishApprovedInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedLockVersion: number;
+}
+
+export interface PublishApprovedResult {
+  page: LifecyclePage;
+  revision: LifecyclePageRevision;
+  release: LifecycleContentRelease;
+  releaseItem: LifecycleContentReleaseItem;
+}
+

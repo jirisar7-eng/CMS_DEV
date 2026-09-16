@@ -11,6 +11,8 @@ import {
   ApproveReviewResult,
   RequestChangesInput,
   RequestChangesResult,
+  PublishApprovedInput,
+  PublishApprovedResult,
 } from './types';
 import { validatePageContent, validateSlugSegment } from '../validation';
 import { PageContent } from '../contracts';
@@ -671,6 +673,171 @@ export class ContentLifecycleService {
         page: touchedPage,
         newDraftRevision: newDraft,
         reviewRevision: updatedReviewRevision,
+      };
+    });
+  }
+
+  async publishApproved(input: PublishApprovedInput): Promise<PublishApprovedResult> {
+    // 1. Context validation
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim()
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'actorId, projectId and pageId are required');
+    }
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+
+    if (
+      typeof input.expectedLockVersion !== 'number' ||
+      !Number.isInteger(input.expectedLockVersion) ||
+      input.expectedLockVersion < 1
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'expectedLockVersion must be a positive integer');
+    }
+
+    // 2. Authorization check (content.publish)
+    const allowed = await this.hasPermission(actorId, 'content.publish', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError('FORBIDDEN', 'Permission content.publish required');
+    }
+
+    // 3. Atomic transaction
+    return this.store.transaction(async (txStore) => {
+      // Scoped page lookup
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+      }
+
+      // Active approved revision pointer
+      if (!page.draftRevisionId) {
+        throw new ContentLifecycleError('NO_DRAFT', 'Page has no active unpublished revision pointer');
+      }
+
+      const activeRevision = await txStore.findRevisionById(page.draftRevisionId);
+      if (!activeRevision) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Active draft pointer references non-existent revision'
+        );
+      }
+
+      // Pointer integrity
+      if (activeRevision.id !== page.draftRevisionId || activeRevision.pageId !== page.id) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Active revision pointer does not match revision pageId'
+        );
+      }
+
+      // Status check (must be APPROVED)
+      if (activeRevision.status !== 'APPROVED') {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          `Cannot publish revision in ${activeRevision.status} status`
+        );
+      }
+
+      // Previous published pointer validation
+      const previousPublishedRevisionId = page.publishedRevisionId;
+      if (previousPublishedRevisionId !== null) {
+        const previousRevision = await txStore.findRevisionById(previousPublishedRevisionId);
+        if (
+          !previousRevision ||
+          previousRevision.pageId !== page.id ||
+          previousRevision.status !== 'PUBLISHED'
+        ) {
+          throw new ContentLifecycleError(
+            'POINTER_INTEGRITY_VIOLATION',
+            'Previous published revision pointer is invalid'
+          );
+        }
+      }
+
+      // Publish timestamp
+      const publishedAt = new Date();
+
+      // Atomic revision transition
+      const transitionResult = await txStore.transitionRevisionStatusAtomic({
+        pageId: page.id,
+        revisionId: activeRevision.id,
+        expectedStatus: 'APPROVED',
+        targetStatus: 'PUBLISHED',
+        expectedLockVersion: input.expectedLockVersion,
+        publishedAt,
+      });
+
+      if (!transitionResult.updated || !transitionResult.revision) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Revision was modified by another operation or expectedLockVersion mismatch'
+        );
+      }
+
+      // Create ContentRelease
+      const release = await txStore.createPublishedRelease({
+        projectId,
+        status: 'PUBLISHED',
+        createdById: actorId,
+        publishedAt,
+      });
+
+      // Create ContentReleaseItem
+      const releaseItem = await txStore.createReleaseItem({
+        releaseId: release.id,
+        pageId: page.id,
+        revisionId: activeRevision.id,
+        previousRevisionId: previousPublishedRevisionId,
+      });
+
+      // Page pointer CAS
+      const pointerResult = await txStore.setPublishedPagePointersAtomic({
+        projectId,
+        pageId: page.id,
+        expectedDraftRevisionId: activeRevision.id,
+        expectedPreviousPublishedRevisionId: previousPublishedRevisionId,
+        newPublishedRevisionId: activeRevision.id,
+        updatedAt: publishedAt,
+      });
+
+      if (!pointerResult.updated || !pointerResult.page) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Page draft or published pointers changed concurrently'
+        );
+      }
+
+      // Record audit inside transaction
+      await txStore.recordAudit({
+        action: 'CONTENT_RELEASE_PUBLISHED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'CONTENT_RELEASE',
+        resourceId: release.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          releaseId: release.id,
+          revisionId: activeRevision.id,
+          revisionNumber: activeRevision.revisionNumber,
+          previousRevisionId: previousPublishedRevisionId,
+          lockVersion: transitionResult.revision.lockVersion,
+          fromStatus: 'APPROVED',
+          toStatus: 'PUBLISHED',
+        },
+      });
+
+      return {
+        page: pointerResult.page,
+        revision: transitionResult.revision,
+        release,
+        releaseItem,
       };
     });
   }

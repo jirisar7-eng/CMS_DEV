@@ -1,4 +1,10 @@
-import { LifecyclePage, LifecyclePageRevision } from './types';
+import {
+  LifecyclePage,
+  LifecyclePageRevision,
+  LifecycleContentRelease,
+  LifecycleContentReleaseItem,
+  ContentReleaseStatus,
+} from './types';
 import { PageContent } from '../contracts';
 
 export interface CreatePageWithDraftParams {
@@ -38,6 +44,7 @@ export interface TransitionRevisionStatusAtomicParams {
   expectedLockVersion: number;
   submittedAt?: Date | null;
   approvedAt?: Date | null;
+  publishedAt?: Date | null;
 }
 
 export interface ClaimRevisionLockAtomicParams {
@@ -61,16 +68,40 @@ export interface SetPageDraftRevisionPointerParams {
   draftRevisionId: string;
 }
 
+export interface CreatePublishedReleaseParams {
+  projectId: string;
+  status: ContentReleaseStatus;
+  createdById: string;
+  publishedAt: Date;
+}
+
+export interface CreateReleaseItemParams {
+  releaseId: string;
+  pageId: string;
+  revisionId: string;
+  previousRevisionId: string | null;
+}
+
+export interface SetPublishedPagePointersAtomicParams {
+  projectId: string;
+  pageId: string;
+  expectedDraftRevisionId: string;
+  expectedPreviousPublishedRevisionId: string | null;
+  newPublishedRevisionId: string;
+  updatedAt?: Date;
+}
+
 export interface RecordLifecycleAuditParams {
   action:
     | 'CONTENT_PAGE_CREATED'
     | 'CONTENT_DRAFT_UPDATED'
     | 'CONTENT_REVIEW_SUBMITTED'
     | 'CONTENT_CHANGES_REQUESTED'
-    | 'CONTENT_REVIEW_APPROVED';
+    | 'CONTENT_REVIEW_APPROVED'
+    | 'CONTENT_RELEASE_PUBLISHED';
   scopeType: 'PROJECT';
   scopeId: string;
-  resourceType: 'PAGE' | 'PAGE_REVISION';
+  resourceType: 'PAGE' | 'PAGE_REVISION' | 'CONTENT_RELEASE';
   resourceId: string;
   actorId: string;
   metadata: Record<string, unknown>;
@@ -88,5 +119,8 @@ export interface ContentLifecycleStore {
   createDraftRevisionFromSource(params: CreateDraftRevisionFromSourceParams): Promise<LifecyclePageRevision>;
   setPageDraftRevisionPointer(params: SetPageDraftRevisionPointerParams): Promise<LifecyclePage>;
   touchPageUpdatedAt(projectId: string, pageId: string): Promise<LifecyclePage>;
+  createPublishedRelease(params: CreatePublishedReleaseParams): Promise<LifecycleContentRelease>;
+  createReleaseItem(params: CreateReleaseItemParams): Promise<LifecycleContentReleaseItem>;
+  setPublishedPagePointersAtomic(params: SetPublishedPagePointersAtomicParams): Promise<{ updated: boolean; page?: LifecyclePage }>;
   recordAudit(params: RecordLifecycleAuditParams): Promise<void>;
 }
