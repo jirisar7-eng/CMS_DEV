@@ -13,7 +13,7 @@ export function LoginForm() {
   return (
     <form action={formAction} className="space-y-6">
       {state?.error && (
-        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+        <div role="alert" className="bg-[var(--state-danger)]/10 text-[var(--state-danger)] border border-[var(--state-danger)]/20 p-3 rounded-md text-sm font-medium">
           {state.error}
         </div>
       )}
@@ -21,7 +21,7 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-[var(--color-text-primary)]"
+          className="block text-sm font-medium text-foreground"
         >
           E-mailová adresa
         </label>
@@ -32,7 +32,7 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             required
-            className="appearance-none block w-full px-3 py-2 border border-[var(--color-border)] rounded-md shadow-sm placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] sm:text-sm bg-transparent text-[var(--color-text-primary)]"
+            className="appearance-none block w-full px-3 py-2 border border-border rounded-lg shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent sm:text-sm bg-background text-foreground min-h-[44px]"
           />
         </div>
       </div>
@@ -40,7 +40,7 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="password"
-          className="block text-sm font-medium text-[var(--color-text-primary)]"
+          className="block text-sm font-medium text-foreground"
         >
           Heslo
         </label>
@@ -51,7 +51,7 @@ export function LoginForm() {
             type="password"
             autoComplete="current-password"
             required
-            className="appearance-none block w-full px-3 py-2 border border-[var(--color-border)] rounded-md shadow-sm placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] sm:text-sm bg-transparent text-[var(--color-text-primary)]"
+            className="appearance-none block w-full px-3 py-2 border border-border rounded-lg shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent sm:text-sm bg-background text-foreground min-h-[44px]"
           />
         </div>
       </div>
@@ -60,7 +60,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
+          className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 min-h-[44px] transition-colors transition-opacity"
         >
           {isPending ? 'Přihlašování...' : 'Přihlásit se'}
         </button>
