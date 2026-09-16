@@ -2,10 +2,14 @@ import 'server-only';
 import { NextRequest } from 'next/server';
 import {
   getAdminPagesService,
+  getContentLifecycleService,
   handleApiError,
   jsonSuccess,
+  parseJsonBody,
   parseListQueryParams,
   requireAuthenticatedUser,
+  validateCreatePageBody,
+  validateMutationOrigin,
   validateProjectId,
 } from '@/lib/domain/pages-api';
 
@@ -39,6 +43,51 @@ export async function GET(
       criteria,
     });
     return jsonSuccess(pages);
+  } catch (err: unknown) {
+    return handleApiError(err);
+  }
+}
+
+export const POST = async (
+  request: NextRequest,
+  context: { params: Promise<{ projectId: string }> }
+) => {
+  try {
+    validateMutationOrigin(request);
+
+    const { projectId: rawProjectId } = await context.params;
+    const projectId = validateProjectId(rawProjectId);
+
+    const user = await requireAuthenticatedUser();
+    const actorId = user.id;
+
+    const body = await parseJsonBody(request);
+    const validated = validateCreatePageBody(body);
+
+    const service = getContentLifecycleService();
+    const result = await service.createPageDraft({
+      actorId,
+      projectId,
+      key: validated.key,
+      title: validated.title,
+      slug: validated.slug,
+      locale: validated.locale,
+      visibility: validated.visibility,
+      content: validated.content,
+      parentId: validated.parentId,
+      description: validated.description,
+    });
+
+    return jsonSuccess(
+      {
+        pageId: result.page.id,
+        revisionId: result.revision.id,
+        revisionNumber: result.revision.revisionNumber,
+        lockVersion: result.revision.lockVersion,
+        status: result.revision.status,
+      },
+      201
+    );
   } catch (err: unknown) {
     return handleApiError(err);
   }

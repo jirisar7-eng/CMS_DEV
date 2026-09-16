@@ -16,8 +16,13 @@
     "lib/domain/pages-api/*",
     "app/api/admin/projects/[projectId]/pages/route.ts",
     "app/api/admin/projects/[projectId]/pages/[pageId]/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/draft/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/submit-review/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/request-changes/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/approve/route.ts",
     "tests/admin-pages-persistence.test.ts",
-    "tests/admin-pages-read-api.test.ts"
+    "tests/admin-pages-read-api.test.ts",
+    "tests/admin-pages-write-api.test.ts"
   ],
   "forbidden_paths": [
     "components/*",
