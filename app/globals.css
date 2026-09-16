@@ -45,6 +45,16 @@
 }
 
 @layer base {
+  :root,
+  .light,
+  .dark,
+  .extra-dark {
+    /* Derived Tokens */
+    --action-primary-hover: color-mix(in srgb, var(--action-primary) 88%, black);
+    --action-primary-active: color-mix(in srgb, var(--action-primary) 76%, black);
+    --border-strong: color-mix(in srgb, var(--border-default) 70%, var(--text-primary));
+  }
+
   /* Default/Light Mode Tokens */
   :root, .light {
     --brand-primary: #FF7A00;
@@ -72,11 +82,6 @@
     
     --focus-ring: #000000;
     --radius: 0.5rem;
-    
-    /* Derived Tokens */
-    --action-primary-hover: color-mix(in srgb, var(--action-primary) 88%, black);
-    --action-primary-active: color-mix(in srgb, var(--action-primary) 76%, black);
-    --border-strong: color-mix(in srgb, var(--border-default) 70%, var(--text-primary));
   }
   
   /* Dark Mode Tokens (Comfortable dark-grey) */
@@ -105,11 +110,6 @@
     --state-info: #3B82F6;
     
     --focus-ring: #FFFFFF;
-    
-    /* Derived Tokens */
-    --action-primary-hover: color-mix(in srgb, var(--action-primary) 88%, black);
-    --action-primary-active: color-mix(in srgb, var(--action-primary) 76%, black);
-    --border-strong: color-mix(in srgb, var(--border-default) 70%, var(--text-primary));
   }
 
   /* Extra Dark Mode Tokens (OLED) */
@@ -138,11 +138,6 @@
     --state-info: #3B82F6;
     
     --focus-ring: #FFFFFF;
-    
-    /* Derived Tokens */
-    --action-primary-hover: color-mix(in srgb, var(--action-primary) 88%, black);
-    --action-primary-active: color-mix(in srgb, var(--action-primary) 76%, black);
-    --border-strong: color-mix(in srgb, var(--border-default) 70%, var(--text-primary));
   }
 
   * {

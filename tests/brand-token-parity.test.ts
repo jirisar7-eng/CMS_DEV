@@ -3,39 +3,10 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { BrandVersionSchema, SYNTHESIS_ORANGE_DEFAULT } from '../lib/domain/brand/contracts';
+import { validateAllThemesAccessibility } from '../lib/domain/brand/accessibility';
 
 const globalsCssPath = path.join(process.cwd(), 'app/globals.css');
 const runtimeTsPath = path.join(process.cwd(), 'lib/domain/brand/runtime.ts');
-
-function hexToRgb(hex: string): [number, number, number] {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!result) return [0, 0, 0];
-  return [
-    parseInt(result[1], 16),
-    parseInt(result[2], 16),
-    parseInt(result[3], 16)
-  ];
-}
-
-function getLuminance(r: number, g: number, b: number): number {
-  const [rs, gs, bs] = [r / 255, g / 255, b / 255].map(c => {
-    if (c <= 0.03928) return c / 12.92;
-    return Math.pow((c + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
-}
-
-function getContrastRatio(hex1: string, hex2: string): number {
-  const rgb1 = hexToRgb(hex1);
-  const rgb2 = hexToRgb(hex2);
-  const l1 = getLuminance(rgb1[0], rgb1[1], rgb1[2]);
-  const l2 = getLuminance(rgb2[0], rgb2[1], rgb2[2]);
-  
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  
-  return (lighter + 0.05) / (darker + 0.05);
-}
 
 test('SYNTHESIS_ORANGE_DEFAULT validates through BrandVersionSchema', () => {
   const result = BrandVersionSchema.safeParse(SYNTHESIS_ORANGE_DEFAULT);
@@ -43,50 +14,22 @@ test('SYNTHESIS_ORANGE_DEFAULT validates through BrandVersionSchema', () => {
 });
 
 test('SYNTHESIS_ORANGE_DEFAULT is completely accessible', () => {
-  // Test Light mode contrast
-  const light = SYNTHESIS_ORANGE_DEFAULT.themeModes.light;
-  
-  // text.muted on canvas
-  const mutedContrast = getContrastRatio(light.text.muted, light.canvas);
-  assert.ok(mutedContrast >= 4.5, `Light text.muted contrast too low: ${mutedContrast}`);
-  
-  // action.primary on canvas (for links/standalone buttons without text)
-  const actionContrast = getContrastRatio(light.action.primary, light.canvas);
-  assert.ok(actionContrast >= 4.5, `Light action.primary contrast too low: ${actionContrast}`);
-
-  // action.primaryText on action.primary
-  const buttonContrast = getContrastRatio(light.action.primaryText, light.action.primary);
-  assert.ok(buttonContrast >= 4.5, `Light action button contrast too low: ${buttonContrast}`);
-
-  // Test Dark mode contrast
-  const dark = SYNTHESIS_ORANGE_DEFAULT.themeModes.dark!;
-  const darkMutedContrast = getContrastRatio(dark.text.muted, dark.canvas);
-  assert.ok(darkMutedContrast >= 4.5, `Dark text.muted contrast too low: ${darkMutedContrast}`);
-  
-  const darkActionContrast = getContrastRatio(dark.action.primary, dark.canvas);
-  assert.ok(darkActionContrast >= 4.5, `Dark action.primary contrast too low: ${darkActionContrast}`);
-  
-  const darkButtonContrast = getContrastRatio(dark.action.primaryText, dark.action.primary);
-  assert.ok(darkButtonContrast >= 4.5, `Dark action button contrast too low: ${darkButtonContrast}`);
-
-  // Test Extra Dark mode contrast
-  const extraDark = SYNTHESIS_ORANGE_DEFAULT.themeModes.extraDark!;
-  const extraDarkMutedContrast = getContrastRatio(extraDark.text.muted, extraDark.canvas);
-  assert.ok(extraDarkMutedContrast >= 4.5, `Extra Dark text.muted contrast too low: ${extraDarkMutedContrast}`);
-  
-  const extraDarkActionContrast = getContrastRatio(extraDark.action.primary, extraDark.canvas);
-  assert.ok(extraDarkActionContrast >= 4.5, `Extra Dark action.primary contrast too low: ${extraDarkActionContrast}`);
-  
-  const extraDarkButtonContrast = getContrastRatio(extraDark.action.primaryText, extraDark.action.primary);
-  assert.ok(extraDarkButtonContrast >= 4.5, `Extra Dark action button contrast too low: ${extraDarkButtonContrast}`);
+  const failures = validateAllThemesAccessibility(SYNTHESIS_ORANGE_DEFAULT);
+  assert.deepStrictEqual(failures, []);
 });
 
 test('Static CSS matches authoritative default brand tokens', () => {
   const css = fs.readFileSync(globalsCssPath, 'utf8');
 
-  // Verify derived tokens exist and are not hardcoded separate values per mode
-  const derivedCount = (css.match(/color-mix/g) || []).length;
-  assert.ok(derivedCount >= 9, 'Missing color-mix derivations for hover/active/border in CSS');
+  // Verify derived tokens exist exactly ONCE in a shared block for all modes
+  const derivedCount = (css.match(/--action-primary-hover:\s*color-mix/g) || []).length;
+  assert.strictEqual(derivedCount, 1, 'Missing single color-mix derivation for --action-primary-hover in CSS');
+  
+  const derivedActiveCount = (css.match(/--action-primary-active:\s*color-mix/g) || []).length;
+  assert.strictEqual(derivedActiveCount, 1, 'Missing single color-mix derivation for --action-primary-active in CSS');
+  
+  const derivedBorderCount = (css.match(/--border-strong:\s*color-mix/g) || []).length;
+  assert.strictEqual(derivedBorderCount, 1, 'Missing single color-mix derivation for --border-strong in CSS');
 
   // Helper to extract a variable value from a specific block
   const extractVar = (block: string, varName: string) => {
@@ -95,15 +38,15 @@ test('Static CSS matches authoritative default brand tokens', () => {
     return match ? match[1].trim().toUpperCase() : null;
   };
 
-  // Extract blocks
-  const rootBlockMatch = css.match(/:root,\s*\.light\s*{([^}]+)}/);
-  const rootBlock = rootBlockMatch ? rootBlockMatch[1] : '';
+  // Extract blocks (excluding the shared derived block)
+  const rootBlockMatch = css.match(/:root,\s*\.light\s*{\s*--brand-primary:([^}]+)}/);
+  const rootBlock = rootBlockMatch ? `--brand-primary:${rootBlockMatch[1]}` : '';
 
-  const darkBlockMatch = css.match(/\.dark\s*{([^}]+)}/);
-  const darkBlock = darkBlockMatch ? darkBlockMatch[1] : '';
+  const darkBlockMatch = css.match(/\.dark\s*{\s*--brand-primary:([^}]+)}/);
+  const darkBlock = darkBlockMatch ? `--brand-primary:${darkBlockMatch[1]}` : '';
 
-  const extraDarkBlockMatch = css.match(/\.extra-dark\s*{([^}]+)}/);
-  const extraDarkBlock = extraDarkBlockMatch ? extraDarkBlockMatch[1] : '';
+  const extraDarkBlockMatch = css.match(/\.extra-dark\s*{\s*--brand-primary:([^}]+)}/);
+  const extraDarkBlock = extraDarkBlockMatch ? `--brand-primary:${extraDarkBlockMatch[1]}` : '';
   
   const themeMatch = css.match(/@theme\s*{([^}]+)}/);
   const themeBlock = themeMatch ? themeMatch[1] : '';
@@ -112,17 +55,30 @@ test('Static CSS matches authoritative default brand tokens', () => {
   assert.ok(darkBlock, 'Dark block missing');
   assert.ok(extraDarkBlock, 'Extra dark block missing');
   
-  // Explicitly assert key values as requested
-  assert.strictEqual(extractVar(rootBlock, 'brand-primary'), '#FF7A00', 'Light brand.primary must be #FF7A00');
-  assert.strictEqual(extractVar(rootBlock, 'action-primary'), '#C25700', 'Light action.primary must be #C25700');
-  assert.notStrictEqual(extractVar(rootBlock, 'brand-primary'), extractVar(rootBlock, 'action-primary'), 'Light brand.primary must not equal action.primary');
-  assert.strictEqual(extractVar(extraDarkBlock, 'text-muted'), '#888888', 'Extra Dark text.muted must be #888888');
+  const checkParity = (modeName: string, block: string, tokens: any) => {
+    assert.strictEqual(extractVar(block, 'brand-primary'), tokens.brand.primary.toUpperCase(), `${modeName} brand.primary`);
+    assert.strictEqual(extractVar(block, 'brand-primary-soft'), tokens.brand.soft.toUpperCase(), `${modeName} brand.soft`);
+    assert.strictEqual(extractVar(block, 'action-primary'), tokens.action.primary.toUpperCase(), `${modeName} action.primary`);
+    assert.strictEqual(extractVar(block, 'action-primary-text'), tokens.action.primaryText.toUpperCase(), `${modeName} action.primaryText`);
+    assert.strictEqual(extractVar(block, 'text-primary'), tokens.text.primary.toUpperCase(), `${modeName} text.primary`);
+    assert.strictEqual(extractVar(block, 'text-secondary'), tokens.text.secondary.toUpperCase(), `${modeName} text.secondary`);
+    assert.strictEqual(extractVar(block, 'text-muted'), tokens.text.muted.toUpperCase(), `${modeName} text.muted`);
+    assert.strictEqual(extractVar(block, 'surface-canvas'), tokens.canvas.toUpperCase(), `${modeName} canvas`);
+    assert.strictEqual(extractVar(block, 'surface-default'), tokens.surfaceElevated.toUpperCase(), `${modeName} surfaceElevated`);
+    assert.strictEqual(extractVar(block, 'surface-subtle'), tokens.surface.toUpperCase(), `${modeName} surface`);
+    assert.strictEqual(extractVar(block, 'border-default'), tokens.border.toUpperCase(), `${modeName} border`);
+    assert.strictEqual(extractVar(block, 'link-color'), tokens.link.toUpperCase(), `${modeName} link`);
+    assert.strictEqual(extractVar(block, 'focus-ring'), tokens.focus.toUpperCase(), `${modeName} focus`);
+    assert.strictEqual(extractVar(block, 'state-success'), tokens.state.success.toUpperCase(), `${modeName} state.success`);
+    assert.strictEqual(extractVar(block, 'state-warning'), tokens.state.warning.toUpperCase(), `${modeName} state.warning`);
+    assert.strictEqual(extractVar(block, 'state-danger'), tokens.state.error.toUpperCase(), `${modeName} state.error`);
+    assert.strictEqual(extractVar(block, 'state-info'), tokens.state.info.toUpperCase(), `${modeName} state.info`);
+  };
 
-  // Verify focus ring accessibility
-  assert.strictEqual(extractVar(rootBlock, 'focus-ring'), '#000000', 'Light focus must be #000000');
-  assert.strictEqual(extractVar(darkBlock, 'focus-ring'), '#FFFFFF', 'Dark focus must be #FFFFFF');
-  assert.strictEqual(extractVar(extraDarkBlock, 'focus-ring'), '#FFFFFF', 'Extra Dark focus must be #FFFFFF');
-  
+  checkParity('Light', rootBlock, SYNTHESIS_ORANGE_DEFAULT.themeModes.light);
+  checkParity('Dark', darkBlock, SYNTHESIS_ORANGE_DEFAULT.themeModes.dark);
+  checkParity('Extra Dark', extraDarkBlock, SYNTHESIS_ORANGE_DEFAULT.themeModes.extraDark);
+
   // Verify @theme mapping exposes --color-link
   assert.ok(themeBlock.includes('--color-link: var(--link-color);'), 'theme must expose --color-link');
 });
