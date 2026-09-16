@@ -1,3 +1,4 @@
+import 'server-only';
 import { hasPermission, PermissionKey } from '@/lib/auth/rbac';
 import type { AdminPagesReadStore } from './store';
 import type {

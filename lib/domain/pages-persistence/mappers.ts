@@ -230,7 +230,7 @@ export function calculateCapabilities(
     canDuplicate: false, // Mutation not supported in this read-only adapter checkpoint
     canMove: false,      // Hierarchy mutation not supported in this checkpoint
     canArchive: false,   // Archive mutation not supported in this checkpoint
-    canPublish: perms.canPublish && (isApproved || isDraft),
+    canPublish: perms.canPublish && isApproved,
     canSave: perms.canEdit && isDraft,
     canSubmitReview: perms.canEdit && isDraft,
   };
