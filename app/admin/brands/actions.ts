@@ -6,6 +6,7 @@ import { logAudit } from '@/lib/auth/audit';
 import { getSession } from '@/lib/auth/session';
 import { BrandVersionSchema, BrandVersionData, SYNTHESIS_ORANGE_DEFAULT, getDerivedPermissionScope, validateScopeInvariant } from '@/lib/domain/brand/contracts';
 import { validateAllThemesAccessibility } from '@/lib/domain/brand/accessibility';
+import { validateBrandForPublication } from '@/lib/domain/brand/validator';
 import { revalidatePath } from 'next/cache';
 
 export async function getOrCreateBrand(scope: string, projectId?: string | null) {
@@ -135,14 +136,12 @@ export async function publishBrandDraft(draftId: string) {
     themeModes: draft.themeModes as any,
   };
 
-  const parsed = BrandVersionSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new Error("Invalid brand data structure: " + parsed.error.message);
-  }
-
-  const accessErrors = validateAllThemesAccessibility(data);
-  if (accessErrors.length > 0) {
-    throw new Error("ACCESSIBILITY_FAILED");
+  const validationResult = validateBrandForPublication(data);
+  if (!validationResult.success) {
+    if (validationResult.accessibilityFailures) {
+      throw new Error("ACCESSIBILITY_FAILED");
+    }
+    throw new Error("Invalid brand data structure");
   }
 
   await logAudit({
@@ -204,14 +203,12 @@ export async function rollbackBrand(brandId: string, targetVersionId: string) {
     themeModes: targetVersion.themeModes as any,
   };
 
-  const parsed = BrandVersionSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new Error("Invalid target version data structure: " + parsed.error.message);
-  }
-
-  const accessErrors = validateAllThemesAccessibility(data);
-  if (accessErrors.length > 0) {
-    throw new Error("ACCESSIBILITY_FAILED: Target version fails current accessibility checks.");
+  const validationResult = validateBrandForPublication(data);
+  if (!validationResult.success) {
+    if (validationResult.accessibilityFailures) {
+      throw new Error("ACCESSIBILITY_FAILED: Target version fails current accessibility checks.");
+    }
+    throw new Error("Invalid target version data structure");
   }
 
   await prisma.$transaction(async (tx) => {

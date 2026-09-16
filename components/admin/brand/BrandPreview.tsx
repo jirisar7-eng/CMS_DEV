@@ -16,7 +16,9 @@ export function BrandPreview({ brandData }: { brandData: BrandVersionData | any 
       <div className="h-12 border-b bg-card flex items-center justify-between px-4">
         <div className="flex gap-2">
           <button onClick={() => setViewport('320')} className={`px-3 py-1 text-xs rounded ${viewport === '320' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>320px</button>
+          <button onClick={() => setViewport('360')} className={`px-3 py-1 text-xs rounded ${viewport === '360' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>360px</button>
           <button onClick={() => setViewport('390')} className={`px-3 py-1 text-xs rounded ${viewport === '390' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>390px</button>
+          <button onClick={() => setViewport('430')} className={`px-3 py-1 text-xs rounded ${viewport === '430' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>430px</button>
           <button onClick={() => setViewport('768')} className={`px-3 py-1 text-xs rounded ${viewport === '768' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>768px</button>
           <button onClick={() => setViewport('desktop')} className={`px-3 py-1 text-xs rounded ${viewport === 'desktop' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>Desktop</button>
         </div>

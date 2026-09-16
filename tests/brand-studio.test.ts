@@ -105,3 +105,36 @@ test('Shared Theme Resolver', () => {
   const resolvedLight = resolveBrandTokens(null, 'light');
   assert.strictEqual(resolvedLight.canvas, '#FFFFFF');
 });
+
+test('Accessibility Validation - Explicit Failure Modes', () => {
+  const { validateAllThemesAccessibility } = require('../lib/domain/brand/accessibility');
+  const { SYNTHESIS_ORANGE_DEFAULT } = require('../lib/domain/brand/contracts');
+
+  const badData = {
+    ...SYNTHESIS_ORANGE_DEFAULT,
+    themeModes: {
+      ...SYNTHESIS_ORANGE_DEFAULT.themeModes,
+      dark: {
+        ...SYNTHESIS_ORANGE_DEFAULT.themeModes.dark,
+        text: { primary: '#121212', secondary: '#121212', muted: '#121212' }, // Dark text on dark canvas
+        action: { primary: '#121212', primaryText: '#121212' }, // bad action contrast
+        link: '#121212', // bad link contrast
+        focus: '#121212' // bad focus contrast
+      }
+    }
+  };
+
+  const failures = validateAllThemesAccessibility(badData as any);
+  
+  const hasDarkFailure = failures.some((f: any) => f.mode === 'dark');
+  const hasTextContrastFailure = failures.some((f: any) => f.pair === 'text.primary / canvas');
+  const hasActionContrastFailure = failures.some((f: any) => f.pair === 'action.primaryText / action.primary');
+  const hasLinkContrastFailure = failures.some((f: any) => f.pair === 'link / canvas');
+  const hasFocusContrastFailure = failures.some((f: any) => f.pair === 'focus / canvas');
+
+  assert.ok(hasDarkFailure, 'Must detect failures in DARK mode');
+  assert.ok(hasTextContrastFailure, 'Must detect text contrast failure');
+  assert.ok(hasActionContrastFailure, 'Must detect action contrast failure');
+  assert.ok(hasLinkContrastFailure, 'Must detect link contrast failure');
+  assert.ok(hasFocusContrastFailure, 'Must detect focus contrast failure');
+});

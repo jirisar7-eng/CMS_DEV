@@ -41,12 +41,16 @@ export const TypographySchema = z.object({
   bodyWeight: z.string().refine(v => allowedWeights.includes(v), { message: "Unsupported font weight" }),
 });
 
+const MediaAssetReference = z.string().uuid();
+
 export const AssetsSchema = z.object({
-  logoPrimary: z.string().nullable(),
-  logoDark: z.string().nullable(),
-  logoExtraDark: z.string().nullable(),
-  symbol: z.string().nullable(),
-  favicon: z.string().nullable(),
+  logoPrimary: MediaAssetReference.nullable(),
+  logoDark: MediaAssetReference.nullable(),
+  logoExtraDark: MediaAssetReference.nullable(),
+  symbol: MediaAssetReference.nullable(),
+  favicon: MediaAssetReference.nullable(),
+  appIcon: MediaAssetReference.nullable().optional(),
+  pwaIcon: MediaAssetReference.nullable().optional(),
 });
 
 export const ThemeModesSchema = z.object({
