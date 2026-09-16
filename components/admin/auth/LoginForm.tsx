@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { loginAction } from '@/app/admin/login/actions';
+import { loginAction } from '@/app/(auth)/admin/login/actions';
 
 const initialState = {
   error: null as string | null,

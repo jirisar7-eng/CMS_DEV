@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 describe('Admin Login Brand Integration', () => {
-  const pagePath = path.join(process.cwd(), 'app/admin/login/page.tsx');
+  const pagePath = path.join(process.cwd(), 'app/(auth)/admin/login/page.tsx');
   const formPath = path.join(process.cwd(), 'components/admin/auth/LoginForm.tsx');
   const pageCode = fs.readFileSync(pagePath, 'utf8');
   const formCode = fs.readFileSync(formPath, 'utf8');
@@ -101,7 +101,7 @@ describe('Admin Login Brand Integration', () => {
   it('Auth/security implementation files remain unchanged', () => {
     // This just verifies the other files didn't somehow get removed, 
     // the diff check handles actual changes
-    const authActions = fs.readFileSync(path.join(process.cwd(), 'app/admin/login/actions.ts'), 'utf8');
+    const authActions = fs.readFileSync(path.join(process.cwd(), 'app/(auth)/admin/login/actions.ts'), 'utf8');
     const authSession = fs.readFileSync(path.join(process.cwd(), 'lib/auth/session.ts'), 'utf8');
     const dbRuntime = fs.readFileSync(path.join(process.cwd(), 'lib/runtime/database.ts'), 'utf8');
     assert.ok(authActions.length > 0);
