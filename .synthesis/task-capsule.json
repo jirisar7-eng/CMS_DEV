@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
+  "task_id": "SYN-CONTENT-001-CONTENT-LIFECYCLE-FOUNDATION",
   "environment": "CMS_DEV",
-  "base_sha": "52415206dcd51612f6f51ead7fc839e53487dc5b",
-  "expected_branch": "task/SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
+  "base_sha": "be79accf674389c5d8c6aad70ba82b6547bcebfa",
+  "expected_branch": "task/SYN-CONTENT-001-CONTENT-LIFECYCLE-FOUNDATION",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
@@ -11,21 +11,23 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "app/admin/login/*",
-    "app/(auth)/admin/login/*",
-    "components/admin/auth/LoginForm.tsx",
-    "components/admin/auth/LogoutButton.tsx",
-    "tests/admin-nodb-fallback.test.ts",
-    "tests/brand-admin-login.test.ts",
-    "tests/admin-login-route-isolation.test.ts",
-    "tests/brand-admin-shell.test.ts"
+    "lib/domain/content/*",
+    "lib/domain/pages.ts",
+    "tests/content-contract.test.ts"
   ],
   "forbidden_paths": [
-    "middleware.ts",
-    "app/admin/layout.tsx",
+    "prisma/*",
+    "app/*",
+    "components/*",
     "lib/auth/*",
     "lib/runtime/*",
-    "prisma/*",
+    "lib/domain/pagesFixture.ts",
+    "lib/domain/brand/*",
+    "lib/domain/media/*",
+    "lib/domain/navigation/*",
+    "middleware.ts",
+    "package.json",
+    "package-lock.json",
     "bun.lock"
   ]
 }
