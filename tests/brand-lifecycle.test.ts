@@ -129,3 +129,79 @@ test('Lifecycle - Immutability: Cannot update a PUBLISHED version', async () => 
     assert.ok(e.message.includes('Draft not found or not in DRAFT status'));
   }
 });
+
+// ADDITIONAL LIFECYCLE TESTS
+
+test('Lifecycle - Discard DRAFT succeeds', async () => {
+  mockPrisma.brandVersion.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'd1', brandId: 'b1', status: 'DRAFT', brand: { scope: 'PROJECT', projectId: 'pA' }
+  }));
+  mockPrisma.brandVersion.delete.mock.resetCalls();
+
+  await discardBrandDraft('d1');
+
+  assert.strictEqual(mockPrisma.brandVersion.delete.mock.calls.length, 1);
+  assert.strictEqual(mockPrisma.brandVersion.delete.mock.calls[0].arguments[0].where.id, 'd1');
+});
+
+test('Lifecycle - Discard PUBLISHED fails', async () => {
+  mockPrisma.brandVersion.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'p1', brandId: 'b1', status: 'PUBLISHED', brand: { scope: 'PROJECT', projectId: 'pA' }
+  }));
+  mockPrisma.brandVersion.delete.mock.resetCalls();
+
+  try {
+    await discardBrandDraft('p1');
+    assert.fail("Should have thrown");
+  } catch(e: any) {
+    assert.ok(e.message.includes('Only drafts can be discarded'));
+  }
+  
+  assert.strictEqual(mockPrisma.brandVersion.delete.mock.calls.length, 0);
+});
+
+test('Lifecycle - Malformed draft cannot publish', async () => {
+  mockPrisma.brandVersion.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'd1', brandId: 'b1', status: 'DRAFT', version: 2,
+    brand: { id: 'b1', scope: 'SYSTEM', projectId: null },
+    tokens: {}, // missing everything
+    typography: {},
+    assets: {},
+    themeModes: {}
+  }));
+  mockPrisma.brandVersion.update.mock.resetCalls();
+  mockPrisma.brand.update.mock.resetCalls();
+
+  try {
+    await publishBrandDraft('d1');
+    assert.fail("Should have thrown");
+  } catch(e: any) {
+    assert.ok(e.message.includes('Invalid brand data structure'));
+  }
+
+  assert.strictEqual(mockPrisma.brandVersion.update.mock.calls.length, 0);
+  assert.strictEqual(mockPrisma.brand.update.mock.calls.length, 0);
+});
+
+test('Lifecycle - Invalid rollback target fails', async () => {
+  mockPrisma.brand.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'b1', scope: 'SYSTEM', projectId: null, versions: [{ version: 2 }]
+  }));
+  // Target version is a DRAFT, not PUBLISHED
+  mockPrisma.brandVersion.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'v1', brandId: 'b1', status: 'DRAFT', ...SYNTHESIS_ORANGE_DEFAULT
+  }));
+  mockPrisma.brandVersion.create.mock.resetCalls();
+  mockPrisma.brand.update.mock.resetCalls();
+
+  try {
+    await rollbackBrand('b1', 'v1');
+    assert.fail("Should have thrown");
+  } catch (e: any) {
+    assert.ok(e.message.includes('Invalid target version for rollback'));
+  }
+
+  assert.strictEqual(mockPrisma.brandVersion.create.mock.calls.length, 0);
+  assert.strictEqual(mockPrisma.brand.update.mock.calls.length, 0);
+});
+

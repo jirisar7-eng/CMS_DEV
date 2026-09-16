@@ -126,3 +126,110 @@ test('Authorization - rollbackBrand requires brand.rollback', async () => {
   assert.strictEqual(call.arguments[0], 'brand.rollback');
   assert.strictEqual(call.arguments[1], 'pA');
 });
+
+// NEGATIVE TESTS
+
+test('Negative Authorization - Update draft rejected by RBAC does not mutate DB', async () => {
+  requirePermissionMock.mock.mockImplementationOnce(() => Promise.reject(new Error('Forbidden')));
+  mockPrisma.brandVersion.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'd1', brandId: 'b1', status: 'DRAFT', brand: { scope: 'PROJECT', projectId: 'pB' }
+  }));
+  mockPrisma.brandVersion.update.mock.resetCalls();
+
+  try {
+    await updateBrandDraft('d1', { typography: {} });
+    assert.fail("Should have thrown");
+  } catch (e: any) {
+    assert.strictEqual(e.message, 'Forbidden');
+  }
+
+  assert.strictEqual(mockPrisma.brandVersion.update.mock.calls.length, 0);
+});
+
+test('Negative Authorization - Publish draft rejected by RBAC does not mutate DB', async () => {
+  requirePermissionMock.mock.mockImplementationOnce(() => Promise.reject(new Error('Forbidden')));
+  mockPrisma.brandVersion.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'd1', brandId: 'b1', status: 'DRAFT', brand: { scope: 'PROJECT', projectId: 'pB' }
+  }));
+  mockPrisma.brandVersion.update.mock.resetCalls();
+  mockPrisma.brand.update.mock.resetCalls();
+
+  try {
+    await publishBrandDraft('d1');
+    assert.fail("Should have thrown");
+  } catch (e: any) {
+    assert.strictEqual(e.message, 'Forbidden');
+  }
+
+  assert.strictEqual(mockPrisma.brandVersion.update.mock.calls.length, 0);
+  assert.strictEqual(mockPrisma.brand.update.mock.calls.length, 0);
+});
+
+test('Negative Authorization - Rollback rejected by RBAC does not mutate DB', async () => {
+  requirePermissionMock.mock.mockImplementationOnce(() => Promise.reject(new Error('Forbidden')));
+  mockPrisma.brand.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'b1', scope: 'PROJECT', projectId: 'pB', versions: []
+  }));
+  mockPrisma.brandVersion.create.mock.resetCalls();
+  mockPrisma.brand.update.mock.resetCalls();
+
+  try {
+    await rollbackBrand('b1', 'v1');
+    assert.fail("Should have thrown");
+  } catch (e: any) {
+    assert.strictEqual(e.message, 'Forbidden');
+  }
+
+  assert.strictEqual(mockPrisma.brandVersion.create.mock.calls.length, 0);
+  assert.strictEqual(mockPrisma.brand.update.mock.calls.length, 0);
+});
+
+test('Negative Authorization - SYSTEM Brand mutation rejected does not mutate DB', async () => {
+  requirePermissionMock.mock.mockImplementationOnce(() => Promise.reject(new Error('Forbidden')));
+  mockPrisma.brand.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'b1', scope: 'SYSTEM', projectId: null, versions: []
+  }));
+  mockPrisma.brandVersion.create.mock.resetCalls();
+
+  try {
+    await createBrandDraft('b1');
+    assert.fail("Should have thrown");
+  } catch (e: any) {
+    assert.strictEqual(e.message, 'Forbidden');
+  }
+
+  assert.strictEqual(mockPrisma.brandVersion.create.mock.calls.length, 0);
+});
+
+test('Negative Authorization - Discard draft rejected by RBAC does not mutate DB', async () => {
+  requirePermissionMock.mock.mockImplementationOnce(() => Promise.reject(new Error('Forbidden')));
+  mockPrisma.brandVersion.findUnique.mock.mockImplementationOnce(() => Promise.resolve({
+    id: 'd1', brandId: 'b1', status: 'DRAFT', brand: { scope: 'PROJECT', projectId: 'pB' }
+  }));
+  mockPrisma.brandVersion.delete.mock.resetCalls();
+
+  try {
+    await discardBrandDraft('d1');
+    assert.fail("Should have thrown");
+  } catch (e: any) {
+    assert.strictEqual(e.message, 'Forbidden');
+  }
+
+  assert.strictEqual(mockPrisma.brandVersion.delete.mock.calls.length, 0);
+});
+
+test('Negative Authorization - Get or create brand rejected by RBAC does not mutate DB', async () => {
+  requirePermissionMock.mock.mockImplementationOnce(() => Promise.reject(new Error('Forbidden')));
+  mockPrisma.brand.findFirst.mock.mockImplementationOnce(() => Promise.resolve(null)); // Doesn't exist
+  mockPrisma.brand.create.mock.resetCalls();
+
+  try {
+    await getOrCreateBrand('PROJECT', 'pB');
+    assert.fail("Should have thrown");
+  } catch (e: any) {
+    assert.strictEqual(e.message, 'Forbidden');
+  }
+
+  assert.strictEqual(mockPrisma.brand.create.mock.calls.length, 0);
+});
+

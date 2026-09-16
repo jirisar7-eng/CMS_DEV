@@ -24,7 +24,7 @@ export default async function RootLayout({children}: {children: React.ReactNode}
   return (
     <html lang="cs" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="light" themes={["light", "dark", "extraDark", "system"]} enableSystem disableTransitionOnChange brandData={brandData}>
+        <ThemeProvider attribute="class" defaultTheme="light" themes={["light", "dark", "extra-dark", "system"]} enableSystem disableTransitionOnChange brandData={brandData}>
           <HelpProvider>
             {children}
             <HelpPanel />

@@ -1,7 +1,5 @@
 import { prisma } from '@/lib/db';
-import { BrandVersionData, SYNTHESIS_ORANGE_DEFAULT } from './contracts';
-import { validateTokensAccessibility, ContrastFailure } from './accessibility';
-import { logAudit } from '@/lib/auth/audit';
+import { BrandVersionData, SYNTHESIS_ORANGE_DEFAULT, BrandVersionSchema } from './contracts';
 
 export class BrandRepository {
   /**
@@ -22,13 +20,25 @@ export class BrandRepository {
     if (!brand || !brand.activeVersion) {
       return SYNTHESIS_ORANGE_DEFAULT;
     }
+    
+    if (brand.activeVersion.status !== 'PUBLISHED') {
+      return SYNTHESIS_ORANGE_DEFAULT;
+    }
 
-    return {
-      tokens: brand.activeVersion.tokens as any,
-      typography: brand.activeVersion.typography as any,
-      assets: brand.activeVersion.assets as any,
-      themeModes: brand.activeVersion.themeModes as any,
+    const candidate = {
+      tokens: brand.activeVersion.tokens,
+      typography: brand.activeVersion.typography,
+      assets: brand.activeVersion.assets,
+      themeModes: brand.activeVersion.themeModes,
     };
+    
+    const parsed = BrandVersionSchema.safeParse(candidate);
+    
+    if (!parsed.success) {
+      return SYNTHESIS_ORANGE_DEFAULT;
+    }
+
+    return parsed.data;
   }
 
   /**
