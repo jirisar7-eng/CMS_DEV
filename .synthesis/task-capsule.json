@@ -37,7 +37,8 @@
     "tests/brand-logo.test.ts",
     "tests/brand-public-shell.test.ts",
     "tests/brand-token-parity.test.ts",
-    "tests/brand-visual-grammar.test.ts"
+    "tests/brand-visual-grammar.test.ts",
+    "tests/brand-admin-shell.test.ts"
   ],
   "forbidden_paths": [
     ".env",
