@@ -83,12 +83,118 @@ describe('Content Contract', () => {
                 b: 1,
                 c: true,
                 d: null
-              }
+              },
+              fallbackText: 'test'
             }
           }
         ],
       };
       assert.ok(validatePageContent(pc));
+    });
+
+    test('FAIL: module_embed unknown field', () => {
+      const pc = {
+        version: 1,
+        schemaVersion: '1.0',
+        blocks: [
+          {
+            id: 'b1',
+            type: 'module_embed',
+            order: 0,
+            data: {
+              moduleId: 'm1',
+              schemaVersion: '1.0',
+              parameters: {},
+              arbitraryUnknownField: true
+            }
+          }
+        ],
+      };
+      assert.throws(() => validatePageContent(pc), /Unknown top-level field in module_embed: arbitraryUnknownField/);
+    });
+
+    test('FAIL: module_embed html field', () => {
+      const pc = {
+        version: 1,
+        schemaVersion: '1.0',
+        blocks: [
+          {
+            id: 'b1',
+            type: 'module_embed',
+            order: 0,
+            data: {
+              moduleId: 'm1',
+              schemaVersion: '1.0',
+              parameters: {},
+              html: '<div>test</div>'
+            }
+          }
+        ],
+      };
+      assert.throws(() => validatePageContent(pc), /Unknown top-level field in module_embed: html/);
+    });
+
+    test('FAIL: module_embed rawHtml field', () => {
+      const pc = {
+        version: 1,
+        schemaVersion: '1.0',
+        blocks: [
+          {
+            id: 'b1',
+            type: 'module_embed',
+            order: 0,
+            data: {
+              moduleId: 'm1',
+              schemaVersion: '1.0',
+              parameters: {},
+              rawHtml: '<div>test</div>'
+            }
+          }
+        ],
+      };
+      assert.throws(() => validatePageContent(pc), /Unknown top-level field in module_embed: rawHtml/);
+    });
+    
+    test('FAIL: module_embed script field', () => {
+      const pc = {
+        version: 1,
+        schemaVersion: '1.0',
+        blocks: [
+          {
+            id: 'b1',
+            type: 'module_embed',
+            order: 0,
+            data: {
+              moduleId: 'm1',
+              schemaVersion: '1.0',
+              parameters: {},
+              script: 'alert(1)'
+            }
+          }
+        ],
+      };
+      assert.throws(() => validatePageContent(pc), /Unknown top-level field in module_embed: script/);
+    });
+
+    test('FAIL: module_embed source field', () => {
+      const pc = {
+        version: 1,
+        schemaVersion: '1.0',
+        blocks: [
+          {
+            id: 'b1',
+            type: 'module_embed',
+            order: 0,
+            data: {
+              moduleId: 'm1',
+              schemaVersion: '1.0',
+              parameters: {},
+              source: 'test'
+            }
+          }
+        ],
+      };
+      assert.throws(() => validatePageContent(pc), /Unknown top-level field in module_embed: source/);
     });
 
     test('FAIL: duplicate block id', () => {

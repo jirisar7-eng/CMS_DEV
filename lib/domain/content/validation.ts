@@ -159,6 +159,14 @@ function validateBlocks(blocks: unknown[], depth: number, state: { blockCount: n
 }
 
 function validateModuleEmbed(data: Record<string, unknown>) {
+  // Only allow explicitly known top-level fields
+  const allowedKeys = new Set(['moduleId', 'schemaVersion', 'parameters', 'fallbackText']);
+  for (const key of Object.keys(data)) {
+    if (!allowedKeys.has(key)) {
+      throw new Error(`Unknown top-level field in module_embed: ${key}`);
+    }
+  }
+
   if (typeof data.moduleId !== 'string' || data.moduleId.length === 0 || data.moduleId.length > 255) {
     throw new Error('Invalid moduleId');
   }
@@ -171,7 +179,7 @@ function validateModuleEmbed(data: Record<string, unknown>) {
     throw new Error('parameters must be a plain object');
   }
 
-  for (const [k, v] of Object.entries(data.parameters)) {
+  for (const [k, v] of Object.entries(data.parameters as Record<string, unknown>)) {
     if (v !== null && typeof v !== 'string' && typeof v !== 'number' && typeof v !== 'boolean') {
       throw new Error(`Invalid parameter value for ${k}`);
     }
