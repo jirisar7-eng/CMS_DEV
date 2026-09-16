@@ -19,11 +19,12 @@
     "tests/content-schema-foundation.test.ts",
     "lib/auth/rbac.ts",
     "scripts/bootstrap-admin.ts",
-    "tests/content-rbac-foundation.test.ts"
+    "tests/content-rbac-foundation.test.ts",
+    "lib/auth/audit.ts",
+    "tests/content-lifecycle-draft.test.ts"
   ],
   "forbidden_paths": [
     "lib/auth/session.ts",
-    "lib/auth/audit.ts",
     "lib/domain/pagesFixture.ts",
     "app/*",
     "components/*",

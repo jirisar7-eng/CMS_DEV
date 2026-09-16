@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import type { Prisma } from '@prisma/client';
 import { getSession } from './session';
 
 export type AuditAction =
@@ -18,7 +19,9 @@ export type AuditAction =
   | 'BRAND_ROLLED_BACK'
   | 'BRAND_ASSET_CHANGED'
   | 'MEDIA_ASSET_CREATED'
-  | 'MEDIA_ASSET_DELETED';
+  | 'MEDIA_ASSET_DELETED'
+  | 'CONTENT_PAGE_CREATED'
+  | 'CONTENT_DRAFT_UPDATED';
 
 export type ScopeType = 'SYSTEM' | 'PROJECT';
 
@@ -30,6 +33,7 @@ interface AuditLogOptions {
   resourceId?: string | null;
   metadata?: Record<string, any>;
   actorId?: string | null; // Defaults to current session user if not provided
+  tx?: Prisma.TransactionClient | any;
 }
 
 export async function logAudit(options: AuditLogOptions): Promise<void> {
@@ -52,7 +56,9 @@ export async function logAudit(options: AuditLogOptions): Promise<void> {
   if (cleanMetadata.token) delete cleanMetadata.token;
   if (cleanMetadata.secret) delete cleanMetadata.secret;
 
-  await prisma.auditLog.create({
+  const db = options.tx ?? prisma;
+
+  await db.auditLog.create({
     data: {
       action: options.action,
       scopeType: options.scopeType,
