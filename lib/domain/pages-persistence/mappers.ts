@@ -225,7 +225,7 @@ export function calculateCapabilities(
 
   return {
     canOpen: perms.canView,
-    canEdit: perms.canEdit,
+    canEdit: perms.canEdit && isDraft,
     canPreview: perms.canView,
     canDuplicate: false, // Mutation not supported in this read-only adapter checkpoint
     canMove: false,      // Hierarchy mutation not supported in this checkpoint

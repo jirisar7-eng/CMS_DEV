@@ -110,6 +110,20 @@ export interface GetPageByIdParams {
   pageId: string;
 }
 
+export interface AdminPageLifecycleState {
+  activeRevisionId: string;
+  revisionNumber: number;
+  lockVersion: number;
+  status: PersistenceRevisionStatus;
+  draftRevisionId: string | null;
+  publishedRevisionId: string | null;
+}
+
+export interface PageDetailWithLifecycle {
+  page: PageDetail;
+  lifecycle: AdminPageLifecycleState;
+}
+
 export type PermissionChecker = (
   actorId: string,
   permission: PermissionKey,

@@ -471,7 +471,7 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
   });
 
   describe('CAPABILITIES', () => {
-    it('A. DRAFT + all permissions: canPublish === false, canSave === true, canSubmitReview === true', async () => {
+    it('A. DRAFT + all permissions: canPublish === false, canSave === true, canSubmitReview === true, canEdit === true', async () => {
       const store = new FakeAdminPagesReadStore();
       const draftRev = createValidRevision({ status: 'DRAFT' });
       const page = createValidPage({ draftRevision: draftRev });
@@ -485,9 +485,10 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       assert.strictEqual(caps.canPublish, false);
       assert.strictEqual(caps.canSave, true);
       assert.strictEqual(caps.canSubmitReview, true);
+      assert.strictEqual(caps.canEdit, true);
     });
 
-    it('B. IN_REVIEW + all permissions: canPublish === false, canSave === false, canSubmitReview === false', async () => {
+    it('B. IN_REVIEW + all permissions: canPublish === false, canSave === false, canSubmitReview === false, canEdit === false', async () => {
       const store = new FakeAdminPagesReadStore();
       const inReviewRev = createValidRevision({ status: 'IN_REVIEW' });
       const page = createValidPage({ draftRevision: inReviewRev });
@@ -501,9 +502,10 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       assert.strictEqual(caps.canPublish, false);
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canEdit, false);
     });
 
-    it('C. APPROVED + content.publish: canPublish === true, canSave === false, canSubmitReview === false', async () => {
+    it('C. APPROVED + content.publish: canPublish === true, canSave === false, canSubmitReview === false, canEdit === false', async () => {
       const store = new FakeAdminPagesReadStore();
       const approvedRev = createValidRevision({ status: 'APPROVED' });
       const page = createValidPage({ draftRevision: approvedRev });
@@ -517,9 +519,10 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       assert.strictEqual(caps.canPublish, true);
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canEdit, false);
     });
 
-    it('D. APPROVED without content.publish: canPublish === false', async () => {
+    it('D. APPROVED without content.publish: canPublish === false, canEdit === false', async () => {
       const store = new FakeAdminPagesReadStore();
       const approvedRev = createValidRevision({ status: 'APPROVED' });
       const page = createValidPage({ draftRevision: approvedRev });
@@ -535,9 +538,10 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       const caps = pages[0].capabilities;
 
       assert.strictEqual(caps.canPublish, false);
+      assert.strictEqual(caps.canEdit, false);
     });
 
-    it('E. PUBLISHED + all permissions: canPublish === false', async () => {
+    it('E. PUBLISHED + all permissions: canPublish === false, canEdit === false', async () => {
       const store = new FakeAdminPagesReadStore();
       const pubRev = createValidRevision({ status: 'PUBLISHED' });
       const page = createValidPage({
@@ -555,6 +559,7 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       assert.strictEqual(caps.canPublish, false);
       assert.strictEqual(caps.canSave, false);
       assert.strictEqual(caps.canSubmitReview, false);
+      assert.strictEqual(caps.canEdit, false);
     });
   });
 
@@ -615,6 +620,41 @@ describe('SYN-CONTENT-002: Admin Pages Persistence Adapter', () => {
       assert.strictEqual(detail.activity[0].action, 'CONTENT_PAGE_CREATED');
       assert.strictEqual(detail.activity[0].details, 'Stránka byla vytvořena');
       assert.strictEqual(JSON.stringify(detail.activity).includes('LEAK_ME_NOT'), false);
+    });
+
+    it('getPageByIdWithLifecycle returns page details and concurrency lifecycle metadata', async () => {
+      const store = new FakeAdminPagesReadStore();
+      const rev1 = createValidRevision({
+        id: 'rev-1',
+        revisionNumber: 3,
+        lockVersion: 4,
+        status: 'DRAFT',
+      });
+      const page = createValidPage({
+        draftRevisionId: 'rev-1',
+        draftRevision: rev1,
+        publishedRevisionId: 'rev-prev',
+      });
+      store.pages = [page];
+      store.revisions = [rev1];
+
+      const service = new AdminPagesService(store, async () => true);
+      const result = await service.getPageByIdWithLifecycle({
+        actorId: 'user-admin',
+        projectId: 'proj-alpha',
+        pageId: 'page-1',
+      });
+
+      assert.ok(result);
+      assert.strictEqual(result.page.id, 'page-1');
+      assert.deepStrictEqual(result.lifecycle, {
+        activeRevisionId: 'rev-1',
+        revisionNumber: 3,
+        lockVersion: 4,
+        status: 'DRAFT',
+        draftRevisionId: 'rev-1',
+        publishedRevisionId: 'rev-prev',
+      });
     });
 
     it('corrupt JSON / invalid content throws CONTENT_INTEGRITY_VIOLATION', async () => {

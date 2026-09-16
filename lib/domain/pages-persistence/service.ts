@@ -9,6 +9,9 @@ import type {
   GetPageTreeParams,
   GetPageByIdParams,
   PermissionChecker,
+  AdminPageLifecycleState,
+  PageDetailWithLifecycle,
+  PersistenceRevisionStatus,
 } from './types';
 import { AdminPagesPersistenceError } from './types';
 import {
@@ -167,10 +170,12 @@ export class AdminPagesService {
   }
 
   /**
-   * Retrieves full page details for a single page within the specified project.
+   * Retrieves full page details and lifecycle concurrency metadata for a single page.
    * Returns null if page does not exist or does not belong to the project.
    */
-  async getPageById(params: GetPageByIdParams): Promise<PageDetail | null> {
+  async getPageByIdWithLifecycle(
+    params: GetPageByIdParams
+  ): Promise<PageDetailWithLifecycle | null> {
     this.validateActorAndProject(params.actorId, params.projectId);
 
     if (
@@ -238,7 +243,7 @@ export class AdminPagesService {
     };
     const caps = calculateCapabilities(perms, activeRev);
 
-    return mapToPageDetail(
+    const pageDetail = mapToPageDetail(
       page,
       activeRev,
       revisions,
@@ -247,5 +252,28 @@ export class AdminPagesService {
       usersMap,
       caps
     );
+
+    const lifecycle: AdminPageLifecycleState = {
+      activeRevisionId: activeRev.id,
+      revisionNumber: activeRev.revisionNumber,
+      lockVersion: activeRev.lockVersion,
+      status: activeRev.status as PersistenceRevisionStatus,
+      draftRevisionId: page.draftRevisionId,
+      publishedRevisionId: page.publishedRevisionId,
+    };
+
+    return {
+      page: pageDetail,
+      lifecycle,
+    };
+  }
+
+  /**
+   * Retrieves full page details for a single page within the specified project.
+   * Returns null if page does not exist or does not belong to the project.
+   */
+  async getPageById(params: GetPageByIdParams): Promise<PageDetail | null> {
+    const result = await this.getPageByIdWithLifecycle(params);
+    return result ? result.page : null;
   }
 }

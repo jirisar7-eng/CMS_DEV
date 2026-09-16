@@ -13,17 +13,20 @@
     ".synthesis/task-capsule.json",
     "lib/domain/pages.ts",
     "lib/domain/pages-persistence/*",
-    "tests/admin-pages-persistence.test.ts"
+    "lib/domain/pages-api/*",
+    "app/api/admin/projects/[projectId]/pages/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/route.ts",
+    "tests/admin-pages-persistence.test.ts",
+    "tests/admin-pages-read-api.test.ts"
   ],
   "forbidden_paths": [
-    "app/*",
     "components/*",
     "lib/domain/pagesFixture.ts",
     "lib/domain/content/lifecycle/*",
     "lib/auth/session.ts",
     "lib/auth/rbac.ts",
-    "middleware.ts",
     "prisma/*",
+    "middleware.ts",
     "scripts/bootstrap-admin.ts",
     "package.json",
     "package-lock.json",
