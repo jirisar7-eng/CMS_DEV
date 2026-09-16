@@ -56,20 +56,15 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
     <div className="flex h-screen bg-muted/30 overflow-hidden">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <button type="button" aria-label="Zavřít navigaci" className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden border-0 outline-none w-full h-full cursor-pointer p-0 m-0" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-card border-r transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex md:flex-col shadow-lg md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[min(18rem,calc(100vw-2rem))] md:w-72 bg-card border-r transition-transform duration-[var(--duration-slow)] ease-in-out md:translate-x-0 md:static md:flex md:flex-col shadow-lg md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand header */}
         <div className="flex items-center justify-between h-16 px-4 border-b shrink-0">
           <Link href="/admin" className="flex items-center gap-2.5 font-bold text-base text-foreground tracking-tight">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-black shadow-xs">
-              S
-            </div>
+            <SynthesisLogo variant="admin-compact" size={28} decorative />
             <div className="flex flex-col">
               <span className="leading-tight">Synthesis CMS</span>
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
@@ -121,7 +116,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
-                  className="w-full flex items-center justify-between px-2.5 py-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors cursor-pointer"
+                  className="w-full min-h-11 flex items-center justify-between px-2.5 py-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors cursor-pointer"
                 >
                   <span>{group.name}</span>
                   <div className="flex items-center gap-1.5">
@@ -129,7 +124,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
                       {group.items.length}
                     </span>
                     <ChevronDown
-                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      className={`w-3.5 h-3.5 transition-transform duration-[var(--duration-normal)] ${
                         isCollapsed ? '-rotate-90' : 'rotate-0'
                       }`}
                     />
@@ -150,7 +145,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
                         <Link
                           key={item.id}
                           href={item.href}
-                          className={`flex items-center justify-between gap-2.5 px-2.5 py-2 text-xs font-medium rounded-lg transition-colors min-h-[38px] ${
+                          className={`flex items-center justify-between gap-2.5 px-2.5 py-2 text-xs font-medium rounded-lg transition-colors min-h-11 ${
                             isActive
                               ? 'bg-primary/10 text-primary font-bold border-l-4 border-l-primary shadow-sm'
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
@@ -164,7 +159,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
                           {item.status === 'FUNKČNÍ' && (
                             <span
                               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                isActive ? 'bg-primary' : 'bg-emerald-500'
+                                isActive ? 'bg-primary' : 'bg-[var(--state-success)]'
                               }`}
                               title="Funkční"
                             />
@@ -173,7 +168,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
                             <span
                               className={`text-[9px] px-1 py-0.2 rounded border uppercase shrink-0 font-bold ${
                                 isActive ? 'border-primary/40 text-primary'
-                                  : 'border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                                  : 'border-[var(--state-warning)]/30 text-[var(--state-warning)] bg-[var(--state-warning)]/10'
                               }`}
                             >
                               Plán

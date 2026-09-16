@@ -22,6 +22,9 @@ export function applyThemeToRoot(brandData: BrandVersionData | undefined, resolv
   root.style.setProperty('--text-muted', tokens.text.muted);
   
   root.style.setProperty('--border-default', tokens.border);
+  
+  root.style.setProperty('--link-color', tokens.link);
+  
   root.style.setProperty('--focus-ring', tokens.focus);
   
   root.style.setProperty('--state-success', tokens.state.success);

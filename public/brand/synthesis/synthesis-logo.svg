@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 32" width="190" height="32" fill="none">
+  <g transform="translate(0, 0)">
+    <path d="M25 8H13C9.68629 8 7 10.6863 7 14C7 17.3137 9.68629 20 13 20H19" stroke="#FF7A00" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M7 24H19C22.3137 24 25 21.3137 25 18C25 14.6863 22.3137 12 19 12H13" stroke="#FF7A00" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="40" y="23" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="20" letter-spacing="-0.05em" fill="#1F1F1F">Synthesis CMS</text>
+</svg>

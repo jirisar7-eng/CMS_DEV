@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { SynthesisLogo } from '@/components/brand/SynthesisLogo';
@@ -8,11 +9,11 @@ export function PublicHeader() {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { label: 'Produkt', href: '#produkt' },
-    { label: 'Funkce', href: '#funkce' },
-    { label: 'Dokumentace', href: '#dokumentace' },
-    { label: 'Licence', href: '#licence' },
-    { label: 'Technické požadavky', href: '#pozadavky' },
+    { label: 'Funkce', href: '/features' },
+    { label: 'Dokumentace', href: '/docs' },
+    { label: 'Ceník a licence', href: '/pricing' },
+    { label: 'Požadavky', href: '/requirements' },
+    { label: 'Bezpečnost', href: '/security' },
   ];
 
   return (
@@ -40,7 +41,7 @@ export function PublicHeader() {
           <div className="hidden md:block">
             <Link 
               href="/admin" 
-              className="text-sm font-medium px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+              className="text-sm font-medium px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity shadow-sm"
             >
               Administrace
             </Link>
@@ -48,9 +49,12 @@ export function PublicHeader() {
 
           <div className="md:hidden">
             <button 
+              type="button"
               onClick={() => setIsOpen(!isOpen)}
-              className="p-2 text-muted-foreground hover:text-foreground focus:outline-none"
-              aria-label="Toggle menu"
+              className="touch-target inline-flex items-center justify-center p-2 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+              aria-label="Přepnout menu"
+              aria-expanded={isOpen}
+              aria-controls="public-navigation-mobile"
             >
               {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -59,14 +63,14 @@ export function PublicHeader() {
       </div>
 
       {isOpen && (
-        <div className="md:hidden border-t border-border bg-background">
+        <div id="public-navigation-mobile" className="md:hidden border-t border-border bg-background">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map(link => (
               <Link 
                 key={link.href} 
                 href={link.href} 
                 onClick={() => setIsOpen(false)}
-                className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
                 {link.label}
               </Link>
@@ -74,7 +78,7 @@ export function PublicHeader() {
             <Link 
               href="/admin" 
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-md text-base font-medium text-primary hover:bg-primary/10 mt-4"
+              className="block px-3 py-2 rounded-md text-base font-medium text-primary hover:bg-secondary mt-4 transition-colors"
             >
               Administrace
             </Link>

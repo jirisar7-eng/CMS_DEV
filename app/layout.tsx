@@ -11,7 +11,12 @@ const inter = Inter({ subsets: ['latin', 'latin-ext'] });
 
 export const metadata: Metadata = {
   title: 'Synthesis CMS',
+  applicationName: 'Synthesis CMS',
   description: 'Modulární redakční systém platformy Synthesis pro správu stránek, obsahu a hierarchie.',
+  icons: {
+    icon: { url: '/brand/synthesis/favicon.svg', type: 'image/svg+xml' },
+    shortcut: { url: '/brand/synthesis/favicon.svg', type: 'image/svg+xml' },
+  }
 };
 
 export default async function RootLayout({children}: {children: React.ReactNode}) {
