@@ -16,7 +16,15 @@ export type PermissionKey =
   | 'roles.view'
   | 'roles.manage'
   | 'audit.view'
-  | 'system.manage';
+  | 'system.manage'
+  | 'content.view'
+  | 'content.create'
+  | 'content.edit'
+  | 'content.review'
+  | 'content.approve'
+  | 'content.publish'
+  | 'content.rollback'
+  | 'content.archive';
 
 export async function hasPermission(
   userId: string,

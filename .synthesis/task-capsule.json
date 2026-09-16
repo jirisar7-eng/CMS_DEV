@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
+  "task_id": "SYN-CONTENT-001-CONTENT-LIFECYCLE-FOUNDATION",
   "environment": "CMS_DEV",
-  "base_sha": "52415206dcd51612f6f51ead7fc839e53487dc5b",
-  "expected_branch": "task/SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
+  "base_sha": "be79accf674389c5d8c6aad70ba82b6547bcebfa",
+  "expected_branch": "task/SYN-CONTENT-001-CONTENT-LIFECYCLE-FOUNDATION",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
@@ -11,21 +11,33 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "app/admin/login/*",
-    "app/(auth)/admin/login/*",
-    "components/admin/auth/LoginForm.tsx",
-    "components/admin/auth/LogoutButton.tsx",
-    "tests/admin-nodb-fallback.test.ts",
-    "tests/brand-admin-login.test.ts",
-    "tests/admin-login-route-isolation.test.ts",
-    "tests/brand-admin-shell.test.ts"
+    "lib/domain/content/*",
+    "lib/domain/pages.ts",
+    "tests/content-contract.test.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "tests/content-schema-foundation.test.ts",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "tests/content-rbac-foundation.test.ts",
+    "lib/auth/audit.ts",
+    "tests/content-lifecycle-draft.test.ts",
+    "tests/content-lifecycle-review.test.ts",
+    "tests/content-lifecycle-publish.test.ts",
+    "tests/content-lifecycle-rollback.test.ts"
   ],
   "forbidden_paths": [
+    "lib/auth/session.ts",
+    "lib/domain/pagesFixture.ts",
+    "app/*",
+    "components/*",
     "middleware.ts",
-    "app/admin/layout.tsx",
-    "lib/auth/*",
     "lib/runtime/*",
-    "prisma/*",
+    "lib/domain/brand/*",
+    "lib/domain/media/*",
+    "lib/domain/navigation/*",
+    "package.json",
+    "package-lock.json",
     "bun.lock"
   ]
 }
