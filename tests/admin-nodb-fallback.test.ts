@@ -5,8 +5,8 @@ import path from 'node:path';
 
 const dbHelperPath = path.join(process.cwd(), 'lib/runtime/database.ts');
 const sessionPath = path.join(process.cwd(), 'lib/auth/session.ts');
-const actionsPath = path.join(process.cwd(), 'app/admin/login/actions.ts');
-const loginPagePath = path.join(process.cwd(), 'app/admin/login/page.tsx');
+const actionsPath = path.join(process.cwd(), 'app/(auth)/admin/login/actions.ts');
+const loginPagePath = path.join(process.cwd(), 'app/(auth)/admin/login/page.tsx');
 
 const readFile = (p: string) => fs.readFileSync(p, 'utf8');
 

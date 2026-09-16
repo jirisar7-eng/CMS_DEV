@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { logoutAction } from '@/app/admin/login/actions';
+import { logoutAction } from '@/app/(auth)/admin/login/actions';
 import { LogOut } from 'lucide-react';
 
 export function LogoutButton() {

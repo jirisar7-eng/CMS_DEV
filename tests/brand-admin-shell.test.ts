@@ -73,7 +73,7 @@ describe('Admin Shell Brand Integration', () => {
   });
 
   it('Auth/security files were not modified by this commit', () => {
-    const authActions = fs.readFileSync(path.join(process.cwd(), 'app/admin/login/actions.ts'), 'utf8');
+    const authActions = fs.readFileSync(path.join(process.cwd(), 'app/(auth)/admin/login/actions.ts'), 'utf8');
     const authSession = fs.readFileSync(path.join(process.cwd(), 'lib/auth/session.ts'), 'utf8');
     const dbRuntime = fs.readFileSync(path.join(process.cwd(), 'lib/runtime/database.ts'), 'utf8');
     assert.ok(authActions.length > 0);
