@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
+  "task_id": "SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION",
   "environment": "CMS_DEV",
-  "base_sha": "c0f3b9f776db98c9f7d9ad2c4931067d279e4b59",
-  "expected_branch": "task/SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
+  "base_sha": "2cf4fcb9a4353bc2c48883fd1e4061631358d41c",
+  "expected_branch": "task/SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
@@ -11,17 +11,26 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "app/admin/*",
-    "components/admin/*",
-    "lib/navigation/adminNav.ts",
-    "app/api/admin/health/*",
-    "tests/admin-capability-status.test.ts"
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "components/admin/AdminShell.tsx",
+    "components/admin/ProjectSelector.tsx",
+    "lib/domain/pages-client/project-context.ts",
+    "lib/domain/pages-client/server-context.ts",
+    "lib/domain/pages-client/useProject.ts",
+    "app/api/admin/projects/route.ts",
+    "app/admin/pages/*",
+    "app/admin/projects/*",
+    "app/admin/settings/*",
+    "components/admin/AdminDashboard.tsx",
+    "tests/*",
+    "docs/architecture/SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION.md",
+    "docs/notion/*",
+    "scripts/ci/*"
   ],
   "forbidden_paths": [
-    "lib/auth/session.ts",
-    "lib/auth/rbac.ts",
-    "prisma/*",
-    "middleware.ts",
     "package.json",
     "package-lock.json",
     "bun.lock"

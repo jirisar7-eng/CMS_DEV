@@ -5,36 +5,30 @@ import { hasPermission } from '@/lib/auth/rbac';
 
 export async function GET(request: Request) {
   try {
-    const session = await getSession();
-    if (!session || session.user.status !== 'ACTIVE') {
+    const { session, user } = await getSession();
+    if (!user || user.status !== 'ACTIVE') {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Check if user has global project view permission
-    const hasGlobalView = await hasPermission(session.user.id, 'projects.view', null);
+    const allProjects = await prisma.project.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' }
+    });
 
-    let projects;
-
-    if (hasGlobalView) {
-      // User can see all projects
-      projects = await prisma.project.findMany({
-        orderBy: { createdAt: 'desc' }
-      });
-    } else {
-      // User can only see projects they have explicit roles in
-      const userRoles = await prisma.userRole.findMany({
-        where: { userId: session.user.id, projectId: { not: null } },
-        select: { projectId: true }
-      });
-      const projectIds = Array.from(new Set(userRoles.map(ur => ur.projectId as string)));
-      
-      projects = await prisma.project.findMany({
-        where: { id: { in: projectIds } },
-        orderBy: { createdAt: 'desc' }
-      });
+    // We must evaluate RBAC for each project individually
+    // using the canonical hasPermission algorithm.
+    // We check if the user has either 'admin.access' or 'projects.view'
+    // for each specific project. (Global permissions will return true here too).
+    const authorizedProjects = [];
+    for (const project of allProjects) {
+      const canAccessAdmin = await hasPermission(user.id, 'admin.access', project.id);
+      const canViewProject = await hasPermission(user.id, 'projects.view', project.id);
+      if (canAccessAdmin || canViewProject) {
+        authorizedProjects.push(project);
+      }
     }
 
-    return NextResponse.json(projects);
+    return NextResponse.json(authorizedProjects);
   } catch (error) {
     console.error('GET /api/admin/projects error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
