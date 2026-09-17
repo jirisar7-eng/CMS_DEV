@@ -1,20 +1,31 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-SEC-004-DEPENDENCY-HARDENING",
+  "task_id": "SYN-PUCK-001-VISUAL-EDITOR-FOUNDATION",
   "environment": "CMS_DEV",
-  "base_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
-  "expected_branch": "task/SYN-SEC-004-DEPENDENCY-HARDENING",
-  "owner": "VPS",
+  "base_sha": "c0f3b9f776db98c9f7d9ad2c4931067d279e4b59",
+  "expected_branch": "task/SYN-PUCK-001-VISUAL-EDITOR-FOUNDATION",
+  "owner": "VPS_AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
-    "DEPENDENCY"
+    "DEPENDENCY",
+    "CODE",
+    "TEST"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
     "package.json",
-    "package-lock.json"
+    "package-lock.json",
+    "lib/domain/puck/*",
+    "tests/puck-adapter-foundation.test.ts"
   ],
   "forbidden_paths": [
-    "bun.lock"
+    "bun.lock",
+    "app/api/*",
+    "prisma/*",
+    "middleware.ts",
+    "lib/auth/*",
+    "lib/domain/content/lifecycle/*",
+    "components/admin/composer/PageComposerWorkspace.tsx",
+    "app/admin/pages/*"
   ]
 }
