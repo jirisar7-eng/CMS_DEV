@@ -19,7 +19,7 @@ export default function ImportExportPage() {
       group="DATA"
       title="Import a export dat (Portabilita)"
       description="Zálohování, export celého projektu do standardního JSON/ZIP archivu a migrace obsahu."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="data.import_export.view"
       emptyTitle="Zatím nebyl vygenerován žádný exportní balíček"
       emptyDescription="Kliknutím níže můžete vygenerovat kompletní zálohu projektu."

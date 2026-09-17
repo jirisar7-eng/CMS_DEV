@@ -24,7 +24,7 @@ export default function SessionsPage() {
       group="BEZPEČNOST"
       title="Relace a přihlášená zařízení"
       description="Přehled aktivních přihlášených zařízení k vašemu účtu s možností okamžitého vzdáleného odhlášení."
-      status="UI PŘIPRAVENO"
+      status="ZÁKLAD"
       helpKey="security.sessions.view"
       emptyTitle="Nebyly nalezeny žádné aktivní relace"
       emptyDescription="Seznam přihlášených relací se zobrazí po přihlášení."

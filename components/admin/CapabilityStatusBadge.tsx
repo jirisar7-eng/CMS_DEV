@@ -1,9 +1,9 @@
 "use client";
 
 import React from 'react';
-import { CheckCircle2, Sparkles, Clock, AlertCircle, FlaskConical } from 'lucide-react';
+import { CheckCircle2, CheckCheck, Sparkles, Clock, AlertCircle, Layers } from 'lucide-react';
 
-export type CapabilityStatus = 'FUNKČNÍ' | 'PROTOTYP' | 'UI PŘIPRAVENO' | 'PLÁNOVÁNO' | 'VYPNUTO';
+export type CapabilityStatus = 'PLÁNOVÁNO' | 'POUZE UI' | 'ZÁKLAD' | 'FUNKČNÍ' | 'DOKONČENO' | 'VYPNUTO';
 
 interface CapabilityStatusBadgeProps {
   status: CapabilityStatus;
@@ -13,6 +13,13 @@ interface CapabilityStatusBadgeProps {
 export function CapabilityStatusBadge({ status, size = 'md' }: CapabilityStatusBadgeProps) {
   const getBadgeConfig = () => {
     switch (status) {
+      case 'DOKONČENO':
+        return {
+          label: 'DOKONČENO',
+          icon: CheckCheck,
+          className:
+            'bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/20 dark:border-teal-500/30',
+        };
       case 'FUNKČNÍ':
         return {
           label: 'FUNKČNÍ',
@@ -20,16 +27,16 @@ export function CapabilityStatusBadge({ status, size = 'md' }: CapabilityStatusB
           className:
             'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/30',
         };
-      case 'PROTOTYP':
+      case 'ZÁKLAD':
         return {
-          label: 'PROTOTYP',
-          icon: FlaskConical,
+          label: 'ZÁKLAD',
+          icon: Layers,
           className:
             'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/20 dark:border-indigo-500/30',
         };
-      case 'UI PŘIPRAVENO':
+      case 'POUZE UI':
         return {
-          label: 'UI PŘIPRAVENO',
+          label: 'POUZE UI',
           icon: Sparkles,
           className:
             'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20 dark:border-sky-500/30',

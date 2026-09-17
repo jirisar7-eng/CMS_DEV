@@ -31,7 +31,7 @@ export default function AnalyticsPage() {
       group="DATA"
       title="Webová analytika (Privacy-First)"
       description="Metriky návštěvnosti a chování uživatelů bez sledovacích cookies v plném souladu s GDPR."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="data.analytics.view"
       emptyTitle="Zatím nebyla zaznamenána žádná data o návštěvnosti"
       emptyDescription="Statistiky návštěvnosti se začnou generovat automaticky po prvních přístupech na web."
@@ -41,7 +41,7 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
           {/* Truthfulness Notice Banner */}
           <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Stav schopnosti: UI PŘIPRAVENO (Ukázková data)</span>
+            <span className="font-bold block">Stav schopnosti: POUZE UI (Ukázková data)</span>
             <span>
               Analytický datový sklad a sběr metrik návštěvnosti nejsou v této fázi připojeny. Níže uvedená čísla a grafy představují ukázková data rozhraní.
             </span>

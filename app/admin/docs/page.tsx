@@ -26,7 +26,7 @@ export default function DocsPage() {
       group="PLATFORMA"
       title="Systémová dokumentace"
       description="Referenční příručka pro administrátory, redaktory a vývojáře pracující se Synthesis CMS."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="tools.docs.view"
       emptyTitle="Dokumentace zatím nebyla vygenerována"
       emptyDescription="Kliknutím níže načtěte aktuální verzi systémové dokumentace."

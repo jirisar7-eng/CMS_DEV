@@ -304,7 +304,7 @@ export const NavigationWorkspace: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
               Správa navigace a menu
             </h1>
-            <CapabilityStatusBadge status="PROTOTYP" />
+            <CapabilityStatusBadge status="POUZE UI" />
             <HelpTrigger helpKey="navigation.manager" />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">

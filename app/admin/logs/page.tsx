@@ -29,7 +29,7 @@ export default function LogsPage() {
       group="SYSTÉM"
       title="Protokoly a systémové logy"
       description="Živé streamování aplikačních logů, ladění chybových stavů a monitorování síťových požadavků."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="system.logs.view"
       emptyTitle="Zatím nebyly zaznamenány žádné logy"
       emptyDescription="Systémové logy se začnou zobrazovat po zpracování prvních požadavků."

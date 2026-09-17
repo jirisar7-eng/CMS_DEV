@@ -18,7 +18,7 @@ export default function SettingsPage() {
       group="SYSTÉM"
       title="Globální systémové nastavení"
       description="Konfigurace základních systémových parametrů, lokalizace, výchozího jazyka a časového pásma."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="system.settings.view"
       emptyTitle="Nastavení systému není dostupné"
       emptyDescription="Kliknutím níže obnovte výchozí konfiguraci systému."

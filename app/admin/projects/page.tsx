@@ -49,7 +49,7 @@ export default function ProjectsPage() {
       group="PLATFORMA"
       title="Správa projektů a prostředí"
       description="Přepínání mezi webovými projekty, izolace prostředí (DEV, STAGING, PROD) a správa projektových tenantů."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="platform.projects.view"
       emptyTitle="Zatím nebyl založen žádný další projekt"
       emptyDescription="Vytvořte nový nezávislý webový projekt v rámci Synthesis ekosystému."

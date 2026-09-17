@@ -24,7 +24,7 @@ export default function NotificationsPage() {
       group="KOMUNIKACE"
       title="Centrum notifikací"
       description="Přehled systémových a redakčních upozornění, žádostí o schválení a bezpečnostních výstrah."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="communication.notifications.view"
       emptyTitle="Nemáte žádná nová upozornění"
       emptyDescription="Všechny zprávy byly přečteny. Jakmile se v systému něco stane, uvidíte to zde."

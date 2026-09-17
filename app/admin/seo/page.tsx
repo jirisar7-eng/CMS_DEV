@@ -21,7 +21,7 @@ export default function SeoPage() {
       group="OBSAH"
       title="SEO a metadata"
       description="Globální optimalizace pro vyhledávače, Open Graph karty pro sociální sítě a správa sitemap.xml."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="content.seo.view"
       emptyTitle="SEO konfigurace zatím nebyla nastavena"
       emptyDescription="Kliknutím níže načtěte výchozí doporučenou SEO šablonu."

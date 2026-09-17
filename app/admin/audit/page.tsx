@@ -30,7 +30,7 @@ export default function AuditPage() {
       group="SPRÁVA"
       title="Bezpečnostní auditní protokol"
       description="Neměnný záznam všech redakčních zásahů, přihlášení a bezpečnostních událostí v systému."
-      status="UI PŘIPRAVENO"
+      status="ZÁKLAD"
       helpKey="management.audit.view"
       emptyTitle="Auditní protokol je prázdný"
       emptyDescription="V systému zatím nebyly zaznamenány žádné auditované události."

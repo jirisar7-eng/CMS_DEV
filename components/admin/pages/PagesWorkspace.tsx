@@ -234,7 +234,7 @@ export function PagesWorkspace({ projectId: propProjectId }: PagesWorkspaceProps
             <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
               OBSAH
             </span>
-            <CapabilityStatusBadge status="PROTOTYP" size="sm" />
+            <CapabilityStatusBadge status="FUNKČNÍ" size="sm" />
           </div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">

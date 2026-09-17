@@ -164,14 +164,56 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
                               title="Funkční"
                             />
                           )}
+                          {item.status === 'DOKONČENO' && (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                isActive ? 'bg-primary' : 'bg-teal-500'
+                              }`}
+                              title="Dokončeno"
+                            />
+                          )}
+                          {item.status === 'ZÁKLAD' && (
+                            <span
+                              className={`text-[9px] px-1 py-0.2 rounded border uppercase shrink-0 font-bold ${
+                                isActive
+                                  ? 'border-primary/40 text-primary'
+                                  : 'border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/10'
+                              }`}
+                              title="Základní implementace"
+                            >
+                              Základ
+                            </span>
+                          )}
+                          {item.status === 'POUZE UI' && (
+                            <span
+                              className={`text-[9px] px-1 py-0.2 rounded border uppercase shrink-0 font-bold ${
+                                isActive
+                                  ? 'border-primary/40 text-primary'
+                                  : 'border-sky-500/30 text-sky-600 dark:text-sky-400 bg-sky-500/10'
+                              }`}
+                              title="Pouze rozhraní"
+                            >
+                              UI
+                            </span>
+                          )}
                           {item.status === 'PLÁNOVÁNO' && (
                             <span
                               className={`text-[9px] px-1 py-0.2 rounded border uppercase shrink-0 font-bold ${
-                                isActive ? 'border-primary/40 text-primary'
+                                isActive
+                                  ? 'border-primary/40 text-primary'
                                   : 'border-[var(--state-warning)]/30 text-[var(--state-warning)] bg-[var(--state-warning)]/10'
                               }`}
+                              title="Plánováno"
                             >
                               Plán
+                            </span>
+                          )}
+                          {item.status === 'VYPNUTO' && (
+                            <span
+                              className="text-[9px] px-1 py-0.2 rounded border uppercase shrink-0 font-bold border-slate-500/30 text-slate-500 bg-slate-500/10"
+                              title="Vypnuto"
+                            >
+                              Vypnuto
                             </span>
                           )}
                         </Link>

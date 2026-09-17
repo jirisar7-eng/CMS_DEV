@@ -1,20 +1,29 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-SEC-004-DEPENDENCY-HARDENING",
+  "task_id": "SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
   "environment": "CMS_DEV",
-  "base_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
-  "expected_branch": "task/SYN-SEC-004-DEPENDENCY-HARDENING",
-  "owner": "VPS",
+  "base_sha": "c0f3b9f776db98c9f7d9ad2c4931067d279e4b59",
+  "expected_branch": "task/SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
+  "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
   "allowed_mutation_types": [
-    "DEPENDENCY"
+    "CODE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "package.json",
-    "package-lock.json"
+    "app/admin/*",
+    "components/admin/*",
+    "lib/navigation/adminNav.ts",
+    "app/api/admin/health/*",
+    "tests/admin-capability-status.test.ts"
   ],
   "forbidden_paths": [
+    "lib/auth/session.ts",
+    "lib/auth/rbac.ts",
+    "prisma/*",
+    "middleware.ts",
+    "package.json",
+    "package-lock.json",
     "bun.lock"
   ]
 }
