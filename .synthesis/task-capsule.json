@@ -1,38 +1,12 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION",
+  "task_id": "SYN-NAV-001-NAVIGATION-FOUNDATION",
   "environment": "CMS_DEV",
-  "base_sha": "2cf4fcb9a4353bc2c48883fd1e4061631358d41c",
-  "expected_branch": "task/SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION",
+  "base_sha": "91c947eb8dcf91995e5c06ba3859f7d862277fa7",
+  "expected_branch": "task/SYN-NAV-001-NAVIGATION-FOUNDATION",
   "owner": "AI_STUDIO",
   "status": "IN_PROGRESS",
-  "allowed_mutation_types": [
-    "CODE"
-  ],
-  "allowed_paths": [
-    ".synthesis/task-capsule.json",
-    "prisma/schema.prisma",
-    "prisma/migrations/*",
-    "lib/auth/rbac.ts",
-    "scripts/bootstrap-admin.ts",
-    "components/admin/AdminShell.tsx",
-    "components/admin/ProjectSelector.tsx",
-    "lib/domain/pages-client/project-context.ts",
-    "lib/domain/pages-client/server-context.ts",
-    "lib/domain/pages-client/useProject.ts",
-    "app/api/admin/projects/route.ts",
-    "app/admin/pages/*",
-    "app/admin/projects/*",
-    "app/admin/settings/*",
-    "components/admin/AdminDashboard.tsx",
-    "tests/*",
-    "docs/architecture/SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION.md",
-    "docs/notion/*",
-    "scripts/ci/*"
-  ],
-  "forbidden_paths": [
-    "package.json",
-    "package-lock.json",
-    "bun.lock"
-  ]
+  "allowed_mutation_types": ["CODE", "SCHEMA", "CONFIG"],
+  "allowed_paths": ["*"],
+  "forbidden_paths": ["package-lock.json", "bun.lock"]
 }
