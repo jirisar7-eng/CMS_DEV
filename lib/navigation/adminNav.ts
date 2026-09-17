@@ -397,9 +397,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/projects',
         icon: FolderKanban,
         group: 'PLATFORMA',
-        status: 'POUZE UI',
+        status: 'ZÁKLAD',
         helpKey: 'platform.projects.view',
-        description: 'Přepínání projektů a správa vývojových prostředí.',
+        description: 'Autorizovaný registr projektů, přepínání projektového kontextu a tenantová izolace.',
       },
       {
         id: 'project-packs',
