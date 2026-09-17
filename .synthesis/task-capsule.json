@@ -5,16 +5,30 @@
   "base_sha": "91c947eb8dcf91995e5c06ba3859f7d862277fa7",
   "expected_branch": "task/SYN-NAV-001-NAVIGATION-FOUNDATION",
   "owner": "AI_STUDIO",
-  "status": "COMPLETED",
+  "status": "IN_PROGRESS",
   "allowed_mutation_types": [
     "CODE",
     "SCHEMA",
     "CONFIG"
   ],
   "allowed_paths": [
-    "*"
+    ".synthesis/task-capsule.json",
+    "app/api/admin/navigation/*",
+    "app/api/public/navigation/route.ts",
+    "components/admin/navigation/*",
+    "docs/architecture/SYN-NAV-001-NAVIGATION-FOUNDATION.md",
+    "lib/auth/rbac.ts",
+    "lib/domain/navigation/*",
+    "lib/domain/pages-client/server-context.ts",
+    "lib/navigation/adminNav.ts",
+    "prisma/migrations/*",
+    "prisma/schema.prisma",
+    "scripts/bootstrap-admin.ts",
+    "tests/navigation-*.test.ts",
+    "tests/navigation-foundation.test.ts"
   ],
   "forbidden_paths": [
+    "package.json",
     "package-lock.json",
     "bun.lock"
   ]

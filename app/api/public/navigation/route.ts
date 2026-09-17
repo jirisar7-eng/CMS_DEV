@@ -1,17 +1,74 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
+import { normalizeAdminProjectId } from '@/lib/domain/pages-client/project-context';
+import { formatPublicNavigation } from '@/lib/domain/navigation/validation';
+import { cookies } from 'next/headers';
 
-export async function GET() {
-  const context = await getActiveProjectContext();
-  if (context.status !== 'PROJECT_VALID' || !context.projectId) {
-    return NextResponse.json({ error: context.status }, { status: 403 });
+/**
+ * Resolves a safe public project context without requiring admin session/RBAC.
+ */
+export async function resolvePublicProjectContext(req?: Request): Promise<string | null> {
+  let requestedProject: string | null = null;
+  
+  if (req) {
+    try {
+      const url = new URL(req.url);
+      requestedProject = normalizeAdminProjectId(
+        url.searchParams.get('projectId') || 
+        url.searchParams.get('project') || 
+        url.searchParams.get('siteId')
+      );
+      if (!requestedProject) {
+        requestedProject = normalizeAdminProjectId(req.headers.get('x-project-id'));
+      }
+    } catch {
+      // safe fallback
+    }
   }
 
+  if (!requestedProject) {
+    try {
+      const cookieStore = await cookies();
+      requestedProject = normalizeAdminProjectId(cookieStore.get('syn_project_id')?.value);
+    } catch {
+      // outside cookie context
+    }
+  }
+
+  if (requestedProject) {
+    const project = await prisma.project.findFirst({
+      where: {
+        OR: [
+          { id: requestedProject },
+          { key: requestedProject }
+        ],
+        status: 'ACTIVE'
+      },
+      select: { id: true }
+    });
+    return project?.id || null;
+  }
+
+  // Safe fallback to first active project if not explicitly scoped
+  const defaultProject = await prisma.project.findFirst({
+    where: { status: 'ACTIVE' },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true }
+  });
+
+  return defaultProject?.id || null;
+}
+
+export async function GET(req: Request) {
   try {
+    const projectId = await resolvePublicProjectContext(req);
+    if (!projectId) {
+      return NextResponse.json({ error: 'PROJECT_NOT_FOUND' }, { status: 404 });
+    }
+
     const navSets = await prisma.navigationSet.findMany({
       where: { 
-        projectId: context.projectId,
+        projectId,
         status: 'PUBLISHED'
       },
       include: {
@@ -23,24 +80,8 @@ export async function GET() {
       orderBy: { name: 'asc' }
     });
 
-    const formattedSets = navSets.map(set => ({
-      key: set.key,
-      name: set.name,
-      context: set.context,
-      items: set.items.map(item => ({
-        id: item.id,
-        parentId: item.parentId,
-        type: item.type,
-        label: item.label,
-        pageId: item.pageId,
-        externalUrl: item.externalUrl,
-        anchor: item.anchor,
-        icon: item.icon,
-        openInNewTab: item.openInNewTab,
-      })),
-    }));
-
-    return NextResponse.json(formattedSets);
+    const result = formatPublicNavigation(navSets);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching public navigation:', error);
     return NextResponse.json({ error: 'Failed to fetch public navigation' }, { status: 500 });
