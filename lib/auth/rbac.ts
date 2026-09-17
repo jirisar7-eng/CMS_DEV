@@ -26,7 +26,12 @@ export type PermissionKey =
   | 'content.approve'
   | 'content.publish'
   | 'content.rollback'
-  | 'content.archive';
+  | 'content.archive'
+  | 'navigation.view'
+  | 'navigation.create'
+  | 'navigation.edit'
+  | 'navigation.delete'
+  | 'navigation.publish';
 
 export async function hasPermission(
   userId: string,

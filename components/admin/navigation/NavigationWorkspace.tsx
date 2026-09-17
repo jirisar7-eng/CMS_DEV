@@ -116,7 +116,7 @@ export const NavigationWorkspace: React.FC = () => {
   const brokenReferences = useMemo<BrokenPageReference[]>(() => {
     if (!activeSet) return [];
     return navigationRepository
-      .checkBrokenReferences(activeSet.items, validPageIds)
+      .checkBrokenReferences(activeSet.items, validPageIds, activeSet.key, activeSet.name)
       .filter((b) => b.navSetKey === activeSet.key);
   }, [activeSet, validPageIds]);
 

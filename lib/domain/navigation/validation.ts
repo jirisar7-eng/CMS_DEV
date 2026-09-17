@@ -116,6 +116,23 @@ export function flattenAndCalculateDepths(
 
   traverse(null, 0, []);
 
+  // Detect any disconnected cycles where no item in the loop has parentId === null
+  for (const item of sorted) {
+    if (!visited.has(item.id) && item.parentId !== null) {
+      const trace: string[] = [item.id];
+      let curr: string | null = item.parentId;
+      while (curr !== null) {
+        if (trace.includes(curr)) {
+          cycleErrors.push(`Detekován cyklus ve stromu navigace u položky ${item.id} (${item.label}).`);
+          break;
+        }
+        trace.push(curr);
+        const parentItem = itemMap.get(curr);
+        curr = parentItem?.parentId ?? null;
+      }
+    }
+  }
+
   // Catch any disconnected/orphaned items
   sorted.forEach((item) => {
     if (!visited.has(item.id)) {
@@ -181,4 +198,57 @@ export function validateNavigationTree(items: NavigationItem[]): NavigationValid
     errors,
     warnings,
   };
+}
+
+export interface PublicNavigationItem {
+  id: string;
+  parentId: string | null;
+  type: string;
+  label: string;
+  pageId: string | null;
+  externalUrl: string | null;
+  anchor: string | null;
+  icon: string | null;
+  openInNewTab: boolean;
+  order: number;
+}
+
+export interface PublicNavigationSet {
+  key: string;
+  name: string;
+  context: string;
+  description?: string;
+  items: PublicNavigationItem[];
+}
+
+/**
+ * Transforms raw DB navigation sets into public format:
+ * - only PUBLISHED sets
+ * - only visible items
+ * - NO admin metadata (no projectId, status, version, createdAt, updatedAt, audit fields)
+ */
+export function formatPublicNavigation(navSets: any[]): PublicNavigationSet[] {
+  return navSets
+    .filter(set => set.status === 'PUBLISHED')
+    .map(set => ({
+      key: set.key,
+      name: set.name,
+      context: set.context,
+      ...(set.description ? { description: set.description } : {}),
+      items: (set.items || [])
+        .filter((item: any) => item.visibility !== false)
+        .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+        .map((item: any) => ({
+          id: item.id,
+          parentId: item.parentId ?? null,
+          type: item.type,
+          label: item.label,
+          pageId: item.pageId ?? null,
+          externalUrl: item.externalUrl ?? null,
+          anchor: item.anchor ?? null,
+          icon: item.icon ?? null,
+          openInNewTab: item.openInNewTab ?? false,
+          order: item.order ?? 0,
+        })),
+    }));
 }
