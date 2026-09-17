@@ -30,7 +30,8 @@
     "tests/editor-*.test.ts",
     "tests/puck-*.test.ts",
     "package.json",
-    "package-lock.json"
+    "package-lock.json",
+    "tests/puck-integration-security.test.ts"
   ],
   "forbidden_paths": [
     "bun.lock"
