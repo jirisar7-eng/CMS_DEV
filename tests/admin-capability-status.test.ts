@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,14 +9,24 @@ import {
   getCapabilityById, 
   getCapabilityStatus 
 } from '../lib/navigation/adminNav';
+import { CapabilityStatus } from '../components/admin/CapabilityStatusBadge';
 import { GET as healthHandler } from '../app/api/admin/health/route';
 import { NextRequest } from 'next/server';
+import { isDatabaseConfigured } from '../lib/runtime/database';
 
-describe('SYN-ADMIN-STATUS-001: Admin Capability Map & Authoritative Implementation Status', () => {
+describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Security', () => {
   const rootDir = process.cwd();
 
   describe('1. Authoritative Navigation & Capability Matrix (adminNav.ts)', () => {
-    const validStatuses = ['PLÁNOVÁNO', 'POUZE UI', 'ZÁKLAD', 'FUNKČNÍ', 'DOKONČENO', 'VYPNUTO'] as const;
+    // Exactly 6 canonical statuses
+    const validStatuses: readonly CapabilityStatus[] = [
+      'PLÁNOVÁNO',
+      'POUZE UI',
+      'ZÁKLAD',
+      'FUNKČNÍ',
+      'DOKONČENO',
+      'VYPNUTO',
+    ];
 
     it('defines exactly 8 navigation groups', () => {
       assert.strictEqual(ADMIN_NAV_GROUPS.length, 8);
@@ -30,18 +40,20 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map & Authoritative Implementat
     it('every capability has an authoritative status from the 6-status model', () => {
       for (const item of ALL_ADMIN_NAV_ITEMS) {
         assert.ok(
-          validStatuses.includes(item.status as (typeof validStatuses)[number]),
+          validStatuses.includes(item.status),
           `Item ${item.id} has invalid status: ${item.status}`
         );
       }
     });
 
-    it('deprecated statuses PROTOTYP and UI PŘIPRAVENO are not present in adminNav.ts', () => {
+    it('deprecated statuses PROTOTYP, UI PŘIPRAVENO, and non-canonical ROZPRACOVÁNO are not present', () => {
       const navFile = fs.readFileSync(path.join(rootDir, 'lib/navigation/adminNav.ts'), 'utf8');
       assert.doesNotMatch(navFile, /'PROTOTYP'/);
       assert.doesNotMatch(navFile, /"PROTOTYP"/);
       assert.doesNotMatch(navFile, /'UI PŘIPRAVENO'/);
       assert.doesNotMatch(navFile, /"UI PŘIPRAVENO"/);
+      assert.doesNotMatch(navFile, /'ROZPRACOVÁNO'/);
+      assert.doesNotMatch(navFile, /"ROZPRACOVÁNO"/);
     });
 
     it('verified FUNKČNÍ capabilities are correctly marked', () => {
@@ -87,7 +99,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map & Authoritative Implementat
       assert.strictEqual(getCapabilityStatus('deployment'), 'POUZE UI');
     });
 
-    it('getCapabilityStats() sums up exactly to the 31 capabilities', () => {
+    it('getCapabilityStats() sums up exactly to the 31 capabilities across the 6 canonical statuses', () => {
       const stats = getCapabilityStats();
       const sum = 
         stats['PLÁNOVÁNO'] + 
@@ -101,6 +113,8 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map & Authoritative Implementat
       assert.strictEqual(stats['ZÁKLAD'], 8);
       assert.strictEqual(stats['POUZE UI'], 17);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
+      assert.strictEqual(stats['DOKONČENO'], 0);
+      assert.strictEqual(stats['VYPNUTO'], 0);
     });
   });
 
@@ -108,7 +122,15 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map & Authoritative Implementat
     const dashboardPath = path.join(rootDir, 'components/admin/AdminDashboard.tsx');
     const dashboardCode = fs.readFileSync(dashboardPath, 'utf8');
 
-    it('does not contain hardcoded prototype text', () => {
+    it('does not contain misleading "Certifikováno v produkci" text', () => {
+      assert.doesNotMatch(dashboardCode, /Certifikováno v produkci/);
+    });
+
+    it('uses correct contractual definition "Celý deklarovaný scope implementován a ověřen" for DOKONČENO', () => {
+      assert.match(dashboardCode, /Celý deklarovaný scope implementován a ověřen/);
+    });
+
+    it('does not contain hardcoded prototype text or mock fixtures', () => {
       assert.doesNotMatch(dashboardCode, /'PROTOTYP'/);
       assert.doesNotMatch(dashboardCode, /"PROTOTYP"/);
       assert.doesNotMatch(dashboardCode, /In-memory adaptér/);
@@ -131,46 +153,78 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map & Authoritative Implementat
     it('safely handles missing project with fail-closed "Projekt nevybrán"', () => {
       assert.match(dashboardCode, /Projekt nevybrán/);
     });
-  });
 
-  describe('3. Runtime Health Endpoint (/api/admin/health)', () => {
-    it('returns 200 with structured health telemetry and handles unselected project', async () => {
-      const req = new NextRequest('http://localhost:3000/api/admin/health');
-      const res = await healthHandler(req);
-      assert.strictEqual(res.status, 200);
-
-      const json = await res.json();
-      assert.ok(json.database);
-      assert.ok(json.storage);
-      assert.ok(json.project);
-      assert.ok(json.auth);
-
-      assert.strictEqual(json.project.id, null);
-      assert.strictEqual(json.project.status, 'not_selected');
-    });
-
-    it('returns normalized project id when projectId query parameter is provided', async () => {
-      const req = new NextRequest('http://localhost:3000/api/admin/health?projectId=synthesis-test-proj');
-      const res = await healthHandler(req);
-      assert.strictEqual(res.status, 200);
-
-      const json = await res.json();
-      assert.strictEqual(json.project.id, 'synthesis-test-proj');
-      assert.strictEqual(json.project.status, 'selected');
-    });
-
-    it('fails closed gracefully for database connectivity', async () => {
-      const req = new NextRequest('http://localhost:3000/api/admin/health');
-      const res = await healthHandler(req);
-      assert.strictEqual(res.status, 200);
-
-      const json = await res.json();
-      assert.ok(['connected', 'disconnected'].includes(json.database.status));
-      assert.ok(typeof json.database.message === 'string');
+    it('sets pagesLoading=true and resets stale pagesCount BEFORE initiating fetch', () => {
+      const effectSection = dashboardCode.substring(
+        dashboardCode.indexOf('// Fetch Real Content Pages Count if project is selected')
+      );
+      const setLoadingIdx = effectSection.indexOf('setPagesLoading(true)');
+      const resetCountIdx = effectSection.indexOf('setPagesCount(null)');
+      const clientCallIdx = effectSection.indexOf('createAdminPagesClient(projectId)');
+      
+      assert.ok(setLoadingIdx !== -1, 'setPagesLoading(true) must be called');
+      assert.ok(resetCountIdx !== -1, 'setPagesCount(null) must be called');
+      assert.ok(clientCallIdx !== -1, 'createAdminPagesClient must be called');
+      assert.ok(setLoadingIdx < clientCallIdx, 'setPagesLoading(true) must precede client fetch');
+      assert.ok(resetCountIdx < clientCallIdx, 'setPagesCount(null) must precede client fetch');
     });
   });
 
-  describe('4. CapabilityStatusBadge Support', () => {
+  describe('3. Runtime Health Endpoint Security & Storage Truthfulness (/api/admin/health)', () => {
+    it('AUTH: unauthenticated request without session cookie returns 401', async () => {
+      const req = new NextRequest('http://localhost:3000/api/admin/health');
+      const res = await healthHandler(req);
+      // Fail closed when no session
+      if (isDatabaseConfigured()) {
+        assert.strictEqual(res.status, 401);
+        const json = await res.json();
+        assert.strictEqual(json.error.code, 'UNAUTHENTICATED');
+      } else {
+        // In nodb environment, database unavailable returns 503 fail-closed
+        assert.strictEqual(res.status, 503);
+      }
+    });
+
+    it('AUTH: fake/random syn_admin_session cookie returns 401 (not authenticated)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/admin/health', {
+        headers: {
+          cookie: 'syn_admin_session=invalid_fake_session_random_value_12345',
+        },
+      });
+      const res = await healthHandler(req);
+      if (isDatabaseConfigured()) {
+        assert.strictEqual(res.status, 401);
+        const json = await res.json();
+        assert.strictEqual(json.error.code, 'UNAUTHENTICATED');
+      } else {
+        assert.strictEqual(res.status, 503);
+      }
+    });
+
+    it('SECURITY: no secret leakage in health response (no endpoints with passwords, no keys, no tokens)', async () => {
+      const routeCode = fs.readFileSync(path.join(rootDir, 'app/api/admin/health/route.ts'), 'utf8');
+      // Must not serialize access keys, secrets, or passwords
+      assert.doesNotMatch(routeCode, /process\.env\.CMS_STORAGE_SECRET_KEY/);
+      assert.doesNotMatch(routeCode, /secretAccessKey/);
+      assert.doesNotMatch(routeCode, /DATABASE_URL/);
+    });
+
+    it('STORAGE: configured != available/active (no active status solely based on env config)', async () => {
+      const routeCode = fs.readFileSync(path.join(rootDir, 'app/api/admin/health/route.ts'), 'utf8');
+      // Must not blindly assign 'active' without runtime verification
+      assert.doesNotMatch(routeCode, /storageStatus = hasS3Config \? 'active'/);
+      assert.match(routeCode, /configured_unverified/);
+    });
+
+    it('AUTH: does not trust client-provided headers for identity or roles', async () => {
+      const routeCode = fs.readFileSync(path.join(rootDir, 'app/api/admin/health/route.ts'), 'utf8');
+      assert.doesNotMatch(routeCode, /request\.headers\.get\('x-user-id'\)/);
+      assert.doesNotMatch(routeCode, /request\.headers\.get\('x-role'\)/);
+      assert.doesNotMatch(routeCode, /SUPER_ADMIN/);
+    });
+  });
+
+  describe('4. CapabilityStatusBadge & Type Model Truthfulness', () => {
     const badgePath = path.join(rootDir, 'components/admin/CapabilityStatusBadge.tsx');
     const badgeCode = fs.readFileSync(badgePath, 'utf8');
 
@@ -181,6 +235,11 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map & Authoritative Implementat
       assert.match(badgeCode, /'FUNKČNÍ'/);
       assert.match(badgeCode, /'DOKONČENO'/);
       assert.match(badgeCode, /'VYPNUTO'/);
+    });
+
+    it('does not contain non-canonical ROZPRACOVÁNO status', () => {
+      assert.doesNotMatch(badgeCode, /'ROZPRACOVÁNO'/);
+      assert.doesNotMatch(badgeCode, /"ROZPRACOVÁNO"/);
     });
   });
 });

@@ -104,10 +104,16 @@ export function AdminDashboard() {
   // Fetch Real Content Pages Count if project is selected
   useEffect(() => {
     if (!projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPagesCount(null);
+      setPagesLoading(false);
       return;
     }
 
     let isMounted = true;
+    // Set loading true BEFORE initiating request and reset stale page count
+    setPagesLoading(true);
+    setPagesCount(null);
 
     Promise.resolve()
       .then(() => {
@@ -364,7 +370,7 @@ export function AdminDashboard() {
               {maturityStats['DOKONČENO']}
             </div>
             <span className="text-[10px] text-muted-foreground block">
-              Certifikováno v produkci
+              Celý deklarovaný scope implementován a ověřen
             </span>
           </div>
 
