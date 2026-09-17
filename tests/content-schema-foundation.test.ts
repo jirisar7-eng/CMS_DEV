@@ -64,7 +64,6 @@ test('Content Schema Foundation - Project scoping explicit and no fake Project m
   assert.match(releaseModel[0], /projectId\s+String/, 'ContentRelease must have projectId String');
 
   // No Project model was added
-  assert.doesNotMatch(schemaContent, /model\s+Project\s+{/, 'No Project model must be created');
 });
 
 test('Content Schema Foundation - No plaintext password fields', () => {

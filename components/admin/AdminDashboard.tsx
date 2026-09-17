@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useActiveProject } from '@/lib/domain/pages-client/useProject';
 import { HelpTrigger } from '@/components/help/HelpTrigger';
 import { CapabilityStatusBadge, CapabilityStatus } from './CapabilityStatusBadge';
 import { ADMIN_NAV_GROUPS, ALL_ADMIN_NAV_ITEMS, getCapabilityStats } from '@/lib/navigation/adminNav';
@@ -48,9 +49,9 @@ interface RuntimeHealthData {
 }
 
 export function AdminDashboard() {
-  const searchParams = useSearchParams();
-  const rawProjectId = searchParams.get('projectId');
-  const projectId = normalizeAdminProjectId(rawProjectId);
+  // const searchParams = useSearchParams();
+  // const rawProjectId = searchParams.get('projectId');
+  const projectId = useActiveProject();
 
   // Runtime Health State
   const [health, setHealth] = useState<RuntimeHealthData | null>(null);

@@ -17,6 +17,8 @@ export type PermissionKey =
   | 'roles.manage'
   | 'audit.view'
   | 'system.manage'
+  | 'projects.view'
+  | 'projects.manage'
   | 'content.view'
   | 'content.create'
   | 'content.edit'

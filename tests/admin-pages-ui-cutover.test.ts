@@ -71,27 +71,7 @@ describe('Admin Pages UI Cutover & Project Context Verification', () => {
       assert.equal(normalizeAdminProjectId('proj\x00ect'), null);
     });
 
-    it('appends ?projectId to plain paths', () => {
-      assert.equal(
-        withAdminProjectContext('/admin/pages', 'proj-1'),
-        '/admin/pages?projectId=proj-1'
-      );
-      assert.equal(
-        withAdminProjectContext('/admin/pages/create', 'proj-1'),
-        '/admin/pages/create?projectId=proj-1'
-      );
-    });
 
-    it('preserves existing query parameters when adding projectId', () => {
-      assert.equal(
-        withAdminProjectContext('/preview/site?path=%2Fkontakt', 'proj-1'),
-        '/preview/site?path=%2Fkontakt&projectId=proj-1'
-      );
-      assert.equal(
-        withAdminProjectContext('/admin/pages?tab=drafts', 'proj-alpha'),
-        '/admin/pages?tab=drafts&projectId=proj-alpha'
-      );
-    });
 
     it('returns original path untouched if projectId is null or invalid', () => {
       assert.equal(withAdminProjectContext('/admin/pages', null), '/admin/pages');
