@@ -1,9 +1,3 @@
-
-function setCookie(id: string) {
-  if (typeof document !== 'undefined') {
-    document.cookie = `syn_project_id=${id}; path=/; max-age=31536000`;
-  }
-}
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -12,6 +6,12 @@ import { ChevronDown, FolderOpen } from 'lucide-react';
 interface Project {
   id: string;
   name: string;
+}
+
+function setCookie(id: string) {
+  if (typeof document !== 'undefined') {
+    document.cookie = `syn_project_id=${id}; path=/; max-age=31536000`;
+  }
 }
 
 export function ProjectSelector() {
