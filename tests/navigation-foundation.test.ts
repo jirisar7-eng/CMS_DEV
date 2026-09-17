@@ -9,7 +9,7 @@ describe('SYN-NAV-001 Navigation Foundation', () => {
     expect(schema).toContain('model NavigationItem');
     expect(schema).toContain('projectId');
     expect(schema).toContain('pageId');
-    expect(schema).toContain('CASCADE');
+    expect(schema).toContain('Cascade');
   });
 
   it('API repository should have fetch endpoints', () => {
