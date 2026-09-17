@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { PageSummary, PageStatus, PageVisibility, pagesRepository } from '@/lib/domain/pages';
+import { PageSummary, PageStatus, PageVisibility } from '@/lib/domain/pages';
+import { createAdminPagesClient } from '@/lib/domain/pages-client/client';
+import {
+  normalizeAdminProjectId,
+  withAdminProjectContext,
+} from '@/lib/domain/pages-client/project-context';
 import { useI18n } from '@/lib/i18n';
 import { HelpTrigger } from '@/components/help/HelpTrigger';
 import {
@@ -66,8 +71,16 @@ const AVAILABLE_VISIBILITIES: PageVisibility[] = [
   'Interní (pouze CMS)',
 ];
 
-export function PageCreateWorkspace() {
+interface PageCreateWorkspaceProps {
+  projectId?: string | null;
+}
+
+export function PageCreateWorkspace({ projectId: propProjectId }: PageCreateWorkspaceProps = {}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawProjectId = propProjectId !== undefined ? propProjectId : searchParams.get('projectId');
+  const projectId = normalizeAdminProjectId(rawProjectId);
+
   const t = useI18n();
   const dict = t.page_create;
 
@@ -87,10 +100,19 @@ export function PageCreateWorkspace() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const client = useMemo(() => {
+    if (!projectId) return null;
+    return createAdminPagesClient(projectId);
+  }, [projectId]);
+
   // Load existing pages for parent selector
   useEffect(() => {
+    if (!client) {
+      return;
+    }
+
     let isMounted = true;
-    pagesRepository
+    client
       .getPages()
       .then((data) => {
         if (isMounted) {
@@ -98,7 +120,7 @@ export function PageCreateWorkspace() {
           setIsLoadingPages(false);
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (isMounted) {
           setIsLoadingPages(false);
           setServerError('Nepodařilo se načíst existující stránky.');
@@ -108,7 +130,7 @@ export function PageCreateWorkspace() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [client]);
 
   // Sync slug from title if not manually edited
   const handleTitleChange = (val: string) => {
@@ -182,28 +204,46 @@ export function PageCreateWorkspace() {
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm() || !client) return;
 
     setIsSubmitting(true);
     setServerError(null);
 
     try {
-      const created = await pagesRepository.createPage({
+      const created = await client.createPageDraft({
         title: title.trim(),
         slug: slug.trim(),
         parentId: parentId || null,
         description: description.trim(),
-        status,
         visibility,
+        locale: 'cs',
       });
 
       // Navigate straight to detail of newly created page
-      router.push(`/admin/pages/${created.id}`);
+      router.push(withAdminProjectContext(`/admin/pages/${created.pageId}`, projectId));
     } catch (err: unknown) {
       setServerError(err instanceof Error ? err.message : 'Chyba při vytváření stránky.');
       setIsSubmitting(false);
     }
   };
+
+  if (!projectId) {
+    return (
+      <div className="p-8 sm:p-12 rounded-xl border border-border bg-card shadow-xs flex flex-col items-center justify-center text-center space-y-3 max-w-lg mx-auto my-8">
+        <AlertCircle className="w-8 h-8 text-muted-foreground" />
+        <h2 className="text-base font-semibold text-foreground">Není vybrán projekt.</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          Vyberte projekt v horní navigaci nebo zadejte parametr ?projectId do URL pro vytvoření stránky.
+        </p>
+        <Link
+          href="/admin/pages"
+          className="px-4 py-2 min-h-[44px] inline-flex items-center justify-center text-xs sm:text-sm font-medium rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
+        >
+          {dict.action_cancel}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-6">
@@ -211,7 +251,7 @@ export function PageCreateWorkspace() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Link
-            href="/admin/pages"
+            href={withAdminProjectContext('/admin/pages', projectId)}
             id="btn-back-to-pages"
             className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title="Zpět na přehled stránek"
@@ -233,7 +273,7 @@ export function PageCreateWorkspace() {
 
         {/* Desktop Quick Cancel */}
         <Link
-          href="/admin/pages"
+          href={withAdminProjectContext('/admin/pages', projectId)}
           className="hidden sm:inline-flex items-center px-3 py-2 min-h-[44px] text-xs sm:text-sm font-medium rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
         >
           {dict.action_cancel}
@@ -441,7 +481,7 @@ export function PageCreateWorkspace() {
         {/* Action Bar (Sticky on mobile for seamless thumb reach) */}
         <div className="sticky bottom-3 z-20 p-3 rounded-xl border border-border bg-card/95 backdrop-blur-md shadow-lg flex items-center justify-between gap-3">
           <Link
-            href="/admin/pages"
+            href={withAdminProjectContext('/admin/pages', projectId)}
             className="px-4 py-2 min-h-[44px] flex items-center justify-center text-xs sm:text-sm font-medium rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
           >
             {dict.action_cancel}

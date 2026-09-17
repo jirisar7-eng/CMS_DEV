@@ -4,15 +4,17 @@ import { PageStatusBadge } from './PageStatusBadge';
 import { PageRowActions } from './PageRowActions';
 import { ChevronRight, ChevronDown, FileText, CornerDownRight, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { withAdminProjectContext } from '@/lib/domain/pages-client/project-context';
 
 interface PageTreeTableProps {
   nodes: PageTreeNode[];
   expandedMap: Record<string, boolean>;
   onToggleExpand: (id: string) => void;
   onAction: (action: PageActionType, page: PageSummary) => void;
+  projectId?: string;
 }
 
-export function PageTreeTable({ nodes, expandedMap, onToggleExpand, onAction }: PageTreeTableProps) {
+export function PageTreeTable({ nodes, expandedMap, onToggleExpand, onAction, projectId }: PageTreeTableProps) {
   const renderRow = (node: PageTreeNode) => {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedMap[node.id] ?? true;
@@ -54,7 +56,7 @@ export function PageTreeTable({ nodes, expandedMap, onToggleExpand, onAction }: 
               )}
 
               <Link
-                href={`/admin/pages/${node.id}`}
+                href={withAdminProjectContext(`/admin/pages/${node.id}`, projectId)}
                 className="flex items-center gap-2 group/title truncate min-w-0"
               >
                 <FileText className="w-4 h-4 text-muted-foreground shrink-0 group-hover/title:text-primary transition-colors" />

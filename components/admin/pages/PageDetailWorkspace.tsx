@@ -1,16 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   PageDetail,
   PageStatus,
   PageVisibility,
   PageSummary,
   PageContent,
-  ContentBlock,
-  pagesRepository,
+  type ContentBlock,
 } from '@/lib/domain/pages';
+import { createAdminPagesClient } from '@/lib/domain/pages-client/client';
+import { AdminPageLifecycleState } from '@/lib/domain/pages-client/types';
+import {
+  normalizeAdminProjectId,
+  withAdminProjectContext,
+} from '@/lib/domain/pages-client/project-context';
 import { PageStatusBadge } from './PageStatusBadge';
 import { useI18n } from '@/lib/i18n';
 import { HelpTrigger } from '@/components/help/HelpTrigger';
@@ -39,10 +45,14 @@ import {
   Sparkles,
   Blocks,
   Edit3,
+  RotateCcw,
+  FilePlus,
+  XCircle,
 } from 'lucide-react';
 
 interface PageDetailWorkspaceProps {
   pageId: string;
+  projectId?: string | null;
 }
 
 type DetailTab = 'content' | 'settings' | 'seo' | 'navigation' | 'revisions' | 'activity';
@@ -63,7 +73,11 @@ const ALL_VISIBILITIES: PageVisibility[] = [
   'Interní (pouze CMS)',
 ];
 
-export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
+export function PageDetailWorkspace({ pageId, projectId: propProjectId }: PageDetailWorkspaceProps) {
+  const searchParams = useSearchParams();
+  const rawProjectId = propProjectId !== undefined ? propProjectId : searchParams.get('projectId');
+  const projectId = normalizeAdminProjectId(rawProjectId);
+
   const t = useI18n();
   const dict = t.page_detail;
 
@@ -72,6 +86,8 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
 
   // Page data state
   const [page, setPage] = useState<PageDetail | null>(null);
+  const [lifecycle, setLifecycle] = useState<AdminPageLifecycleState | null>(null);
+  const [lockConflict, setLockConflict] = useState(false);
   const [allPages, setAllPages] = useState<PageSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -100,24 +116,83 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
   const [showInFooter, setShowInFooter] = useState(false);
   const [navigationLabel, setNavigationLabel] = useState('');
 
+  const client = useMemo(() => {
+    if (!projectId) return null;
+    return createAdminPagesClient(projectId);
+  }, [projectId]);
+
+  const loadData = useCallback(async () => {
+    if (!client) return;
+
+    setIsLoading(true);
+    setError(null);
+    setLockConflict(false);
+
+    try {
+      const [detailResult, list] = await Promise.all([
+        client.getPageById(pageId),
+        client.getPages(),
+      ]);
+
+      if (!detailResult || !detailResult.page) {
+        setError(dict.error_not_found);
+        setIsLoading(false);
+        return;
+      }
+
+      const loadedPage = detailResult.page;
+      setPage(loadedPage);
+      setLifecycle(detailResult.lifecycle);
+      setAllPages(list.filter((p) => p.id !== pageId));
+
+      // populate fields
+      setTitle(loadedPage.title);
+      setSlug(loadedPage.slug);
+      setParentId(loadedPage.parentId || '');
+      setDescription(loadedPage.description || '');
+      setStatus(loadedPage.status);
+      setVisibility(loadedPage.visibility);
+      setContent(loadedPage.content || { version: 1, schemaVersion: 'syn-block-v1', blocks: [] });
+
+      setMetaTitle(loadedPage.seo?.metaTitle || '');
+      setMetaDescription(loadedPage.seo?.metaDescription || '');
+      setCanonicalUrl(loadedPage.seo?.canonicalUrl || '');
+      setNoIndex(loadedPage.seo?.noIndex || false);
+
+      setShowInMainNavigation(loadedPage.navigation?.showInMainNavigation || false);
+      setShowInFooter(loadedPage.navigation?.showInFooter || false);
+      setNavigationLabel(loadedPage.navigation?.navigationLabel || loadedPage.title);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Chyba při načítání detailu stránky.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client, pageId, dict.error_not_found]);
+
   // Initial fetch
   useEffect(() => {
+    if (!client) return;
     let isMounted = true;
 
-    Promise.all([
-      pagesRepository.getPageById(pageId),
-      pagesRepository.getPages(),
-    ])
-      .then(([loadedPage, list]) => {
+    async function fetchData() {
+      try {
+        const [detailResult, list] = await Promise.all([
+          client!.getPageById(pageId),
+          client!.getPages(),
+        ]);
+
         if (!isMounted) return;
-        if (!loadedPage) {
+
+        if (!detailResult || !detailResult.page) {
           setError(dict.error_not_found);
           setIsLoading(false);
           return;
         }
 
+        const loadedPage = detailResult.page;
         setPage(loadedPage);
-        setAllPages(list.filter((p) => p.id !== pageId)); // cannot be parent to itself
+        setLifecycle(detailResult.lifecycle);
+        setAllPages(list.filter((p) => p.id !== pageId));
 
         // populate fields
         setTitle(loadedPage.title);
@@ -136,68 +211,218 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
         setShowInMainNavigation(loadedPage.navigation?.showInMainNavigation || false);
         setShowInFooter(loadedPage.navigation?.showInFooter || false);
         setNavigationLabel(loadedPage.navigation?.navigationLabel || loadedPage.title);
+      } catch (err: unknown) {
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Chyba při načítání detailu stránky.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
 
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Chyba při načítání detailu stránky.');
-        setIsLoading(false);
-      });
+    fetchData();
 
     return () => {
       isMounted = false;
     };
-  }, [pageId, dict.error_not_found]);
+  }, [client, pageId, dict.error_not_found]);
 
-  // Save handler
-  const handleSave = async (newStatus?: PageStatus) => {
-    if (!page) return;
+  // Save draft handler
+  const handleSaveDraft = async () => {
+    if (!page || !lifecycle || !client) return;
     setIsSaving(true);
     setError(null);
-
-    const targetStatus = newStatus || status;
+    setLockConflict(false);
 
     try {
-      const updated = await pagesRepository.updatePage(page.id, {
+      const updated = await client.updateDraft(page.id, lifecycle.lockVersion, {
         title,
         slug,
-        parentId: parentId || null,
         description,
-        status: targetStatus,
         visibility,
         content,
-        seo: {
-          metaTitle,
-          metaDescription,
-          canonicalUrl,
-          noIndex,
-        },
-        navigation: {
-          showInMainNavigation,
-          showInFooter,
-          navigationLabel,
-        },
       });
 
-      setPage(updated);
-      setStatus(updated.status);
+      setLifecycle((prev) =>
+        prev
+          ? {
+              ...prev,
+              lockVersion: updated.lockVersion,
+              activeRevisionId: updated.revisionId,
+              revisionNumber: updated.revisionNumber,
+              status: updated.status,
+            }
+          : null
+      );
       setFeedback({
-        message:
-          targetStatus === 'Publikováno'
-            ? dict.feedback_published
-            : targetStatus === 'Ke kontrole'
-            ? dict.feedback_submitted
-            : dict.feedback_saved,
+        message: dict.feedback_saved,
         type: 'success',
       });
       setTimeout(() => setFeedback(null), 3500);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Chyba při ukládání změn.');
+    } catch (err: any) {
+      if (err?.code === 'LOCK_CONFLICT') {
+        setLockConflict(true);
+        setError('Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi.');
+      } else {
+        setError(err?.message || 'Chyba při ukládání změn.');
+      }
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Submit for Review
+  const handleSubmitReview = async () => {
+    if (!page || !lifecycle || !client) return;
+    setIsSaving(true);
+    setError(null);
+    setLockConflict(false);
+
+    try {
+      await client.submitForReview(page.id, lifecycle.lockVersion);
+      await loadData();
+      setFeedback({ message: dict.feedback_submitted, type: 'success' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err: any) {
+      if (err?.code === 'LOCK_CONFLICT') {
+        setLockConflict(true);
+        setError('Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi.');
+      } else {
+        setError(err?.message || 'Chyba při odesílání ke kontrole.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Request Changes
+  const handleRequestChanges = async () => {
+    if (!page || !lifecycle || !client) return;
+    setIsSaving(true);
+    setError(null);
+    setLockConflict(false);
+
+    try {
+      await client.requestChanges(page.id, lifecycle.lockVersion);
+      await loadData();
+      setFeedback({ message: 'Změny byly vráceny k dopracování.', type: 'success' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err: any) {
+      if (err?.code === 'LOCK_CONFLICT') {
+        setLockConflict(true);
+        setError('Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi.');
+      } else {
+        setError(err?.message || 'Chyba při vracení změn.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Approve Review
+  const handleApproveReview = async () => {
+    if (!page || !lifecycle || !client) return;
+    setIsSaving(true);
+    setError(null);
+    setLockConflict(false);
+
+    try {
+      await client.approveReview(page.id, lifecycle.lockVersion);
+      await loadData();
+      setFeedback({ message: 'Revize stránky byla úspěšně schválena.', type: 'success' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err: any) {
+      if (err?.code === 'LOCK_CONFLICT') {
+        setLockConflict(true);
+        setError('Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi.');
+      } else {
+        setError(err?.message || 'Chyba při schvalování revize.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Publish Approved
+  const handlePublish = async () => {
+    if (!page || !lifecycle || !client) return;
+    setIsSaving(true);
+    setError(null);
+    setLockConflict(false);
+
+    try {
+      await client.publishApproved(page.id, lifecycle.lockVersion);
+      await loadData();
+      setFeedback({ message: dict.feedback_published, type: 'success' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err: any) {
+      if (err?.code === 'LOCK_CONFLICT') {
+        setLockConflict(true);
+        setError('Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi.');
+      } else {
+        setError(err?.message || 'Chyba při publikování.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Reopen Draft from Published
+  const handleReopenDraft = async () => {
+    if (!page || !lifecycle?.publishedRevisionId || !client) return;
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await client.reopenDraft(page.id, lifecycle.publishedRevisionId);
+      await loadData();
+      setFeedback({ message: 'Nový koncept byl úspěšně otevřen.', type: 'success' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err: any) {
+      setError(err?.message || 'Chyba při otevírání konceptu.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Rollback Published
+  const handleRollback = async () => {
+    if (!page || !lifecycle?.publishedRevisionId || !client) return;
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await client.rollbackPublished(page.id, lifecycle.publishedRevisionId);
+      await loadData();
+      setFeedback({ message: 'Publikovaná verze byla vrácena na předchozí revizi.', type: 'success' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err: any) {
+      setError(err?.message || 'Chyba při vrácení publikované verze.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Fail closed if no project
+  if (!projectId) {
+    return (
+      <div className="p-8 sm:p-12 rounded-xl border border-border bg-card shadow-xs flex flex-col items-center justify-center text-center space-y-3 max-w-lg mx-auto my-8">
+        <AlertCircle className="w-8 h-8 text-muted-foreground" />
+        <h2 className="text-base font-semibold text-foreground">Není vybrán projekt.</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          Vyberte projekt v horní navigaci nebo zadejte parametr ?projectId do URL pro zobrazení detailu stránky.
+        </p>
+        <Link
+          href="/admin/pages"
+          className="px-4 py-2 min-h-[44px] inline-flex items-center justify-center text-xs sm:text-sm font-medium rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
+        >
+          {dict.back_to_pages}
+        </Link>
+      </div>
+    );
+  }
 
   // Capabilities from permission model
   const caps = page?.capabilities || {
@@ -207,9 +432,13 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
     canDuplicate: true,
     canMove: true,
     canArchive: true,
-    canPublish: true,
+    canPublish: false,
     canSave: true,
-    canSubmitReview: true,
+    canSubmitReview: false,
+    canReview: false,
+    canApprove: false,
+    canRollback: false,
+    canReopenDraft: false,
   };
 
   if (isLoading) {
@@ -228,7 +457,7 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
         <h2 className="text-base font-semibold text-destructive">{dict.error_not_found}</h2>
         <p className="text-xs sm:text-sm text-destructive/90">{error}</p>
         <Link
-          href="/admin/pages"
+          href={withAdminProjectContext('/admin/pages', projectId)}
           className="px-4 py-2 min-h-[44px] inline-flex items-center justify-center text-xs sm:text-sm font-medium rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
         >
           {dict.back_to_pages}
@@ -254,7 +483,7 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
         {/* Left Side: Back & Title + Metadata */}
         <div className="flex items-start sm:items-center gap-3 min-w-0">
           <Link
-            href="/admin/pages"
+            href={withAdminProjectContext('/admin/pages', projectId)}
             id="btn-back-to-pages"
             className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 mt-0.5 sm:mt-0"
             title={dict.back_to_pages}
@@ -282,7 +511,7 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
           {/* Edit Content in Composer */}
           {caps.canEdit && (
             <Link
-              href={`/admin/pages/${page.id}/edit`}
+              href={withAdminProjectContext(`/admin/pages/${page.id}/edit`, projectId)}
               id="btn-page-edit-content"
               className="px-3.5 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-colors cursor-pointer"
             >
@@ -306,11 +535,11 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
           )}
 
           {/* Submit for Review (if allowed) */}
-          {caps.canSubmitReview && page.status === 'Koncept' && (
+          {caps.canSubmitReview && (
             <button
               type="button"
               id="btn-page-submit-review"
-              onClick={() => handleSave('Ke kontrole')}
+              onClick={handleSubmitReview}
               disabled={isSaving}
               className="px-3 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 transition-colors"
             >
@@ -319,12 +548,40 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
             </button>
           )}
 
+          {/* Request Changes (Reviewer capability) */}
+          {caps.canReview && (
+            <button
+              type="button"
+              id="btn-page-request-changes"
+              onClick={handleRequestChanges}
+              disabled={isSaving}
+              className="px-3 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-300 hover:bg-rose-500/20 transition-colors"
+            >
+              <XCircle className="w-4 h-4 text-rose-500" />
+              <span>Vrátit k dopracování</span>
+            </button>
+          )}
+
+          {/* Approve Review (Reviewer capability) */}
+          {caps.canApprove && (
+            <button
+              type="button"
+              id="btn-page-approve-review"
+              onClick={handleApproveReview}
+              disabled={isSaving}
+              className="px-3 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-800 dark:text-blue-300 hover:bg-blue-500/20 transition-colors"
+            >
+              <Check className="w-4 h-4 text-blue-500" />
+              <span>Schválit revizi</span>
+            </button>
+          )}
+
           {/* Publish Action (if allowed) */}
-          {caps.canPublish && page.status !== 'Publikováno' && (
+          {caps.canPublish && (
             <button
               type="button"
               id="btn-page-publish"
-              onClick={() => handleSave('Publikováno')}
+              onClick={handlePublish}
               disabled={isSaving}
               className="px-3.5 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium text-emerald-950 dark:text-emerald-100 bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600 rounded-lg shadow-xs transition-colors"
             >
@@ -333,12 +590,40 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
             </button>
           )}
 
-          {/* Save Button */}
+          {/* Reopen Draft from Published */}
+          {caps.canReopenDraft && (
+            <button
+              type="button"
+              id="btn-page-reopen-draft"
+              onClick={handleReopenDraft}
+              disabled={isSaving}
+              className="px-3 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
+            >
+              <FilePlus className="w-4 h-4 text-muted-foreground" />
+              <span>Otevřít nový koncept</span>
+            </button>
+          )}
+
+          {/* Rollback Published */}
+          {caps.canRollback && (
+            <button
+              type="button"
+              id="btn-page-rollback"
+              onClick={handleRollback}
+              disabled={isSaving}
+              className="px-3 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-800 dark:text-orange-300 hover:bg-orange-500/20 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4 text-orange-500" />
+              <span>Vrátit publikaci</span>
+            </button>
+          )}
+
+          {/* Save Draft Button */}
           {caps.canSave && (
             <button
               type="button"
               id="btn-page-save"
-              onClick={() => handleSave()}
+              onClick={handleSaveDraft}
               disabled={isSaving}
               className="px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
@@ -348,6 +633,27 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
           )}
         </div>
       </div>
+
+      {/* Lock Conflict Alert */}
+      {lockConflict && (
+        <div
+          role="alert"
+          className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi pro pokračování.</span>
+          </div>
+          <button
+            type="button"
+            onClick={loadData}
+            className="px-3.5 py-1.5 min-h-[36px] inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors shrink-0"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Načíst aktuální verzi</span>
+          </button>
+        </div>
+      )}
 
       {/* Feedback Alert */}
       {feedback && (
@@ -362,6 +668,27 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
           <button
             type="button"
             onClick={() => setFeedback(null)}
+            className="p-1 min-h-[44px] min-w-[44px] flex items-center justify-center hover:opacity-75 -mr-1"
+            aria-label="Zavřít"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* General Error Alert */}
+      {error && !lockConflict && (
+        <div
+          role="alert"
+          className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm flex items-center justify-between animate-in fade-in duration-200"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError(null)}
             className="p-1 min-h-[44px] min-w-[44px] flex items-center justify-center hover:opacity-75 -mr-1"
             aria-label="Zavřít"
           >
@@ -950,7 +1277,7 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
       <div className="block md:hidden sticky bottom-3 z-20 p-3 rounded-xl border border-border bg-card/95 backdrop-blur-md shadow-lg">
         <div className="flex items-center justify-between gap-2">
           <Link
-            href="/admin/pages"
+            href={withAdminProjectContext('/admin/pages', projectId)}
             className="px-3 py-2 min-h-[44px] flex items-center justify-center text-xs font-medium rounded-lg border border-border text-foreground hover:bg-muted"
           >
             {dict.back_to_pages}
@@ -972,7 +1299,7 @@ export function PageDetailWorkspace({ pageId }: PageDetailWorkspaceProps) {
             {caps.canSave && (
               <button
                 type="button"
-                onClick={() => handleSave()}
+                onClick={() => handleSaveDraft()}
                 disabled={isSaving}
                 className="px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg shadow-xs"
               >

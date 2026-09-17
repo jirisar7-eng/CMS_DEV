@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   PageDetail,
   ContentBlock,
   ContentBlockType,
   PageContent,
-  pagesRepository,
 } from '@/lib/domain/pages';
+import { createAdminPagesClient } from '@/lib/domain/pages-client/client';
+import { AdminPageLifecycleState } from '@/lib/domain/pages-client/types';
+import {
+  normalizeAdminProjectId,
+  withAdminProjectContext,
+} from '@/lib/domain/pages-client/project-context';
 import { getBlockDefinition } from '@/lib/composer/registry';
 import {
   ContentCapabilities,
@@ -24,16 +29,23 @@ import {
   CheckCircle,
   X,
   Layers,
+  RefreshCw,
 } from 'lucide-react';
 
 interface PageComposerWorkspaceProps {
   pageId: string;
+  projectId?: string | null;
 }
 
-export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pageId }) => {
+export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pageId, projectId: propProjectId }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawProjectId = propProjectId !== undefined ? propProjectId : searchParams.get('projectId');
+  const projectId = normalizeAdminProjectId(rawProjectId);
 
   const [page, setPage] = useState<PageDetail | null>(null);
+  const [lifecycle, setLifecycle] = useState<AdminPageLifecycleState | null>(null);
+  const [lockConflict, setLockConflict] = useState(false);
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,41 +57,78 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Load page from repository abstraction
+  const client = useMemo(() => {
+    if (!projectId) return null;
+    return createAdminPagesClient(projectId);
+  }, [projectId]);
+
+  const loadPageData = useCallback(async () => {
+    if (!client) return;
+    setIsLoading(true);
+    setLockConflict(false);
+    try {
+      const detailResult = await client.getPageById(pageId);
+      if (detailResult && detailResult.page) {
+        setPage(detailResult.page);
+        setLifecycle(detailResult.lifecycle);
+        const initialBlocks = (detailResult.page.content?.blocks || []).map((b, i) => ({
+          ...b,
+          order: b.order || i + 1,
+        }));
+        setBlocks(initialBlocks);
+        if (initialBlocks.length > 0) {
+          setSelectedBlockId(initialBlocks[0].id);
+        }
+      } else {
+        setPage(null);
+      }
+    } catch {
+      setFeedback({ message: 'Chyba při načítání detailu stránky.', type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client, pageId]);
+
+  // Load page from HTTP client
   useEffect(() => {
+    if (!client) return;
     let isMounted = true;
-    const load = async () => {
-      setIsLoading(true);
+
+    async function fetchData() {
       try {
-        const data = await pagesRepository.getPageById(pageId);
-        if (isMounted) {
-          if (data) {
-            setPage(data);
-            const initialBlocks = (data.content?.blocks || []).map((b, i) => ({
-              ...b,
-              order: b.order || i + 1,
-            }));
-            setBlocks(initialBlocks);
-            if (initialBlocks.length > 0) {
-              setSelectedBlockId(initialBlocks[0].id);
-            }
-          } else {
-            setPage(null);
+        const detailResult = await client!.getPageById(pageId);
+        if (!isMounted) return;
+        if (detailResult && detailResult.page) {
+          setPage(detailResult.page);
+          setLifecycle(detailResult.lifecycle);
+          const initialBlocks = (detailResult.page.content?.blocks || []).map((b, i) => ({
+            ...b,
+            order: b.order || i + 1,
+          }));
+          setBlocks(initialBlocks);
+          if (initialBlocks.length > 0) {
+            setSelectedBlockId(initialBlocks[0].id);
           }
+        } else {
+          setPage(null);
         }
       } catch {
         if (isMounted) {
           setFeedback({ message: 'Chyba při načítání detailu stránky.', type: 'error' });
         }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    };
-    load();
+    }
+
+    fetchData();
+
     return () => {
       isMounted = false;
     };
-  }, [pageId]);
+  }, [client, pageId]);
 
   // Capabilities model derived strictly from page capabilities
   const capabilities: ContentCapabilities = useMemo(() => {
@@ -231,9 +280,10 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
 
   // Save draft
   const handleSaveDraft = async () => {
-    if (!page || !capabilities['content.draft.save']) return;
+    if (!page || !lifecycle || !client || !capabilities['content.draft.save']) return;
     setIsSaving(true);
     setFeedback(null);
+    setLockConflict(false);
 
     try {
       const canonicalContent: PageContent = {
@@ -242,21 +292,39 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
         blocks: blocks.map((b, idx) => ({ ...b, order: idx + 1 })),
       };
 
-      const updated = await pagesRepository.updatePage(page.id, {
+      const updated = await client.updateDraft(page.id, lifecycle.lockVersion, {
         content: canonicalContent,
       });
 
-      setPage(updated);
+      setLifecycle((prev) =>
+        prev
+          ? {
+              ...prev,
+              lockVersion: updated.lockVersion,
+              activeRevisionId: updated.revisionId,
+              revisionNumber: updated.revisionNumber,
+              status: updated.status,
+            }
+          : null
+      );
       setIsDirty(false);
       setFeedback({
         message: 'Koncept stránky byl úspěšně uložen do kanonického modelu.',
         type: 'success',
       });
-    } catch {
-      setFeedback({
-        message: 'Došlo k chybě při ukládání konceptu.',
-        type: 'error',
-      });
+    } catch (err: any) {
+      if (err?.code === 'LOCK_CONFLICT') {
+        setLockConflict(true);
+        setFeedback({
+          message: 'Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi.',
+          type: 'error',
+        });
+      } else {
+        setFeedback({
+          message: err?.message || 'Došlo k chybě při ukládání konceptu.',
+          type: 'error',
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -267,9 +335,29 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
     if (isDirty) {
       setShowExitPrompt(true);
     } else {
-      router.push(`/admin/pages/${pageId}`);
+      router.push(withAdminProjectContext(`/admin/pages/${pageId}`, projectId));
     }
   };
+
+  // Fail closed if no project
+  if (!projectId) {
+    return (
+      <div className="max-w-md mx-auto my-12 p-6 rounded-xl border border-border bg-card text-center space-y-4">
+        <AlertCircle className="w-10 h-10 text-muted-foreground mx-auto" />
+        <h2 className="text-lg font-bold text-foreground">Není vybrán projekt.</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          Vyberte projekt v horní navigaci nebo zadejte parametr ?projectId do URL pro otevření editoru stránek.
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push('/admin/pages')}
+          className="px-4 py-2 min-h-[44px] rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 cursor-pointer"
+        >
+          Zpět na přehled stránek
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -290,8 +378,8 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
         </p>
         <button
           type="button"
-          onClick={() => router.push('/admin/pages')}
-          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 cursor-pointer"
+          onClick={() => router.push(withAdminProjectContext('/admin/pages', projectId))}
+          className="px-4 py-2 min-h-[44px] rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 cursor-pointer"
         >
           Zpět na přehled stránek
         </button>
@@ -319,8 +407,29 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
         onOpenInspectorMobile={() => setMobileSheet('inspector')}
       />
 
+      {/* Lock Conflict Notification Bar */}
+      {lockConflict && (
+        <div
+          role="alert"
+          className="mx-4 mt-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-150"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Stránka byla mezitím změněna jiným požadavkem. Načtěte aktuální verzi pro pokračování.</span>
+          </div>
+          <button
+            type="button"
+            onClick={loadPageData}
+            className="px-3 py-1.5 min-h-[36px] inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors shrink-0"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Načíst aktuální verzi</span>
+          </button>
+        </div>
+      )}
+
       {/* Feedback Toast */}
-      {feedback && (
+      {feedback && !lockConflict && (
         <div
           role="status"
           className={`mx-4 mt-2 p-3 rounded-lg border text-xs sm:text-sm flex items-center justify-between animate-in fade-in duration-150 ${
@@ -340,7 +449,7 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
           <button
             type="button"
             onClick={() => setFeedback(null)}
-            className="p-1 hover:opacity-75 cursor-pointer"
+            className="p-1 min-h-[44px] min-w-[44px] flex items-center justify-center hover:opacity-75 cursor-pointer"
             aria-label="Zavřít"
           >
             <X className="w-4 h-4" />
@@ -499,7 +608,7 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
                   id="btn-confirm-exit"
                   onClick={() => {
                     setShowExitPrompt(false);
-                    router.push(`/admin/pages/${pageId}`);
+                    router.push(withAdminProjectContext(`/admin/pages/${pageId}`, projectId));
                   }}
                   className="px-4 py-2 min-h-[44px] rounded-lg bg-destructive text-destructive-foreground text-xs sm:text-sm font-medium hover:bg-destructive/90 transition-colors cursor-pointer"
                 >
