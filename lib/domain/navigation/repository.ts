@@ -29,21 +29,28 @@ class ApiNavigationRepository {
     return this.fetchApi<NavigationSet[]>('/');
   }
 
-  async createSet(input: CreateNavigationSetInput): Promise<NavigationSet> {
+  async createNavigationSet(input: CreateNavigationSetInput): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>('/', {
       method: 'POST',
       body: JSON.stringify(input),
     });
   }
 
-  async updateSet(setId: string, updates: Partial<NavigationSet>): Promise<NavigationSet> {
+  async updateNavigationSet(setId: string, updates: Partial<NavigationSet>): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
   }
 
-  async createItem(setId: string, input: CreateNavigationItemInput): Promise<NavigationSet> {
+  async deleteNavigationSet(setId: string): Promise<boolean> {
+    const res = await this.fetchApi<{ success: boolean }>(`/${setId}`, {
+      method: 'DELETE',
+    });
+    return res.success;
+  }
+
+  async addItem(setId: string, input: CreateNavigationItemInput): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items`, {
       method: 'POST',
       body: JSON.stringify(input),
@@ -88,7 +95,7 @@ class ApiNavigationRepository {
     });
   }
 
-  checkBrokenReferences(items: NavigationItem[], availablePageIds: string[]): BrokenPageReference[] {
+  checkBrokenReferences(items: NavigationItem[], availablePageIds: string[], setKey: string = 'unknown', setName: string = 'unknown'): BrokenPageReference[] {
     // This is a UI helper, so we can keep it as is
     const broken: BrokenPageReference[] = [];
     const validSet = new Set(availablePageIds);
@@ -100,8 +107,8 @@ class ApiNavigationRepository {
           itemId: item.id,
           itemLabel: item.label,
           pageId: item.pageId,
-          navSetKey: 'unknown',
-          navSetName: 'unknown',
+          navSetKey: setKey,
+          navSetName: setName,
         });
       }
     });

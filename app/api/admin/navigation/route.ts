@@ -8,6 +8,7 @@ export async function GET() {
   if (context.status !== 'PROJECT_VALID' || !context.projectId) {
     return NextResponse.json({ error: context.status }, { status: 403 });
   }
+
   if (!await hasPermission(context.userId!, 'navigation.view', context.projectId!)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -23,7 +24,6 @@ export async function GET() {
       orderBy: { name: 'asc' }
     });
 
-    // We have to transform items to the expected NavigationSet[] interface
     const formattedSets = navSets.map(set => ({
       id: set.id,
       projectId: set.projectId,
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
   if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
     return NextResponse.json({ error: context.status }, { status: 403 });
   }
+
   if (!await hasPermission(context.userId, 'navigation.create', context.projectId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -81,6 +82,16 @@ export async function POST(req: Request) {
       include: {
         items: true
       }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'NAVIGATION_SET_CREATED',
+        scopeType: 'PROJECT',
+        actorId: context.userId,
+        projectId: context.projectId,
+        metadata: { setId: navSet.id, key: navSet.key },
+      },
     });
 
     return NextResponse.json(navSet);

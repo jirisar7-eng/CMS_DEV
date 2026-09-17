@@ -1,3 +1,109 @@
+cat << 'INNER_EOF' > app/api/admin/navigation/route.ts
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
+import { hasPermission } from '@/lib/auth/rbac';
+
+export async function GET() {
+  const context = await getActiveProjectContext();
+  if (context.status !== 'PROJECT_VALID' || !context.projectId) {
+    return NextResponse.json({ error: context.status }, { status: 403 });
+  }
+
+  if (!await hasPermission(context.userId!, 'navigation.view', context.projectId!)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    const navSets = await prisma.navigationSet.findMany({
+      where: { projectId: context.projectId },
+      include: {
+        items: {
+          orderBy: { order: 'asc' }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    const formattedSets = navSets.map(set => ({
+      id: set.id,
+      projectId: set.projectId,
+      key: set.key,
+      name: set.name,
+      context: set.context,
+      status: set.status,
+      version: set.version,
+      updatedAt: set.updatedAt.toISOString(),
+      description: set.description,
+      items: set.items.map(item => ({
+        id: item.id,
+        parentId: item.parentId,
+        type: item.type,
+        label: item.label,
+        pageId: item.pageId,
+        externalUrl: item.externalUrl,
+        anchor: item.anchor,
+        icon: item.icon,
+        visibility: item.visibility,
+        openInNewTab: item.openInNewTab,
+        order: item.order,
+      })),
+    }));
+
+    return NextResponse.json(formattedSets);
+  } catch (error) {
+    console.error('Error fetching navigation sets:', error);
+    return NextResponse.json({ error: 'Failed to fetch navigation sets' }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  const context = await getActiveProjectContext();
+  if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
+    return NextResponse.json({ error: context.status }, { status: 403 });
+  }
+
+  if (!await hasPermission(context.userId, 'navigation.create', context.projectId)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    const body = await req.json();
+    const { key, name, context: navContext, description } = body;
+
+    const navSet = await prisma.navigationSet.create({
+      data: {
+        projectId: context.projectId,
+        key,
+        name,
+        context: navContext,
+        description,
+        status: 'DRAFT',
+      },
+      include: {
+        items: true
+      }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'NAVIGATION_SET_CREATED',
+        scopeType: 'PROJECT',
+        actorId: context.userId,
+        projectId: context.projectId,
+        metadata: { setId: navSet.id, key: navSet.key },
+      },
+    });
+
+    return NextResponse.json(navSet);
+  } catch (error) {
+    console.error('Error creating navigation set:', error);
+    return NextResponse.json({ error: 'Failed to create navigation set' }, { status: 500 });
+  }
+}
+INNER_EOF
+
+cat << 'INNER_EOF' > app/api/admin/navigation/\[setId\]/\[\[...action\]\]/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
@@ -330,3 +436,178 @@ export async function DELETE(
     return NextResponse.json({ error: error.message || 'Failed to delete' }, { status: 500 });
   }
 }
+INNER_EOF
+
+mkdir -p app/api/public/navigation
+cat << 'INNER_EOF' > app/api/public/navigation/route.ts
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
+
+export async function GET() {
+  const context = await getActiveProjectContext();
+  if (context.status !== 'PROJECT_VALID' || !context.projectId) {
+    return NextResponse.json({ error: context.status }, { status: 403 });
+  }
+
+  try {
+    const navSets = await prisma.navigationSet.findMany({
+      where: { 
+        projectId: context.projectId,
+        status: 'PUBLISHED'
+      },
+      include: {
+        items: {
+          where: { visibility: true },
+          orderBy: { order: 'asc' }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    const formattedSets = navSets.map(set => ({
+      key: set.key,
+      name: set.name,
+      context: set.context,
+      items: set.items.map(item => ({
+        id: item.id,
+        parentId: item.parentId,
+        type: item.type,
+        label: item.label,
+        pageId: item.pageId,
+        externalUrl: item.externalUrl,
+        anchor: item.anchor,
+        icon: item.icon,
+        openInNewTab: item.openInNewTab,
+      })),
+    }));
+
+    return NextResponse.json(formattedSets);
+  } catch (error) {
+    console.error('Error fetching public navigation:', error);
+    return NextResponse.json({ error: 'Failed to fetch public navigation' }, { status: 500 });
+  }
+}
+INNER_EOF
+
+cat << 'INNER_EOF' > tests/navigation-foundation.test.ts
+import { test, describe } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+
+describe('SYN-NAV-001 Navigation Foundation', () => {
+  test('Should define NavigationSet and NavigationItem in Prisma schema', () => {
+    const schema = fs.readFileSync('prisma/schema.prisma', 'utf8');
+    assert(schema.includes('model NavigationSet'));
+    assert(schema.includes('model NavigationItem'));
+    assert(schema.includes('projectId'));
+    assert(schema.includes('pageId'));
+    assert(schema.includes('Cascade'));
+  });
+
+  test('API repository should have fetch endpoints', () => {
+    const repo = fs.readFileSync('lib/domain/navigation/repository.ts', 'utf8');
+    assert(repo.includes('fetchApi'));
+    assert(repo.includes('/api/admin/navigation'));
+  });
+
+  test('API route should enforce RBAC navigation.view', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/route.ts', 'utf8');
+    assert(apiRoute.includes("hasPermission(context.userId!, 'navigation.view'"));
+  });
+
+  test('API route should enforce RBAC navigation.publish', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
+    assert(apiRoute.includes("hasPermission(context.userId, 'navigation.publish'"));
+  });
+  
+  test('Dynamic API route should enforce page isolation', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
+    assert(apiRoute.includes("page.projectId !== context.projectId"));
+    assert(apiRoute.includes("Stránka nebyla nalezena nebo nepatří k tomuto projektu"));
+  });
+
+  test('Dynamic API route should detect cycles', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
+    assert(apiRoute.includes("checkCycle(set.items, itemId, body.parentId)"));
+  });
+
+  test('Dynamic API route should create audit logs', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
+    assert(apiRoute.includes("prisma.auditLog.create"));
+    assert(apiRoute.includes("NAVIGATION_SET_UPDATED"));
+  });
+
+  test('Public API route should exist', () => {
+    assert(fs.existsSync('app/api/public/navigation/route.ts'));
+    const apiRoute = fs.readFileSync('app/api/public/navigation/route.ts', 'utf8');
+    assert(apiRoute.includes("status: 'PUBLISHED'"));
+    assert(apiRoute.includes("visibility: true"));
+  });
+});
+INNER_EOF
+
+cat << 'INNER_EOF' > patch_repo.js
+const fs = require('fs');
+const file = 'lib/domain/navigation/repository.ts';
+let code = fs.readFileSync(file, 'utf8');
+
+code = code.replace(
+  /checkBrokenReferences\(items: NavigationItem\[\], availablePageIds: string\[\]\): BrokenPageReference\[\] \{/,
+  "checkBrokenReferences(items: NavigationItem[], availablePageIds: string[], setKey: string = 'unknown', setName: string = 'unknown'): BrokenPageReference[] {"
+);
+code = code.replace(
+  /navSetKey: 'unknown',/g,
+  "navSetKey: setKey,"
+);
+code = code.replace(
+  /navSetName: 'unknown',/g,
+  "navSetName: setName,"
+);
+
+code = code.replace(/async createSet/g, 'async createNavigationSet');
+code = code.replace(/async updateSet/g, 'async updateNavigationSet');
+code = code.replace(/async createItem/g, 'async addItem');
+
+code = code.replace(
+  /async addItem/,
+  "async deleteNavigationSet(setId: string): Promise<boolean> {\n    const res = await this.fetchApi<{ success: boolean }>(`/${setId}`, {\n      method: 'DELETE',\n    });\n    return res.success;\n  }\n\n  async addItem"
+);
+
+fs.writeFileSync(file, code);
+INNER_EOF
+
+node patch_repo.js
+
+cat << 'INNER_EOF' > patch_workspace.js
+const fs = require('fs');
+const file = 'components/admin/navigation/NavigationWorkspace.tsx';
+let code = fs.readFileSync(file, 'utf8');
+
+code = code.replace(
+  /\.checkBrokenReferences\(activeSet\.items, validPageIds\)/,
+  ".checkBrokenReferences(activeSet.items, validPageIds, activeSet.key, activeSet.name)"
+);
+
+fs.writeFileSync(file, code);
+INNER_EOF
+
+node patch_workspace.js
+
+cat << 'INNER_EOF' > patch_pkg.js
+const fs = require('fs');
+const file = 'package.json';
+let pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+pkg.scripts['test:nav'] = 'npx tsx --test tests/navigation-*.test.ts';
+pkg.scripts['test'] = 'npx tsx --test tests/*.test.ts';
+fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
+INNER_EOF
+
+node patch_pkg.js
+
+rm patch_repo.js patch_workspace.js patch_pkg.js
+
+git add .
+git commit -m "fix(navigation): security hardening, true project isolation, RBAC strictness"
+git push origin task/SYN-NAV-001-NAVIGATION-FOUNDATION
+

@@ -1,34 +1,54 @@
-import { describe, it, expect } from 'vitest';
+import { test, describe } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
 
 describe('SYN-NAV-001 Navigation Foundation', () => {
-  it('Should define NavigationSet and NavigationItem in Prisma schema', async () => {
-    const fs = require('fs');
+  test('Should define NavigationSet and NavigationItem in Prisma schema', () => {
     const schema = fs.readFileSync('prisma/schema.prisma', 'utf8');
-    
-    expect(schema).toContain('model NavigationSet');
-    expect(schema).toContain('model NavigationItem');
-    expect(schema).toContain('projectId');
-    expect(schema).toContain('pageId');
-    expect(schema).toContain('Cascade');
+    assert(schema.includes('model NavigationSet'));
+    assert(schema.includes('model NavigationItem'));
+    assert(schema.includes('projectId'));
+    assert(schema.includes('pageId'));
+    assert(schema.includes('Cascade'));
   });
 
-  it('API repository should have fetch endpoints', () => {
-    const fs = require('fs');
+  test('API repository should have fetch endpoints', () => {
     const repo = fs.readFileSync('lib/domain/navigation/repository.ts', 'utf8');
-    expect(repo).toContain('fetchApi');
-    expect(repo).toContain('/api/admin/navigation');
+    assert(repo.includes('fetchApi'));
+    assert(repo.includes('/api/admin/navigation'));
   });
 
-  it('API route should enforce RBAC navigation.view', () => {
-    const fs = require('fs');
+  test('API route should enforce RBAC navigation.view', () => {
     const apiRoute = fs.readFileSync('app/api/admin/navigation/route.ts', 'utf8');
-    expect(apiRoute).toContain("hasPermission(context.userId!, 'navigation.view'");
+    assert(apiRoute.includes("hasPermission(context.userId!, 'navigation.view'"));
+  });
+
+  test('API route should enforce RBAC navigation.publish', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
+    assert(apiRoute.includes("hasPermission(context.userId, 'navigation.publish'"));
   });
   
-  it('Dynamic API route should enforce page isolation', () => {
-    const fs = require('fs');
+  test('Dynamic API route should enforce page isolation', () => {
     const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
-    expect(apiRoute).toContain("page.projectId !== context.projectId");
-    expect(apiRoute).toContain("Stránka nebyla nalezena nebo nepatří k tomuto projektu");
+    assert(apiRoute.includes("page.projectId !== context.projectId"));
+    assert(apiRoute.includes("Stránka nebyla nalezena nebo nepatří k tomuto projektu"));
+  });
+
+  test('Dynamic API route should detect cycles', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
+    assert(apiRoute.includes("checkCycle(set.items, itemId, body.parentId)"));
+  });
+
+  test('Dynamic API route should create audit logs', () => {
+    const apiRoute = fs.readFileSync('app/api/admin/navigation/[setId]/[[...action]]/route.ts', 'utf8');
+    assert(apiRoute.includes("prisma.auditLog.create"));
+    assert(apiRoute.includes("NAVIGATION_SET_UPDATED"));
+  });
+
+  test('Public API route should exist', () => {
+    assert(fs.existsSync('app/api/public/navigation/route.ts'));
+    const apiRoute = fs.readFileSync('app/api/public/navigation/route.ts', 'utf8');
+    assert(apiRoute.includes("status: 'PUBLISHED'"));
+    assert(apiRoute.includes("visibility: true"));
   });
 });
