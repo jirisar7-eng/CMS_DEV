@@ -28,11 +28,11 @@
     "app/preview/site/page.tsx",
     "tests/editor-foundation.test.ts",
     "tests/editor-*.test.ts",
-    "tests/puck-*.test.ts"
+    "tests/puck-*.test.ts",
+    "package.json",
+    "package-lock.json"
   ],
   "forbidden_paths": [
-    "package.json",
-    "package-lock.json",
     "bun.lock"
   ]
 }

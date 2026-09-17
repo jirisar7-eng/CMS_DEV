@@ -17,7 +17,7 @@ interface PageProps {
 export default async function PageComposerRoute({ params, searchParams }: PageProps) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
-  const projectId = await getActiveProjectId();
+  const p = await getActiveProjectId(); const projectId = p === null ? undefined : p;
 
   return <PageComposerWorkspace pageId={resolvedParams.id} projectId={projectId} />;
 }
