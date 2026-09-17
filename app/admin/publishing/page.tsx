@@ -53,7 +53,7 @@ export default function PublishingPage() {
       group="OBSAH"
       title="Publikování a verze"
       description="Publikační pipeline pro vytváření neměnných verzí (releases) obsahu webu a okamžitý rollback."
-      status="UI PŘIPRAVENO"
+      status="ZÁKLAD"
       helpKey="content.publishing.view"
       emptyTitle="Zatím nebyla provedena žádná publikace obsahu"
       emptyDescription="Kliknutím na tlačítko níže sestavte a publikujte první neměnnou verzi webu."
@@ -62,8 +62,8 @@ export default function PublishingPage() {
       {({ handleUnfinishedAction }) => (
         <div className="space-y-6">
           {/* Truthfulness Notice Banner */}
-          <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Stav schopnosti: UI PŘIPRAVENO (Ukázková data)</span>
+          <div className="p-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-900 dark:text-indigo-200 text-xs leading-relaxed space-y-1">
+            <span className="font-bold block">Stav schopnosti: ZÁKLAD (Ukázková data)</span>
             <span>
               Publikační release pipeline a úložiště neměnných vydání nejsou v této fázi připojeny. Níže uvedená vydání představují ukázkový model verzování.
             </span>

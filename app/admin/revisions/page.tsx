@@ -55,7 +55,7 @@ export default function RevisionsPage() {
       group="OBSAH"
       title="Revize a historie změn"
       description="Porovnání verzí obsahu (diff) a sledování kompletní redakční historie úprav stránek."
-      status="UI PŘIPRAVENO"
+      status="ZÁKLAD"
       helpKey="content.revisions.view"
       emptyTitle="Zatím nebyly zaznamenány žádné revize"
       emptyDescription="Při každém uložení konceptu nebo publikaci se zde automaticky vytvoří nová revize."

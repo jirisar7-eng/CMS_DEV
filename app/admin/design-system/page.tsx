@@ -19,7 +19,7 @@ export default function DesignSystemPage() {
       group="PLATFORMA"
       title="Design systém & UI komponenty"
       description="Živá knihovna komponent, stavů, tlačítek, formulářů a typografie Synthesis Design Systemu."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="tools.design_system.view"
       emptyTitle="Komponenty design systému nejsou načteny"
       emptyDescription="Kliknutím níže načtěte živý přehled UI komponent."
@@ -33,8 +33,10 @@ export default function DesignSystemPage() {
               1. Stavové odznaky schopností (Capability Badges)
             </h3>
             <div className="flex flex-wrap items-center gap-3">
+              <CapabilityStatusBadge status="DOKONČENO" />
               <CapabilityStatusBadge status="FUNKČNÍ" />
-              <CapabilityStatusBadge status="UI PŘIPRAVENO" />
+              <CapabilityStatusBadge status="ZÁKLAD" />
+              <CapabilityStatusBadge status="POUZE UI" />
               <CapabilityStatusBadge status="PLÁNOVÁNO" />
               <CapabilityStatusBadge status="VYPNUTO" />
             </div>

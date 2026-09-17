@@ -26,7 +26,7 @@ export default function SearchIndexPage() {
       group="OBSAH"
       title="Vyhledávání a indexace"
       description="Správa fulltextového vyhledávače, indexace stránek a analytika vyhledávacích dotazů návštěvníků."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="content.search.view"
       emptyTitle="Vyhledávací index zatím nebyl sestaven"
       emptyDescription="Spusťte prvotní indexaci pro zpřístupnění fulltextového vyhledávání na webu."

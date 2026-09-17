@@ -32,7 +32,7 @@ export default function ModulesPage() {
       group="SPRÁVA"
       title="Správa modulů a rozšíření"
       description="Aktivace, konfigurace a kontrola závislostí systémových a rozšiřujících modulů Synthesis CMS."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="management.modules.view"
       emptyTitle="V tomto projektu zatím nejsou registrovány žádné moduly"
       emptyDescription="Kliknutím níže načtěte standardní sadu modulů pro Synthesis CMS."

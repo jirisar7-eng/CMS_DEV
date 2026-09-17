@@ -35,7 +35,7 @@ export default function RolesPage() {
       group="SPRÁVA"
       title="Role a oprávnění (RBAC)"
       description="Nastavení matice přístupových práv podle principu nejnižších privilegií (Zero Trust, Least Privilege)."
-      status="UI PŘIPRAVENO"
+      status="ZÁKLAD"
       helpKey="management.roles.view"
       emptyTitle="Nebyly nalezeny žádné role"
       emptyDescription="Vytvořte novou roli nebo obnovte výchozí systémové role."

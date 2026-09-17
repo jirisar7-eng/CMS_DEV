@@ -20,7 +20,7 @@ export default function DeploymentPage() {
       group="PLATFORMA"
       title="Stav nasazení a běhové prostředí"
       description="Informace o aktuálně nasazeném Git commitu (SHA), stavu CI/CD pipeline a Cloud Run kontejneru."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="platform.deployment.view"
       emptyTitle="Informace o nasazení nejsou dostupné"
       emptyDescription="Běhová telemetrie nasazení bude napojena v příslušném integračním kroku."
@@ -30,7 +30,7 @@ export default function DeploymentPage() {
         <div className="space-y-6 max-w-4xl">
           {/* Truthfulness Notice Banner */}
           <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Stav schopnosti: UI PŘIPRAVENO (Ukázková data)</span>
+            <span className="font-bold block">Stav schopnosti: POUZE UI (Ukázková data)</span>
             <span>
               Živá telemetrie produkčního kontejneru a CI/CD pipeline není v tomto rozhraní připojena. Níže jsou uvedeny identifikační údaje repozitáře a cílové infrastruktury.
             </span>
@@ -48,7 +48,7 @@ export default function DeploymentPage() {
                     Cílové prostředí: ENV-CMS-DEV
                   </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                    UI PŘIPRAVENO
+                    POUZE UI
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">

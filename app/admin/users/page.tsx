@@ -26,7 +26,7 @@ export default function UsersPage() {
       group="SPRÁVA"
       title="Uživatelské a redakční účty"
       description="Správa přístupových účtů do administrace Synthesis CMS, pozvánky a stav dvoufázového ověření (2FA)."
-      status="UI PŘIPRAVENO"
+      status="ZÁKLAD"
       helpKey="management.users.view"
       emptyTitle="V systému zatím nejsou žádní uživatelé"
       emptyDescription="Pozvěte prvního redaktora nebo administrátora."

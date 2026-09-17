@@ -19,7 +19,7 @@ export default function SecurityOverviewPage() {
       group="BEZPEČNOST"
       title="Zabezpečení a bezpečnostní štít"
       description="Centrální přehled stavu šifrování, konfigurace bezpečnostních HTTP hlaviček a zásad hesel."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="security.overview.view"
       emptyTitle="Bezpečnostní profil nebyl načten"
       emptyDescription="Kliknutím níže proveďte konfiguraci bezpečnostního profilu."
@@ -29,7 +29,7 @@ export default function SecurityOverviewPage() {
         <div className="space-y-6 max-w-4xl">
           {/* Truthfulness Notice Banner */}
           <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Stav schopnosti: UI PŘIPRAVENO (Ukázková konfigurace)</span>
+            <span className="font-bold block">Stav schopnosti: POUZE UI (Ukázková konfigurace)</span>
             <span>
               Bezpečnostní backend a telemetrie zatím nejsou připojeny. Níže uvedené položky představují schválený vzor bezpečnostní konfigurace.
             </span>

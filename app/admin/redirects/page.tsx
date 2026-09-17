@@ -27,7 +27,7 @@ export default function RedirectsPage() {
       group="OBSAH"
       title="Přesměrování URL (Redirects)"
       description="Správa pravidel pro automatické přesměrování URL adres (HTTP 301 trvalé a HTTP 302 dočasné) se sledováním přístupů."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="content.redirects.view"
       emptyTitle="Zatím nebyla vytvořena žádná pravidla přesměrování"
       emptyDescription="Vytvořte nové pravidlo pro zachování SEO návštěvnosti ze starých URL adres."

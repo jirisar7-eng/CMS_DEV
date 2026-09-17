@@ -28,7 +28,7 @@ export default function ApiExplorerPage() {
       group="PLATFORMA"
       title="API Explorer a OpenAPI"
       description="Interaktivní konzole pro testování veřejných a interních REST API koncových bodů Synthesis CMS."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="tools.api_explorer.view"
       emptyTitle="API specifikace není dostupná"
       emptyDescription="Kliknutím níže načtěte aktuální OpenAPI v3.1 specifikaci."

@@ -26,7 +26,7 @@ export default function IntegrationsPage() {
       group="SYSTÉM"
       title="Integrace a externí služby"
       description="Správa napojení na externí cloudové služby, API konektory, webhooks a poskytovatele infrastruktury."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="system.integrations.view"
       emptyTitle="Zatím nebyly připojeny žádné externí služby"
       emptyDescription="Propojte Synthesis CMS s úložištěm médií nebo e-mailovým poskytovatelem."

@@ -18,7 +18,7 @@ export default function PrivacyPage() {
       group="BEZPEČNOST"
       title="GDPR a ochrana soukromí"
       description="Nastavení souhlasů se zpracováním údajů (Cookie lišta), zásady uchovávání dat a právo na výmaz."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="security.privacy.view"
       emptyTitle="Nastavení soukromí není inicializováno"
       emptyDescription="Aktivujte výchozí předvolby ochrany osobních údajů."

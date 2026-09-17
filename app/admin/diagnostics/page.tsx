@@ -18,7 +18,7 @@ export default function DiagnosticsPage() {
     { name: 'Databázové spojení (PostgreSQL)', status: 'NENÍ PŘIPOJENO', latency: 'Neověřeno', detail: 'Vyžaduje připojení produkční databáze' },
     { name: 'Knihovna médií (Object Storage)', status: 'NENÍ PŘIPOJENO', latency: 'Neověřeno', detail: 'Vyžaduje konfiguraci R2 / S3 bucketu' },
     { name: 'Fulltextový vyhledávací index', status: 'NENÍ PŘIPOJENO', latency: 'Neověřeno', detail: 'Vyžaduje inicializaci indexeru' },
-    { name: 'Renderer statických stránek', status: 'UI PŘIPRAVENO', latency: 'Lokální', detail: 'Next.js App Router rozhraní' },
+    { name: 'Renderer statických stránek', status: 'POUZE UI', latency: 'Lokální', detail: 'Next.js App Router rozhraní' },
   ];
 
   return (
@@ -26,7 +26,7 @@ export default function DiagnosticsPage() {
       group="SYSTÉM"
       title="Diagnostika a stav systému"
       description="Sledování dostupnosti infrastruktury, latence databáze, využití paměti a health checků."
-      status="UI PŘIPRAVENO"
+      status="POUZE UI"
       helpKey="system.diagnostics.view"
       emptyTitle="Diagnostická data nejsou dostupná"
       emptyDescription="Diagnostika bude aktivní po připojení produkčních poskytovatelů a databázové vrstvy."
@@ -36,7 +36,7 @@ export default function DiagnosticsPage() {
         <div className="space-y-6">
           {/* Truthfulness Notice Banner */}
           <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Stav schopnosti: UI PŘIPRAVENO (Ukázková data)</span>
+            <span className="font-bold block">Stav schopnosti: POUZE UI (Ukázková data)</span>
             <span>
               Telemetrie a health checky nejsou v této fázi připojeny k reálnému monitoringu. Zobrazené položky demonstrují plánovanou diagnostickou matici.
             </span>
