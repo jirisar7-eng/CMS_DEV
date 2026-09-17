@@ -1,4 +1,5 @@
 export { createAdminPagesClient } from './client';
+export { normalizeAdminProjectId, withAdminProjectContext } from './project-context';
 export { PagesApiClientError } from './errors';
 export type {
   AdminPageDetailResult,

@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { PageSummary, PageTreeNode, PageStatus, PageActionType, pagesRepository } from '@/lib/domain/pages';
+import { PageSummary, PageTreeNode, PageStatus, PageActionType } from '@/lib/domain/pages';
+import { createAdminPagesClient } from '@/lib/domain/pages-client/client';
+import {
+  normalizeAdminProjectId,
+  withAdminProjectContext,
+} from '@/lib/domain/pages-client/project-context';
 import { useI18n } from '@/lib/i18n';
 import { PageTreeTable } from './PageTreeTable';
 import { PageListTable } from './PageListTable';
@@ -21,7 +26,7 @@ import {
   Check,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const ALL_STATUSES: (PageStatus | 'Všechny')[] = [
   'Všechny',
@@ -33,8 +38,16 @@ const ALL_STATUSES: (PageStatus | 'Všechny')[] = [
   'Archivováno',
 ];
 
-export function PagesWorkspace() {
+interface PagesWorkspaceProps {
+  projectId?: string | null;
+}
+
+export function PagesWorkspace({ projectId: propProjectId }: PagesWorkspaceProps = {}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawProjectId = propProjectId !== undefined ? propProjectId : searchParams.get('projectId');
+  const projectId = normalizeAdminProjectId(rawProjectId);
+
   const t = useI18n();
   const dict = t.pages_workspace;
 
@@ -68,14 +81,25 @@ export function PagesWorkspace() {
   // Trigger for refetching
   const [reloadKey, setReloadKey] = useState(0);
 
+  const client = useMemo(() => {
+    if (!projectId) return null;
+    return createAdminPagesClient(projectId);
+  }, [projectId]);
+
   useEffect(() => {
+    if (!client) {
+      return;
+    }
+
     let isMounted = true;
 
     const fetchAsync = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const [loadedPages, loadedTree] = await Promise.all([
-          pagesRepository.getPages(),
-          pagesRepository.getPageTree(),
+          client.getPages(),
+          client.getPageTree(),
         ]);
 
         if (!isMounted) return;
@@ -108,7 +132,7 @@ export function PagesWorkspace() {
     return () => {
       isMounted = false;
     };
-  }, [reloadKey]);
+  }, [client, reloadKey]);
 
   // Fast map of id -> title for parent lookup
   const parentMap = useMemo(() => {
@@ -176,28 +200,10 @@ export function PagesWorkspace() {
 
   // Action handlers
   const handleAction = async (action: PageActionType, page: PageSummary) => {
-    if (action === 'archive') {
-      if (window.confirm(dict.action_archive_confirm)) {
-        const success = await pagesRepository.archivePage(page.id);
-        if (success) {
-          setFeedback({ message: dict.action_feedback_archived, type: 'success' });
-          setTimeout(() => setFeedback(null), 3500);
-          setReloadKey((k) => k + 1);
-        }
-      }
-    } else if (action === 'duplicate') {
-      try {
-        const copy = await pagesRepository.duplicatePage(page.id);
-        setFeedback({ message: `${dict.action_feedback_duplicated} (${copy.title})`, type: 'success' });
-        setTimeout(() => setFeedback(null), 3500);
-        setReloadKey((k) => k + 1);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Duplikace selhala.');
-      }
-    } else if (action === 'edit') {
-      router.push(`/admin/pages/${page.id}`);
+    if (action === 'edit') {
+      router.push(withAdminProjectContext(`/admin/pages/${page.id}`, projectId));
     } else {
-      // open, preview, move -> open controlled modal placeholder
+      // open, preview, move, archive, duplicate -> open controlled modal placeholder
       setActiveModal({ type: action, page });
     }
   };
@@ -206,6 +212,18 @@ export function PagesWorkspace() {
     setSearchQuery('');
     setStatusFilter('Všechny');
   };
+
+  if (!projectId) {
+    return (
+      <div className="p-8 sm:p-12 rounded-xl border border-border bg-card shadow-xs flex flex-col items-center justify-center text-center space-y-3 max-w-lg mx-auto my-8">
+        <AlertCircle className="w-8 h-8 text-muted-foreground" />
+        <h2 className="text-base font-semibold text-foreground">Není vybrán projekt.</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          Vyberte projekt v horní navigaci nebo zadejte parametr ?projectId do URL pro zobrazení stránek.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6 w-full max-w-7xl mx-auto">
@@ -231,7 +249,7 @@ export function PagesWorkspace() {
 
         {/* Compact primary button on mobile, standard on desktop */}
         <Link
-          href="/admin/pages/new"
+          href={withAdminProjectContext('/admin/pages/new', projectId)}
           id="btn-new-page-primary"
           className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] text-xs sm:text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-lg shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
         >
@@ -404,12 +422,14 @@ export function PagesWorkspace() {
                 expandedMap={expandedMap}
                 onToggleExpand={handleToggleExpand}
                 onAction={handleAction}
+                projectId={projectId}
               />
             ) : (
               <PageListTable
                 pages={filteredPages}
                 parentMap={parentMap}
                 onAction={handleAction}
+                projectId={projectId}
               />
             )}
           </div>
@@ -422,6 +442,7 @@ export function PagesWorkspace() {
                 page={page}
                 parentTitle={page.parentId ? parentMap.get(page.parentId) : undefined}
                 onAction={handleAction}
+                projectId={projectId}
               />
             ))}
           </div>

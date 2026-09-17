@@ -4,14 +4,16 @@ import { PageStatusBadge } from './PageStatusBadge';
 import { PageRowActions } from './PageRowActions';
 import { FileText, ExternalLink, CornerDownRight } from 'lucide-react';
 import Link from 'next/link';
+import { withAdminProjectContext } from '@/lib/domain/pages-client/project-context';
 
 interface PageListTableProps {
   pages: PageSummary[];
   parentMap: Map<string, string>;
   onAction: (action: PageActionType, page: PageSummary) => void;
+  projectId?: string;
 }
 
-export function PageListTable({ pages, parentMap, onAction }: PageListTableProps) {
+export function PageListTable({ pages, parentMap, onAction, projectId }: PageListTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse">
@@ -58,7 +60,7 @@ export function PageListTable({ pages, parentMap, onAction }: PageListTableProps
                 <td className="py-3.5 pl-4 pr-3 text-sm font-medium text-foreground">
                   <div className="flex flex-col">
                     <Link
-                      href={`/admin/pages/${page.id}`}
+                      href={withAdminProjectContext(`/admin/pages/${page.id}`, projectId)}
                       className="flex items-center gap-2 group/title"
                     >
                       <FileText className="w-4 h-4 text-muted-foreground shrink-0 group-hover/title:text-primary transition-colors" />

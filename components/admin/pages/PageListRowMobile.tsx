@@ -4,14 +4,16 @@ import { PageSummary, PageActionType } from '@/lib/domain/pages';
 import { PageStatusBadge } from './PageStatusBadge';
 import { PageRowActions } from './PageRowActions';
 import { FileText, CornerDownRight } from 'lucide-react';
+import { withAdminProjectContext } from '@/lib/domain/pages-client/project-context';
 
 interface PageListRowMobileProps {
   page: PageSummary;
   parentTitle?: string;
   onAction: (action: PageActionType, page: PageSummary) => void;
+  projectId?: string;
 }
 
-export function PageListRowMobile({ page, parentTitle, onAction }: PageListRowMobileProps) {
+export function PageListRowMobile({ page, parentTitle, onAction, projectId }: PageListRowMobileProps) {
   const formattedDate = new Intl.DateTimeFormat('cs-CZ', {
     day: 'numeric',
     month: 'numeric',
@@ -36,7 +38,7 @@ export function PageListRowMobile({ page, parentTitle, onAction }: PageListRowMo
 
           {/* Dominant Title */}
           <Link
-            href={`/admin/pages/${page.id}`}
+            href={withAdminProjectContext(`/admin/pages/${page.id}`, projectId)}
             className="flex items-center gap-1.5 group/title"
           >
             <FileText className="w-4 h-4 text-muted-foreground shrink-0 group-hover/title:text-primary transition-colors" />

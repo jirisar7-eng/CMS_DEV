@@ -28,10 +28,14 @@
     "tests/admin-pages-write-api.test.ts",
     "tests/admin-pages-publish-api.test.ts",
     "lib/domain/pages-client/*",
-    "tests/admin-pages-client.test.ts"
+    "tests/admin-pages-client.test.ts",
+    "app/admin/pages/*",
+    "components/admin/pages/*",
+    "components/admin/composer/PageComposerWorkspace.tsx",
+    "tests/admin-pages-ui-cutover.test.ts"
   ],
   "forbidden_paths": [
-    "components/*",
+    "components/admin/navigation/*",
     "lib/domain/pagesFixture.ts",
     "lib/domain/content/lifecycle/*",
     "lib/auth/session.ts",
