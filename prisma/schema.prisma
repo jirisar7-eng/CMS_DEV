@@ -8,6 +8,25 @@ generator client {
 }
 
 // -----------------------------------------------------------------------------
+// CORE DOMAIN
+// -----------------------------------------------------------------------------
+model Project {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  status    String   @default("ACTIVE") // ACTIVE, ARCHIVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userRoles               UserRole[]
+  userPermissionOverrides UserPermissionOverride[]
+  mediaAssets             MediaAsset[]
+  brands                  Brand[]
+  pages                   Page[]
+  contentReleases         ContentRelease[]
+}
+
+// -----------------------------------------------------------------------------
 // IDENTITY & ACCESS (Auth & RBAC)
 // -----------------------------------------------------------------------------
 
@@ -80,6 +99,7 @@ model UserRole {
   userId    String
   roleId    String
   projectId String? // Optional scope. If null, applies to SYSTEM/Global.
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -95,6 +115,7 @@ model UserPermissionOverride {
   userId       String
   permissionId String
   projectId    String?
+  project      Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   isGranted    Boolean // true = explicit ALLOW, false = explicit DENY
   createdAt    DateTime @default(now())
 
@@ -140,6 +161,7 @@ model MediaAsset {
   status          String
   metadata        Json
   projectId       String
+  project         Project               @relation(fields: [projectId], references: [id], onDelete: Restrict)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @default(now())
   usageCount      Int                   @default(0)
@@ -194,6 +216,7 @@ model Brand {
   id              String   @id @default(uuid())
   scope           String // "SYSTEM" or "PROJECT"
   projectId       String?
+  project         Project? @relation(fields: [projectId], references: [id], onDelete: Restrict)
   name            String
   key             String   @unique
   activeVersionId String?
@@ -255,6 +278,7 @@ enum ContentReleaseStatus {
 model Page {
   id                  String   @id @default(uuid())
   projectId           String
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
   key                 String
   parentId            String?
   sortOrder           Int      @default(0)
@@ -328,6 +352,7 @@ model PageRevision {
 model ContentRelease {
   id           String               @id @default(uuid())
   projectId    String
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
   status       ContentReleaseStatus
   createdById  String?
   createdAt    DateTime             @default(now())

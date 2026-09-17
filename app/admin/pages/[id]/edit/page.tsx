@@ -1,6 +1,6 @@
 import React from 'react';
 import { PageComposerWorkspace } from '@/components/admin/composer/PageComposerWorkspace';
-import { normalizeAdminProjectId } from '@/lib/domain/pages-client/project-context';
+import { getActiveProjectId } from '@/lib/domain/pages-client/server-context';
 
 export const metadata = {
   title: 'Editor obsahu (Composer) | Synthesis CMS',
@@ -17,7 +17,7 @@ interface PageProps {
 export default async function PageComposerRoute({ params, searchParams }: PageProps) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
-  const projectId = normalizeAdminProjectId(resolvedSearchParams?.projectId);
+  const projectId = await getActiveProjectId();
 
   return <PageComposerWorkspace pageId={resolvedParams.id} projectId={projectId} />;
 }

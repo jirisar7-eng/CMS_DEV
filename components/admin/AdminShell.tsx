@@ -16,6 +16,7 @@ import { usePathname } from 'next/navigation';
 import { ThemeToggle } from "../theme/theme-toggle";
 import { HelpTrigger } from '@/components/help/HelpTrigger';
 import { LogoutButton } from './auth/LogoutButton';
+import { ProjectSelector } from './ProjectSelector';
 import { useI18n } from '@/lib/i18n';
 import { ADMIN_NAV_GROUPS, getNavItemByPath } from '@/lib/navigation/adminNav';
 import type { UserContext } from '@/lib/auth/session';
@@ -80,6 +81,10 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        <div className="px-4 py-3 border-b shrink-0">
+          <ProjectSelector />
         </div>
 
         {/* Quick capability filter in sidebar */}
