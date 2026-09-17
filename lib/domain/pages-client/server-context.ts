@@ -12,6 +12,7 @@ export type ProjectContextStatus =
   | 'PROJECT_VALID';
 
 export interface ProjectContextResult {
+  userId?: string | null;
   status: ProjectContextStatus;
   projectId: string | null;
 }
@@ -50,7 +51,7 @@ export async function getActiveProjectContext(): Promise<ProjectContextResult> {
     return { status: 'PROJECT_FORBIDDEN', projectId: null };
   }
 
-  return { status: 'PROJECT_VALID', projectId: project.id };
+  return { status: 'PROJECT_VALID', projectId: project.id, userId: user.id };
 }
 
 // Backward compatibility for existing routes that expect just the ID

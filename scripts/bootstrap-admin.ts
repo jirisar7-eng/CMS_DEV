@@ -41,7 +41,8 @@ async function bootstrap() {
     'audit.view',
     'system.manage', 'projects.view', 'projects.manage',
     'content.view', 'content.create', 'content.edit', 'content.review',
-    'content.approve', 'content.publish', 'content.rollback', 'content.archive'
+    'content.approve', 'content.publish', 'content.rollback', 'content.archive',
+    'navigation.view', 'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.publish'
   ];
 
   for (const permKey of initialPermissions) {
