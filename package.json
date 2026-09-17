@@ -52,5 +52,9 @@
     "node": "22.18.0",
     "npm": "10.9.3"
   },
-  "packageManager": "npm@10.9.3"
+  "packageManager": "npm@10.9.3",
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "qs": "6.16.0"
+  }
 }
