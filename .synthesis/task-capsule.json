@@ -5,8 +5,17 @@
   "base_sha": "91c947eb8dcf91995e5c06ba3859f7d862277fa7",
   "expected_branch": "task/SYN-NAV-001-NAVIGATION-FOUNDATION",
   "owner": "AI_STUDIO",
-  "status": "IN_PROGRESS",
-  "allowed_mutation_types": ["CODE", "SCHEMA", "CONFIG"],
-  "allowed_paths": ["*"],
-  "forbidden_paths": ["package-lock.json", "bun.lock"]
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE",
+    "SCHEMA",
+    "CONFIG"
+  ],
+  "allowed_paths": [
+    "*"
+  ],
+  "forbidden_paths": [
+    "package-lock.json",
+    "bun.lock"
+  ]
 }
