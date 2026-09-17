@@ -11,6 +11,8 @@ import {
   Sliders,
   X,
   AlertCircle,
+  Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface BlockInspectorProps {
@@ -46,7 +48,7 @@ export const BlockInspector: React.FC<BlockInspectorProps> = ({
         </div>
         <h4 className="text-sm font-bold text-foreground">Žádný vybraný blok</h4>
         <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
-          Klepnutím na blok na plátně otevřete jeho vlastnosti a nastavení.
+          Klepnutím na blok na plátně otevřete jeho vlastnosti, nastavení a schéma.
         </p>
       </div>
     );
@@ -64,488 +66,203 @@ export const BlockInspector: React.FC<BlockInspectorProps> = ({
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-card/60 backdrop-blur-xs select-none">
-      {/* Inspector Header */}
-      <div className="p-3 sm:p-4 border-b border-border space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Icon className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-foreground truncate">{def.label}</h3>
-              <p className="text-[11px] font-mono text-muted-foreground truncate">
-                ID: {block.id}
-              </p>
-            </div>
+      {/* Header */}
+      <div className="p-3.5 sm:p-4 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Icon className="w-4 h-4" />
           </div>
-          <div className="flex items-center gap-1">
-            <HelpTrigger helpKey="content.block.edit" size="sm" align="right" label="Nápověda k editaci bloku" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-bold text-foreground truncate">{def.czechLabel || def.label}</h3>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground font-mono">
+                {def.schemaVersion}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground truncate">{def.czechDescription || def.description}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <HelpTrigger helpKey="content.block.edit" size="sm" align="right" label="Nápověda k vlastnostem bloku" />
+          <button
+            type="button"
+            onClick={onDeselect}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+            title="Zavřít panel"
+            aria-label="Zavřít panel"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Action Toolbar */}
+      <div className="px-4 py-2 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1">
+          {capabilities['content.block.move'] && (
+            <>
+              <button
+                type="button"
+                onClick={() => onMoveUp(block.id)}
+                disabled={isFirst}
+                className="p-1.5 rounded-md border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground"
+                title="Posunout nahoru"
+                aria-label="Posunout nahoru"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onMoveDown(block.id)}
+                disabled={isLast}
+                className="p-1.5 rounded-md border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground"
+                title="Posunout dolů"
+                aria-label="Posunout dolů"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {capabilities['content.block.duplicate'] && (
             <button
               type="button"
-              onClick={onDeselect}
-              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              title="Zavřít panel vlastností"
-              aria-label="Zavřít panel vlastností"
+              onClick={() => onDuplicate(block.id)}
+              className="p-1.5 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground"
+              title="Duplikovat blok"
+              aria-label="Duplikovat blok"
             >
-              <X className="w-4 h-4" />
+              <Copy className="w-4 h-4" />
             </button>
-          </div>
-        </div>
-
-        {/* Structural Move & Action Controls */}
-        <div className="grid grid-cols-4 gap-1 pt-1">
-          {/* Mandatory Accessible Move Up Button */}
-          <button
-            type="button"
-            id="btn-inspector-move-up"
-            disabled={isFirst || !capabilities['content.block.move']}
-            onClick={() => onMoveUp(block.id)}
-            title="Posunout blok nahoru"
-            aria-label="Posunout blok nahoru"
-            className="p-2 min-h-[44px] flex flex-col items-center justify-center rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
-          >
-            <ChevronUp className="w-4 h-4" />
-            <span className="text-[10px] mt-0.5">Nahoru</span>
-          </button>
-
-          {/* Mandatory Accessible Move Down Button */}
-          <button
-            type="button"
-            id="btn-inspector-move-down"
-            disabled={isLast || !capabilities['content.block.move']}
-            onClick={() => onMoveDown(block.id)}
-            title="Posunout blok dolů"
-            aria-label="Posunout blok dolů"
-            className="p-2 min-h-[44px] flex flex-col items-center justify-center rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
-          >
-            <ChevronDown className="w-4 h-4" />
-            <span className="text-[10px] mt-0.5">Dolů</span>
-          </button>
-
-          {/* Duplicate Button */}
-          <button
-            type="button"
-            id="btn-inspector-duplicate"
-            disabled={!capabilities['content.block.duplicate']}
-            onClick={() => onDuplicate(block.id)}
-            title="Duplikovat blok"
-            aria-label="Duplikovat blok"
-            className="p-2 min-h-[44px] flex flex-col items-center justify-center rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
-          >
-            <Copy className="w-4 h-4" />
-            <span className="text-[10px] mt-0.5">Klon</span>
-          </button>
-
-          {/* Delete Button */}
-          <button
-            type="button"
-            id="btn-inspector-delete"
-            disabled={!capabilities['content.block.delete']}
-            onClick={() => onDelete(block.id)}
-            title="Smazat blok"
-            aria-label="Smazat blok"
-            className="p-2 min-h-[44px] flex flex-col items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 hover:bg-destructive/20 text-destructive disabled:opacity-30 disabled:pointer-events-none transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span className="text-[10px] mt-0.5">Smazat</span>
-          </button>
+          )}
+          {capabilities['content.block.delete'] && (
+            <button
+              type="button"
+              onClick={() => onDelete(block.id)}
+              className="p-1.5 rounded-md border border-destructive/30 bg-destructive/5 hover:bg-destructive/15 text-destructive"
+              title="Smazat blok"
+              aria-label="Smazat blok"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Property Forms based on Block Type */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
-        {/* HEADING FORM */}
-        {block.type === 'heading' && (
-          <>
-            <div className="space-y-1.5">
-              <label htmlFor="field-heading-text" className="text-xs font-semibold text-foreground">
-                Text nadpisu
-              </label>
-              <input
-                id="field-heading-text"
-                type="text"
-                value={(data.text as string) || ''}
-                onChange={(e) => updateField('text', e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[40px]"
-                placeholder="Zadejte text..."
-              />
-            </div>
+      {/* Dynamic Fields Inspector */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {Object.entries(def.fields).map(([fieldName, config]) => {
+          const rawVal = data[fieldName];
 
-            <div className="space-y-1.5">
-              <label htmlFor="field-heading-level" className="text-xs font-semibold text-foreground">
-                Úroveň nadpisu
-              </label>
-              <div className="grid grid-cols-6 gap-1">
-                {[1, 2, 3, 4, 5, 6].map((lvl) => (
-                  <button
-                    key={lvl}
-                    type="button"
-                    onClick={() => updateField('level', lvl)}
-                    className={`py-1.5 rounded-lg text-xs font-bold border transition-colors min-h-[38px] ${
-                      Number(data.level) === lvl
-                        ? 'bg-primary text-primary-foreground border-primary shadow-2xs'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    H{lvl}
-                  </button>
-                ))}
+          if (config.type === 'text') {
+            return (
+              <div key={fieldName} className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>{config.label}</span>
+                </label>
+                <input
+                  type="text"
+                  value={typeof rawVal === 'string' ? rawVal : ''}
+                  placeholder={config.placeholder}
+                  onChange={(e) => updateField(fieldName, e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40"
+                />
               </div>
-            </div>
+            );
+          }
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Zarovnání</label>
-              <div className="grid grid-cols-3 gap-1">
-                {(['left', 'center', 'right'] as const).map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => updateField('align', a)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border capitalize transition-colors min-h-[38px] ${
-                      (data.align || 'left') === a
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    {a === 'left' ? 'Vlevo' : a === 'center' ? 'Na střed' : 'Vpravo'}
-                  </button>
-                ))}
+          if (config.type === 'textarea') {
+            return (
+              <div key={fieldName} className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">{config.label}</label>
+                <textarea
+                  rows={4}
+                  value={typeof rawVal === 'string' ? rawVal : ''}
+                  placeholder={config.placeholder}
+                  onChange={(e) => updateField(fieldName, e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40 resize-y"
+                />
               </div>
-            </div>
-          </>
-        )}
+            );
+          }
 
-        {/* PARAGRAPH FORM */}
-        {block.type === 'paragraph' && (
-          <>
-            <div className="space-y-1.5">
-              <label htmlFor="field-paragraph-text" className="text-xs font-semibold text-foreground">
-                Text odstavce
-              </label>
-              <textarea
-                id="field-paragraph-text"
-                rows={5}
-                value={(data.text as string) || ''}
-                onChange={(e) => updateField('text', e.target.value)}
-                className="w-full p-3 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
-                placeholder="Zadejte text odstavce..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Velikost písma</label>
-              <div className="grid grid-cols-3 gap-1">
-                {[
-                  { key: 'sm', label: 'Menší' },
-                  { key: 'base', label: 'Základní' },
-                  { key: 'lg', label: 'Větší' },
-                ].map((s) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => updateField('size', s.key)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border transition-colors min-h-[38px] ${
-                      (data.size || 'base') === s.key
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+          if (config.type === 'rich_text') {
+            return (
+              <div key={fieldName} className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>{config.label}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">WYSIWYG</span>
+                </label>
+                <textarea
+                  rows={5}
+                  value={typeof rawVal === 'string' ? rawVal : ''}
+                  onChange={(e) => updateField(fieldName, e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground font-mono focus:outline-hidden focus:ring-2 focus:ring-primary/40 resize-y"
+                />
               </div>
-            </div>
+            );
+          }
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Zarovnání</label>
-              <div className="grid grid-cols-3 gap-1">
-                {(['left', 'center', 'right'] as const).map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => updateField('align', a)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border capitalize transition-colors min-h-[38px] ${
-                      (data.align || 'left') === a
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    {a === 'left' ? 'Vlevo' : a === 'center' ? 'Na střed' : 'Vpravo'}
-                  </button>
-                ))}
+          if (config.type === 'select') {
+            return (
+              <div key={fieldName} className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">{config.label}</label>
+                <select
+                  value={rawVal !== undefined ? String(rawVal) : ''}
+                  onChange={(e) => {
+                    const found = config.options.find((o) => String(o.value) === e.target.value);
+                    updateField(fieldName, found ? found.value : e.target.value);
+                  }}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40"
+                >
+                  {config.options.map((opt) => (
+                    <option key={String(opt.value)} value={String(opt.value)}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
-          </>
-        )}
+            );
+          }
 
-        {/* CALLOUT FORM */}
-        {block.type === 'callout' && (
-          <>
-            <div className="space-y-1.5">
-              <label htmlFor="field-callout-title" className="text-xs font-semibold text-foreground">
-                Titulek upozornění (volitelný)
-              </label>
-              <input
-                id="field-callout-title"
-                type="text"
-                value={(data.title as string) || ''}
-                onChange={(e) => updateField('title', e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[40px]"
-                placeholder="Např. Důležité sdělení..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="field-callout-text" className="text-xs font-semibold text-foreground">
-                Obsah upozornění
-              </label>
-              <textarea
-                id="field-callout-text"
-                rows={3}
-                value={(data.text as string) || ''}
-                onChange={(e) => updateField('text', e.target.value)}
-                className="w-full p-3 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
-                placeholder="Zadejte text upozornění..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Druh sdělení</label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {[
-                  { key: 'info', label: 'Informace', color: 'border-sky-500/40 text-sky-700 dark:text-sky-300' },
-                  { key: 'warning', label: 'Varování', color: 'border-amber-500/40 text-amber-700 dark:text-amber-300' },
-                  { key: 'success', label: 'Úspěch', color: 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300' },
-                  { key: 'critical', label: 'Kritické', color: 'border-rose-500/40 text-rose-700 dark:text-rose-300' },
-                ].map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => updateField('tone', t.key)}
-                    className={`p-2 rounded-lg text-xs font-medium border text-left flex items-center justify-between min-h-[40px] transition-colors ${
-                      (data.tone || 'info') === t.key
-                        ? 'bg-muted/90 font-bold border-foreground shadow-2xs'
-                        : 'bg-background hover:bg-muted text-muted-foreground border-border'
-                    }`}
-                  >
-                    <span>{t.label}</span>
-                    <span className={`w-2 h-2 rounded-full ${t.color.replace('text-', 'bg-').split(' ')[0]}`} />
-                  </button>
-                ))}
+          if (config.type === 'radio') {
+            return (
+              <div key={fieldName} className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">{config.label}</label>
+                <div className="grid grid-cols-3 gap-1 bg-muted/40 p-1 rounded-lg border border-border">
+                  {config.options.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => updateField(fieldName, opt.value)}
+                      className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                        String(rawVal) === opt.value
+                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            );
+          }
 
-        {/* QUOTE FORM */}
-        {block.type === 'quote' && (
-          <>
-            <div className="space-y-1.5">
-              <label htmlFor="field-quote-text" className="text-xs font-semibold text-foreground">
-                Citace
-              </label>
-              <textarea
-                id="field-quote-text"
-                rows={3}
-                value={(data.quote as string) || ''}
-                onChange={(e) => updateField('quote', e.target.value)}
-                className="w-full p-3 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
-                placeholder="Zadejte text citace..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="field-quote-author" className="text-xs font-semibold text-foreground">
-                Autor
-              </label>
-              <input
-                id="field-quote-author"
-                type="text"
-                value={(data.author as string) || ''}
-                onChange={(e) => updateField('author', e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[40px]"
-                placeholder="Jméno autora..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="field-quote-citation" className="text-xs font-semibold text-foreground">
-                Zdroj / Instituce
-              </label>
-              <input
-                id="field-quote-citation"
-                type="text"
-                value={(data.citation as string) || ''}
-                onChange={(e) => updateField('citation', e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[40px]"
-                placeholder="Název knihy, rozsudku nebo publikace..."
-              />
-            </div>
-          </>
-        )}
-
-        {/* BUTTON FORM */}
-        {block.type === 'button' && (
-          <>
-            <div className="space-y-1.5">
-              <label htmlFor="field-button-label" className="text-xs font-semibold text-foreground">
-                Text tlačítka
-              </label>
-              <input
-                id="field-button-label"
-                type="text"
-                value={(data.label as string) || ''}
-                onChange={(e) => updateField('label', e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[40px]"
-                placeholder="Např. Zjistit více..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="field-button-url" className="text-xs font-semibold text-foreground">
-                Cílová URL adresa
-              </label>
-              <input
-                id="field-button-url"
-                type="text"
-                value={(data.url as string) || ''}
-                onChange={(e) => updateField('url', e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm font-mono rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[40px]"
-                placeholder="https://... nebo /kontakt"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Vzhled (Varianta)</label>
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { key: 'primary', label: 'Primární' },
-                  { key: 'secondary', label: 'Sekundární' },
-                  { key: 'outline', label: 'Obrys' },
-                  { key: 'ghost', label: 'Nenápadné' },
-                ].map((v) => (
-                  <button
-                    key={v.key}
-                    type="button"
-                    onClick={() => updateField('variant', v.key)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border transition-colors min-h-[38px] ${
-                      (data.variant || 'primary') === v.key
-                        ? 'bg-primary text-primary-foreground border-primary font-bold'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Otevřít v okně</label>
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { key: '_self', label: 'Ve stejném okně' },
-                  { key: '_blank', label: 'V novém okně' },
-                ].map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => updateField('target', t.key)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border transition-colors min-h-[38px] ${
-                      (data.target || '_self') === t.key
-                        ? 'bg-primary text-primary-foreground border-primary font-bold'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* DIVIDER FORM */}
-        {block.type === 'divider' && (
-          <>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Styl linky</label>
-              <div className="grid grid-cols-3 gap-1">
-                {[
-                  { key: 'solid', label: 'Plná' },
-                  { key: 'dashed', label: 'Čárkovaná' },
-                  { key: 'dotted', label: 'Tečkovaná' },
-                ].map((s) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => updateField('style', s.key)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border transition-colors min-h-[38px] ${
-                      (data.style || 'solid') === s.key
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Vnější odsazení</label>
-              <div className="grid grid-cols-3 gap-1">
-                {[
-                  { key: 'sm', label: 'Malé' },
-                  { key: 'md', label: 'Střední' },
-                  { key: 'lg', label: 'Velké' },
-                ].map((sp) => (
-                  <button
-                    key={sp.key}
-                    type="button"
-                    onClick={() => updateField('spacing', sp.key)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border transition-colors min-h-[38px] ${
-                      (data.spacing || 'md') === sp.key
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background hover:bg-muted text-foreground border-border'
-                    }`}
-                  >
-                    {sp.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* MODULE EMBED / FALLBACK */}
-        {block.type === 'module_embed' && (
-          <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
-            <div className="text-xs font-semibold">Nastavení modulu</div>
-            <div className="text-xs text-muted-foreground">
-              Parametry modulu <span className="font-mono">{(data.moduleKey as string) || ''}</span> jsou spravovány v centrálním registru modulů Synthesis.
-            </div>
-          </div>
-        )}
-
-        {/* FALLBACK FOR UNKNOWN BLOCKS */}
-        {!['heading', 'paragraph', 'callout', 'quote', 'button', 'divider', 'module_embed'].includes(block.type) && (
-          <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200 text-xs space-y-1.5">
-            <div className="flex items-center gap-1.5 font-semibold">
-              <AlertCircle className="w-4 h-4 text-amber-600" />
-              <span>Neregistrovaný blok</span>
-            </div>
-            <p className="text-muted-foreground">
-              Data tohoto bloku nelze přímo editovat, aby byla zaručena bezpečnost a integrita schématu.
-            </p>
-          </div>
-        )}
+          return null;
+        })}
       </div>
 
-      {/* Footer info */}
+      {/* Inspector Footer with Entitlement & Governance info */}
       <div className="p-3 border-t border-border bg-muted/20 text-[11px] text-muted-foreground flex items-center justify-between">
-        <span>Schéma: <span className="font-mono">{def.schemaVersion}</span></span>
-        <span>Pořadí: #{block.order}</span>
+        <span className="flex items-center gap-1 font-mono">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          Kanonický blok
+        </span>
+        <span className="capitalize">{def.maturity.toLowerCase()}</span>
       </div>
     </div>
   );
