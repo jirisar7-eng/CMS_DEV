@@ -119,16 +119,16 @@ export function flattenAndCalculateDepths(
   // Detect any disconnected cycles where no item in the loop has parentId === null
   for (const item of sorted) {
     if (!visited.has(item.id) && item.parentId !== null) {
-      const trace = [item.id];
-      let curr = item.parentId;
-      while (curr) {
+      const trace: string[] = [item.id];
+      let curr: string | null = item.parentId;
+      while (curr !== null) {
         if (trace.includes(curr)) {
           cycleErrors.push(`Detekován cyklus ve stromu navigace u položky ${item.id} (${item.label}).`);
           break;
         }
         trace.push(curr);
         const parentItem = itemMap.get(curr);
-        curr = parentItem?.parentId || null;
+        curr = parentItem?.parentId ?? null;
       }
     }
   }

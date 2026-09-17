@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 /**
  * Resolves a safe public project context without requiring admin session/RBAC.
  */
-export async function resolvePublicProjectContext(req?: Request): Promise<string | null> {
+async function resolvePublicProjectContext(req?: Request): Promise<string | null> {
   let requestedProject: string | null = null;
   
   if (req) {
