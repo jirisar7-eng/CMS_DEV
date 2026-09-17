@@ -88,8 +88,8 @@ export async function POST(req: Request) {
       data: {
         action: 'NAVIGATION_SET_CREATED',
         scopeType: 'PROJECT',
+        scopeId: context.projectId,
         actorId: context.userId,
-        projectId: context.projectId,
         metadata: { setId: navSet.id, key: navSet.key },
       },
     });

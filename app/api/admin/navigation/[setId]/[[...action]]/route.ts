@@ -67,8 +67,8 @@ export async function PATCH(
         data: {
           action: 'NAVIGATION_SET_UPDATED',
           scopeType: 'PROJECT',
+          scopeId: context.projectId,
           actorId: context.userId,
-          projectId: context.projectId,
           metadata: { setId, status: body.status },
         },
       });
@@ -316,8 +316,8 @@ export async function DELETE(
         data: {
           action: 'NAVIGATION_SET_DELETED',
           scopeType: 'PROJECT',
+          scopeId: context.projectId,
           actorId: context.userId,
-          projectId: context.projectId,
           metadata: { setId },
         },
       });
