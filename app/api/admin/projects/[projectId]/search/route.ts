@@ -44,7 +44,7 @@ export async function GET(
     }
 
     // 4. Count indexed documents
-    const adapter = new PrismaSearchIndexAdapter(prisma);
+    const adapter = new PrismaSearchIndexAdapter();
     const searchService = new SearchService(adapter);
     const indexedDocuments = await searchService.countProjectDocuments(projectContext.projectId);
 
@@ -104,7 +104,7 @@ export async function POST(
     });
 
     // 5. Rebuild search index via domain service (fail-closed routing & validation)
-    const adapter = new PrismaSearchIndexAdapter(prisma);
+    const adapter = new PrismaSearchIndexAdapter();
     const searchService = new SearchService(adapter);
 
     const { indexedCount } = await searchService.rebuildIndexForPages(

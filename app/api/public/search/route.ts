@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { resolvePublicProjectContext } from '@/lib/domain/navigation/public-context';
 import { PrismaSearchIndexAdapter, SearchService, SearchError } from '@/lib/domain/search';
 
@@ -62,7 +61,7 @@ export async function GET(req: Request) {
     }
 
     // 3. Execute search via SearchService backed by PrismaSearchIndexAdapter
-    const searchService = new SearchService(new PrismaSearchIndexAdapter(prisma));
+    const searchService = new SearchService(new PrismaSearchIndexAdapter());
     const result = await searchService.search({
       projectId,
       query: queryParam,
