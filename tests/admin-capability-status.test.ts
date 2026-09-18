@@ -50,6 +50,10 @@ Module.prototype.require = function (id: string) {
   if (id === '@/lib/auth/rbac') {
     return { hasPermission: async () => false };
   }
+  if (id.startsWith('@/')) {
+    const relativePath = id.slice(2);
+    return originalRequire.call(this, path.resolve(__dirname, '..', relativePath));
+  }
   return originalRequire.apply(this, arguments);
 };
 
@@ -66,7 +70,7 @@ import { isDatabaseConfigured } from '../lib/runtime/database';
 const NextRequest = MockNextRequest;
 
 describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Security', () => {
-  const rootDir = process.cwd();
+  const rootDir = path.resolve(__dirname, '..');
 
   describe('1. Authoritative Navigation & Capability Matrix (adminNav.ts)', () => {
     // Exactly 6 canonical statuses

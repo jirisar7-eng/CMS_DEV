@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import {
   IMediaRepository,
   MediaAsset,
@@ -12,22 +12,9 @@ import {
   MediaAssetVersionSecurity
 } from './types';
 
-let prismaInstance: PrismaClient | null = null;
-
-export function getPrismaClient(): PrismaClient {
-  if (!prismaInstance) {
-    const url = process.env['DATABASE_URL'];
-    if (!url) {
-      throw new Error('DATABASE_URL is not defined in the environment');
-    }
-    prismaInstance = new PrismaClient();
-  }
-  return prismaInstance;
-}
-
 export class PrismaMediaRepository implements IMediaRepository {
-  private get prisma(): PrismaClient {
-    return getPrismaClient();
+  private get prisma() {
+    return prisma;
   }
 
   private mapAsset(dbAsset: any): MediaAsset {
@@ -81,6 +68,9 @@ export class PrismaMediaRepository implements IMediaRepository {
   }
 
   async createAsset(assetInput: Omit<MediaAsset, 'id' | 'createdAt' | 'updatedAt' | 'usageCount' | 'usageReferences'>): Promise<MediaAsset> {
+    if (!assetInput.projectId) {
+      throw new Error('projectId is required for creating a media asset');
+    }
     const dbAsset = await this.prisma.mediaAsset.create({
       data: {
         storageKey: assetInput.storageKey,
@@ -103,19 +93,37 @@ export class PrismaMediaRepository implements IMediaRepository {
     return this.mapAsset(dbAsset);
   }
 
-  async getById(id: string): Promise<MediaAsset | undefined> {
+  async getById(id: string, projectId?: string): Promise<MediaAsset | undefined> {
+    const where: Prisma.MediaAssetWhereUniqueInput = { id };
     const dbAsset = await this.prisma.mediaAsset.findUnique({
-      where: { id },
+      where,
       include: {
         usageReferences: true,
       },
     });
     if (!dbAsset) return undefined;
+    if (projectId && dbAsset.projectId !== projectId) {
+      return undefined;
+    }
     return this.mapAsset(dbAsset);
   }
 
-  async list(filters?: MediaFilterOptions): Promise<MediaAsset[]> {
+  async list(projectIdOrFilters?: string | MediaFilterOptions, filtersArg?: MediaFilterOptions): Promise<MediaAsset[]> {
+    let projectId: string | undefined;
+    let filters: MediaFilterOptions | undefined;
+
+    if (typeof projectIdOrFilters === 'string') {
+      projectId = projectIdOrFilters;
+      filters = filtersArg;
+    } else {
+      filters = projectIdOrFilters;
+    }
+
     const where: Prisma.MediaAssetWhereInput = {};
+
+    if (projectId) {
+      where.projectId = projectId;
+    }
 
     if (filters) {
       if (filters.status && filters.status !== 'all') {
@@ -167,7 +175,12 @@ export class PrismaMediaRepository implements IMediaRepository {
     return dbAssets.map(asset => this.mapAsset(asset));
   }
 
-  async updateUrl(id: string, url: string): Promise<MediaAsset | undefined> {
+  async updateUrl(id: string, url: string, projectId?: string): Promise<MediaAsset | undefined> {
+    if (projectId) {
+      const existing = await this.getById(id, projectId);
+      if (!existing) return undefined;
+    }
+
     const updated = await this.prisma.mediaAsset.update({
       where: { id },
       data: { url },
@@ -178,8 +191,8 @@ export class PrismaMediaRepository implements IMediaRepository {
     return this.mapAsset(updated);
   }
 
-  async updateMetadata(id: string, metadata: Partial<MediaMetadata>): Promise<MediaAsset | undefined> {
-    const current = await this.getById(id);
+  async updateMetadata(id: string, metadata: Partial<MediaMetadata>, projectId?: string): Promise<MediaAsset | undefined> {
+    const current = await this.getById(id, projectId);
     if (!current) return undefined;
 
     const mergedMetadata = {
@@ -202,8 +215,16 @@ export class PrismaMediaRepository implements IMediaRepository {
 
   async createVersion(
     assetId: string,
-    versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>
+    versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>,
+    projectId?: string
   ): Promise<MediaAssetVersion> {
+    if (projectId) {
+      const asset = await this.getById(assetId, projectId);
+      if (!asset) {
+        throw new Error(`Asset not found in project ${projectId}`);
+      }
+    }
+
     const aggregate = await this.prisma.mediaAssetVersion.aggregate({
       where: { assetId },
       _max: { versionNumber: true },
@@ -226,7 +247,12 @@ export class PrismaMediaRepository implements IMediaRepository {
     return this.mapVersion(dbVersion);
   }
 
-  async listVersions(assetId: string): Promise<MediaAssetVersion[]> {
+  async listVersions(assetId: string, projectId?: string): Promise<MediaAssetVersion[]> {
+    if (projectId) {
+      const asset = await this.getById(assetId, projectId);
+      if (!asset) return [];
+    }
+
     const dbVersions = await this.prisma.mediaAssetVersion.findMany({
       where: { assetId },
       orderBy: { versionNumber: 'desc' },
@@ -234,7 +260,12 @@ export class PrismaMediaRepository implements IMediaRepository {
     return dbVersions.map(v => this.mapVersion(v));
   }
 
-  async setCurrentVersion(assetId: string, versionId: string): Promise<MediaAsset | undefined> {
+  async setCurrentVersion(assetId: string, versionId: string, projectId?: string): Promise<MediaAsset | undefined> {
+    if (projectId) {
+      const asset = await this.getById(assetId, projectId);
+      if (!asset) return undefined;
+    }
+
     const version = await this.prisma.mediaAssetVersion.findFirst({
       where: { id: versionId, assetId },
     });
@@ -255,7 +286,12 @@ export class PrismaMediaRepository implements IMediaRepository {
     return this.mapAsset(updated);
   }
 
-  async changeStatus(id: string, status: MediaStatus): Promise<MediaAsset | undefined> {
+  async changeStatus(id: string, status: MediaStatus, projectId?: string): Promise<MediaAsset | undefined> {
+    if (projectId) {
+      const asset = await this.getById(id, projectId);
+      if (!asset) return undefined;
+    }
+
     const updated = await this.prisma.mediaAsset.update({
       where: { id },
       data: { status },
@@ -266,7 +302,22 @@ export class PrismaMediaRepository implements IMediaRepository {
     return this.mapAsset(updated);
   }
 
-  async addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>): Promise<MediaUsageReference> {
+  async addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>, projectId?: string): Promise<MediaUsageReference> {
+    const asset = await this.getById(assetId, projectId);
+    if (!asset) {
+      throw new Error(`Asset ${assetId} not found in project ${projectId || 'any'}`);
+    }
+
+    // Verify referenced Page belongs to the same project
+    const page = await this.prisma.page.findUnique({
+      where: { id: reference.pageId },
+      select: { projectId: true },
+    });
+
+    if (!page || page.projectId !== asset.projectId) {
+      throw new Error(`Referenced page ${reference.pageId} does not belong to the same project as the media asset (${asset.projectId})`);
+    }
+
     const dbRef = await this.prisma.mediaUsageReference.create({
       data: {
         assetId,
@@ -291,7 +342,12 @@ export class PrismaMediaRepository implements IMediaRepository {
     return this.mapUsageReference(dbRef);
   }
 
-  async removeUsageReference(assetId: string, referenceId: string): Promise<void> {
+  async removeUsageReference(assetId: string, referenceId: string, projectId?: string): Promise<void> {
+    if (projectId) {
+      const asset = await this.getById(assetId, projectId);
+      if (!asset) return;
+    }
+
     await this.prisma.mediaUsageReference.delete({
       where: { id: referenceId },
     });
@@ -311,7 +367,12 @@ export class PrismaMediaRepository implements IMediaRepository {
     }
   }
 
-  async listUsageReferences(assetId: string): Promise<MediaUsageReference[]> {
+  async listUsageReferences(assetId: string, projectId?: string): Promise<MediaUsageReference[]> {
+    if (projectId) {
+      const asset = await this.getById(assetId, projectId);
+      if (!asset) return [];
+    }
+
     const dbRefs = await this.prisma.mediaUsageReference.findMany({
       where: { assetId },
       orderBy: { usedAt: 'desc' },
@@ -319,20 +380,21 @@ export class PrismaMediaRepository implements IMediaRepository {
     return dbRefs.map(r => this.mapUsageReference(r));
   }
 
-  async isDeletionAllowed(id: string): Promise<boolean> {
-    const asset = await this.getById(id);
+  async isDeletionAllowed(id: string, projectId?: string): Promise<boolean> {
+    const asset = await this.getById(id, projectId);
     if (!asset) return false;
-    return asset.usageCount === 0 && (asset.status as string) !== 'PUBLISHED' && (asset.status as string) !== 'published';
+    const statusUpper = (asset.status as string).toUpperCase();
+    return asset.usageCount === 0 && statusUpper !== 'PUBLISHED';
   }
 
-  async archiveAsset(id: string): Promise<MediaAsset | undefined> {
-    return this.changeStatus(id, 'ARCHIVED');
+  async archiveAsset(id: string, projectId?: string): Promise<MediaAsset | undefined> {
+    return this.changeStatus(id, 'ARCHIVED', projectId);
   }
 
-  async deleteAsset(id: string): Promise<void> {
-    const allowed = await this.isDeletionAllowed(id);
+  async deleteAsset(id: string, projectId?: string): Promise<void> {
+    const allowed = await this.isDeletionAllowed(id, projectId);
     if (!allowed) {
-      throw new Error('Deletion is not allowed for this asset (it is either published or still in use)');
+      throw new Error('Deletion is not allowed for this asset (it is either published, still in use, or not found in project)');
     }
     await this.prisma.mediaAsset.delete({
       where: { id },

@@ -1,4 +1,4 @@
-import { StorageProvider, MalwareScanner, UploadPolicy, MediaType } from './types';
+import { StorageProvider, MalwareScanner, MalwareScanResult, UploadPolicy, MediaType } from './types';
 
 export const DEFAULT_UPLOAD_POLICY: UploadPolicy = {
   maxSizeBytes: 25 * 1024 * 1024, // 25 MB
@@ -121,23 +121,24 @@ export class MockMalwareScanner implements MalwareScanner {
   id = 'mock-malware-scanner';
   name = 'In-Memory Security Scanner';
 
-  async scan(file: { name: string; type: string; size: number; data?: Blob | ArrayBuffer }): Promise<{
-    clean: boolean;
-    threat?: string;
-    scannedAt: string;
-  }> {
+  async scan(file: { name: string; type: string; size: number; data?: Buffer | Uint8Array | Blob | ArrayBuffer }): Promise<MalwareScanResult> {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     if (DEFAULT_UPLOAD_POLICY.disallowedExtensions.includes(ext)) {
       return {
         clean: false,
+        status: 'INFECTED',
         threat: `Potenciálně nebezpečná spustitelná přípona: .${ext}`,
+        reasonCode: 'DISALLOWED_EXTENSION',
         scannedAt: new Date().toISOString(),
+        scannerId: this.id,
       };
     }
 
     return {
       clean: true,
+      status: 'CLEAN',
       scannedAt: new Date().toISOString(),
+      scannerId: this.id,
     };
   }
 }

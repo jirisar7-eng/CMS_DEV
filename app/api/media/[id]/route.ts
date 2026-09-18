@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mediaService } from '@/lib/domain/media/service';
+import { resolvePublicProjectContext } from '@/lib/domain/navigation/public-context';
 
 export async function GET(
   request: NextRequest,
@@ -8,8 +9,17 @@ export async function GET(
   try {
     const { id } = await params;
     
-    // We fetch the asset metadata first to check security/status
-    const asset = await mediaService.getAsset(id);
+    // Resolve public project context fail-closed
+    const projectId = await resolvePublicProjectContext(request);
+    if (!projectId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Missing or invalid project context' },
+        { status: 403 }
+      );
+    }
+
+    // We fetch the asset metadata with strict projectId isolation
+    const asset = await mediaService.getAsset(id, projectId);
     if (!asset) {
       return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }
@@ -23,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden: Asset is not public' }, { status: 403 });
     }
 
-    const download = await mediaService.getAssetDownload(id);
+    const download = await mediaService.getAssetDownload(id, projectId);
     
     // Determine headers
     const headers = new Headers();

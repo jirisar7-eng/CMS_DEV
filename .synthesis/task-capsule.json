@@ -22,6 +22,7 @@
     "tests/media-rbac-authorization.test.ts",
     "tests/media-project-isolation.test.ts",
     "tests/media-admin-runtime.test.ts",
-    "tests/admin-capability-status.test.ts"
+    "tests/admin-capability-status.test.ts",
+    "tests/media-clamav-security.test.ts"
   ]
 }

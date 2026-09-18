@@ -12,10 +12,7 @@ interface MediaReplaceModalProps {
   asset: MediaAsset | null;
   onClose: () => void;
   onReplaceSuccess: (updatedAsset: MediaAsset) => void;
-  onReplaceFile: (
-    assetId: string,
-    file: { name: string; type: string; size: number }
-  ) => Promise<{ success: boolean; asset?: MediaAsset; error?: string }>;
+  onReplaceFile: (formData: FormData) => Promise<{ success: boolean; asset?: MediaAsset; error?: string }>;
 }
 
 export function MediaReplaceModal({
@@ -58,14 +55,13 @@ export function MediaReplaceModal({
     setReplaceProgress(30);
 
     try {
-      await new Promise((r) => setTimeout(r, 200));
+      const formData = new FormData();
+      formData.append('id', asset.id);
+      formData.append('file', selectedFile);
+
       setReplaceProgress(75);
 
-      const res = await onReplaceFile(asset.id, {
-        name: selectedFile.name,
-        type: selectedFile.type,
-        size: selectedFile.size,
-      });
+      const res = await onReplaceFile(formData);
 
       if (!res.success || !res.asset) {
         setErrorMessage(res.error || 'Výměna souboru selhala.');
@@ -74,7 +70,6 @@ export function MediaReplaceModal({
       }
 
       setReplaceProgress(100);
-      await new Promise((r) => setTimeout(r, 150));
 
       onReplaceSuccess(res.asset);
       setSelectedFile(null);
@@ -153,41 +148,49 @@ export function MediaReplaceModal({
                 }
               }}
             />
-            {selectedFile ? (
-              <div className="p-3 rounded-xl border border-primary/40 bg-primary/5 flex items-center justify-between">
-                <div className="min-w-0 text-xs">
-                  <div className="font-bold text-foreground truncate">{selectedFile.name}</div>
-                  <div className="font-mono text-[11px] text-muted-foreground">{formatBytes(selectedFile.size)}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs font-semibold text-primary hover:underline shrink-0"
-                >
-                  Změnit
-                </button>
-              </div>
-            ) : (
+            {!selectedFile ? (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
+                className="w-full p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-background hover:bg-muted/30 transition-colors flex flex-col items-center justify-center text-center text-xs"
               >
-                <RefreshCw className="w-4 h-4" />
-                <span>Vybrat náhradní soubor</span>
+                <span className="font-semibold text-foreground">Vybrat náhradní soubor z počítače</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">Nahráním vznikne nová verze aktiva</span>
               </button>
+            ) : (
+              <div className="p-3 rounded-xl border border-border bg-background flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0 text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-foreground truncate">{selectedFile.name}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground">{formatBytes(selectedFile.size)}</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground text-xs"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Replacing progress */}
+          {/* Progress bar */}
           {isReplacing && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs font-mono text-muted-foreground">
-                <span>Aktualizuji úložiště...</span>
-                <span>{replaceProgress} %</span>
+            <div className="p-3 rounded-xl bg-muted/60 border border-border space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-foreground">Nahrávám novou verzi souboru...</span>
+                <span className="font-mono text-muted-foreground">{replaceProgress} %</span>
               </div>
               <div className="w-full bg-border rounded-full h-1.5 overflow-hidden">
-                <div className="bg-primary h-full transition-all duration-150" style={{ width: `${replaceProgress}%` }} />
+                <div
+                  className="bg-amber-500 h-full transition-all duration-200"
+                  style={{ width: `${replaceProgress}%` }}
+                />
               </div>
             </div>
           )}
@@ -205,10 +208,10 @@ export function MediaReplaceModal({
             <button
               type="submit"
               disabled={!selectedFile || isReplacing}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-semibold rounded-xl bg-amber-600 text-white hover:bg-amber-700 transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>{isReplacing ? 'Nahrazuji...' : 'Provést výměnu'}</span>
+              <span>{isReplacing ? 'Nahrazuji...' : 'Nahradit soubor'}</span>
             </button>
           </div>
         </form>
