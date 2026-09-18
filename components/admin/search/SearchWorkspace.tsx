@@ -8,7 +8,6 @@ import {
   Search, 
   AlertCircle, 
   CheckCircle2, 
-  Info,
   ShieldCheck,
   AlertTriangle
 } from 'lucide-react';
@@ -19,66 +18,100 @@ interface SearchWorkspaceProps {
 
 interface IndexStatusData {
   indexedDocuments: number;
-  indexVersion: string;
+  indexVersion: number | null;
+}
+
+async function fetchSearchStatus(
+  projectId: string,
+  signal?: AbortSignal
+): Promise<{ data: IndexStatusData | null; error: string | null }> {
+  try {
+    const res = await fetch(`/api/admin/projects/${encodeURIComponent(projectId)}/search`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
+    });
+
+    if (!res.ok) {
+      let errorMessage = 'Nastala chyba při načítání stavu vyhledávacího indexu.';
+      if (res.status === 401) {
+        errorMessage = 'Nejste přihlášeni nebo vypršela vaše relace.';
+      } else if (res.status === 403) {
+        errorMessage = 'Nemáte oprávnění k přístupu ke správě vyhledávání.';
+      } else if (res.status === 404) {
+        errorMessage = 'Požadovaný projekt nebyl nalezen nebo není aktivní.';
+      } else if (res.status === 503) {
+        errorMessage = 'Služba vyhledávání je dočasně nedostupná.';
+      }
+      return { data: null, error: errorMessage };
+    }
+
+    const json = await res.json();
+    return {
+      data: {
+        indexedDocuments: typeof json.indexedDocuments === 'number' ? json.indexedDocuments : 0,
+        indexVersion: typeof json.indexVersion === 'number' ? json.indexVersion : null,
+      },
+      error: null,
+    };
+  } catch (err: unknown) {
+    if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+      return { data: null, error: null };
+    }
+    return { data: null, error: 'Nepodařilo se připojit k serveru.' };
+  }
 }
 
 export function SearchWorkspace({ projectId }: SearchWorkspaceProps) {
   const [statusData, setStatusData] = useState<IndexStatusData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(!!projectId);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isReindexing, setIsReindexing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);
 
-  const fetchIndexStatus = useCallback(async () => {
-    if (!projectId) {
-      setStatusData(null);
-      setIsLoading(false);
-      return;
-    }
+  const refreshStatus = useCallback(async () => {
+    if (!projectId) return;
 
     setIsLoading(true);
     setError(null);
 
-    try {
-      const res = await fetch(`/api/admin/projects/${encodeURIComponent(projectId)}/search`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          setError('Nejste přihlášeni nebo vypršela vaše relace.');
-        } else if (res.status === 403) {
-          setError('Nemáte oprávnění k přístupu ke správě vyhledávání.');
-        } else if (res.status === 404) {
-          setError('Požadovaný projekt nebyl nalezen nebo není aktivní.');
-        } else if (res.status === 503) {
-          setError('Služba vyhledávání je dočasně nedostupná.');
-        } else {
-          setError('Nastala chyba při načítání stavu vyhledávacího indexu.');
-        }
-        setStatusData(null);
-        return;
-      }
-
-      const data = await res.json();
-      setStatusData({
-        indexedDocuments: typeof data.indexedDocuments === 'number' ? data.indexedDocuments : 0,
-        indexVersion: data.indexVersion || 'search_v1',
-      });
-    } catch {
-      setError('Nepodařilo se připojit k serveru.');
+    const result = await fetchSearchStatus(projectId);
+    if (result.error) {
+      setError(result.error);
       setStatusData(null);
-    } finally {
-      setIsLoading(false);
+    } else if (result.data) {
+      setStatusData(result.data);
+      setError(null);
     }
+    setIsLoading(false);
   }, [projectId]);
 
   useEffect(() => {
-    fetchIndexStatus();
-  }, [fetchIndexStatus]);
+    if (!projectId) {
+      return;
+    }
+
+    let isMounted = true;
+    const controller = new AbortController();
+
+    fetchSearchStatus(projectId, controller.signal).then((result) => {
+      if (!isMounted || controller.signal.aborted) return;
+      if (result.error) {
+        setError(result.error);
+        setStatusData(null);
+      } else if (result.data) {
+        setStatusData(result.data);
+        setError(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [projectId]);
 
   const handleReindex = async () => {
     if (!projectId || isReindexing) return;
@@ -111,13 +144,22 @@ export function SearchWorkspace({ projectId }: SearchWorkspaceProps) {
         return;
       }
 
-      const data = await res.json();
-      const count = typeof data.indexedCount === 'number' ? data.indexedCount : 0;
-      setSuccessFeedback(`Indexace byla úspěšně dokončena. Zaindexováno ${count} ${count === 1 ? 'stránka' : (count >= 2 && count <= 4 ? 'stránky' : 'stránek')}.`);
-      setStatusData({
-        indexedDocuments: count,
-        indexVersion: data.indexVersion || 'search_v1',
-      });
+      const postData = await res.json();
+      const count = typeof postData.indexedCount === 'number' ? postData.indexedCount : 0;
+      setSuccessFeedback(
+        `Indexace byla úspěšně dokončena. Zaindexováno ${count} ${
+          count === 1 ? 'stránka' : count >= 2 && count <= 4 ? 'stránky' : 'stránek'
+        }.`
+      );
+
+      // Autoritativní refresh stavu přes GET bez odhadování z POST payloadu
+      const refreshResult = await fetchSearchStatus(projectId);
+      if (refreshResult.error) {
+        setError(refreshResult.error);
+        setStatusData(null);
+      } else if (refreshResult.data) {
+        setStatusData(refreshResult.data);
+      }
     } catch {
       setError('Během komunikace se serverem nastala chyba spojení.');
     } finally {
@@ -157,7 +199,7 @@ export function SearchWorkspace({ projectId }: SearchWorkspaceProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={fetchIndexStatus}
+                    onClick={refreshStatus}
                     className="underline hover:no-underline font-semibold text-xs shrink-0"
                   >
                     Zkusit znovu
@@ -202,7 +244,7 @@ export function SearchWorkspace({ projectId }: SearchWorkspaceProps) {
                     )}
                   </div>
                   <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
-                    Verze indexu: {statusData?.indexVersion || 'search_v1'}
+                    Verze indexu: {statusData?.indexVersion !== null && statusData?.indexVersion !== undefined ? statusData.indexVersion : '—'}
                   </span>
                 </div>
 

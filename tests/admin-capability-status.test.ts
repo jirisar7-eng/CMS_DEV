@@ -345,5 +345,26 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.doesNotMatch(workspaceCode, /err\.stack/);
       assert.doesNotMatch(workspaceCode, /error\.stack/);
     });
+
+    it('Search UI strictly omits fake fallback search_v1 and renders real indexVersion or dash', () => {
+      assert.doesNotMatch(workspaceCode, /search_v1/);
+      assert.match(workspaceCode, /indexVersion:\s*number\s*\|\s*null/);
+      assert.match(workspaceCode, /statusData\?\.indexVersion\s*!==\s*null\s*&&\s*statusData\?\.indexVersion\s*!==\s*undefined\s*\?\s*statusData\.indexVersion\s*:\s*['"]—['"]/);
+    });
+
+    it('Search UI performs authoritative GET refresh after successful POST reindex', () => {
+      // Must NOT construct statusData from POST response payload, but fetch fresh status via GET
+      assert.match(workspaceCode, /handleReindex\s*=\s*async/);
+      assert.match(workspaceCode, /fetchSearchStatus\(projectId\)/);
+      assert.match(workspaceCode, /const\s+refreshResult\s*=\s*await\s+fetchSearchStatus\(projectId\)/);
+    });
+
+    it('Search UI avoids synchronous setState inside useEffect and includes unmount cleanup', () => {
+      assert.doesNotMatch(workspaceCode, /useEffect\(\(\)\s*=>\s*\{\s*setIsLoading\(true\)/);
+      assert.match(workspaceCode, /let\s+isMounted\s*=\s*true/);
+      assert.match(workspaceCode, /controller\.abort\(\)/);
+      assert.match(workspaceCode, /return\s*\(\)\s*=>\s*\{\s*isMounted\s*=\s*false;\s*controller\.abort\(\);\s*\}/);
+      assert.doesNotMatch(workspaceCode, /eslint-disable/);
+    });
   });
 });
