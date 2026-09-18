@@ -6,7 +6,7 @@ import { SeoService } from '@/lib/domain/seo/service';
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ projectId: string }> } | { params: { projectId: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const params = await context.params;
@@ -35,7 +35,7 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ projectId: string }> } | { params: { projectId: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const params = await context.params;

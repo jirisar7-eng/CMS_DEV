@@ -8,7 +8,7 @@ import { getActiveProjectContext } from '@/lib/domain/pages-client/server-contex
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ projectId: string }> } | { params: { projectId: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const params = await context.params;
@@ -38,7 +38,7 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ projectId: string }> } | { params: { projectId: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const params = await context.params;
