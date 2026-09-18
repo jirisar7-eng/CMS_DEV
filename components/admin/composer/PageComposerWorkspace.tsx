@@ -69,7 +69,7 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
     setLockConflict(false);
 
     try {
-      const canonicalContent = puckDataToCanonical(data, "syn-content-v1", entitlements || undefined);
+      const canonicalContent = puckDataToCanonical(data, "syn-content-v1", entitlements || initialEntitlements);
       
       const lockVersion = lifecycle?.lockVersion || 1;
       const mutationResult = await client.updateDraft(page.id, lockVersion, {

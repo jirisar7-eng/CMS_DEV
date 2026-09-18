@@ -144,7 +144,8 @@ describe('SYN-EDITOR-001: Visual Page Editor Foundation', () => {
 
     test('converts Puck format back to canonical content with sanitized data', () => {
       const puckData = canonicalToPuckData(canonicalContent);
-      const restored = puckDataToCanonical(puckData);
+      const entitlements = resolveProjectEntitlements('COMMUNITY');
+      const restored = puckDataToCanonical(puckData, 'syn-content-v1', entitlements);
 
       assert.equal(restored.blocks.length, 2);
       assert.equal(restored.blocks[0].id, 'b-1');

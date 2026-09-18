@@ -17,6 +17,7 @@ describe('Puck Integration & Security', () => {
 
   describe('slots serialization', () => {
     test('valid columns nested slot round-trip still works', () => {
+      const commEnt = resolveProjectEntitlements('COMMUNITY');
       const canonical: PageContent = {
         version: 1,
         schemaVersion: 'syn-content-v1',
@@ -43,13 +44,14 @@ describe('Puck Integration & Security', () => {
       assert.ok(puckData.content[0].zones.default);
       assert.equal(puckData.content[0].zones.default[0].type, 'heading');
       
-      const restored = puckDataToCanonical(puckData);
+      const restored = puckDataToCanonical(puckData, 'syn-content-v1', commEnt);
       assert.ok(restored.blocks[0].children);
       assert.equal(restored.blocks[0].children[0].type, 'heading');
       assert.equal(restored.blocks[0].children[0].data.text, 'Nested heading');
     });
 
     test('nested children on non-slot component => rejected', () => {
+      const commEnt = resolveProjectEntitlements('COMMUNITY');
       const puckData = {
         content: [
           {
@@ -69,7 +71,7 @@ describe('Puck Integration & Security', () => {
       };
 
       assert.throws(
-        () => puckDataToCanonical(puckData),
+        () => puckDataToCanonical(puckData, 'syn-content-v1', commEnt),
         (err: any) => err.message.includes('paragraph') && err.message.includes('vnořené')
       );
     });
@@ -94,13 +96,21 @@ describe('Puck Integration & Security', () => {
   });
 
   describe('direct API entitlement bypass prevention', () => {
+    test('puckDataToCanonical throws if entitlements argument is missing', () => {
+      const puckData = { content: [{ type: 'heading', props: { id: 'h-1', text: 'Test' } }], root: {} };
+      assert.throws(
+        () => (puckDataToCanonical as any)(puckData),
+        (err: any) => err.message.includes('Oprávnění') || err.message.includes('vyžadována')
+      );
+    });
+
     test('Community cannot persist Commercial component via puckDataToCanonical', () => {
       const communityEnt = resolveProjectEntitlements('COMMUNITY', { 'labs.access': false });
       const puckData = {
         content: [
           {
             type: 'module_embed',
-            props: { id: 'b-1', moduleKey: 'some_module' }
+            props: { id: 'b-1', moduleId: 'contact_form', schemaVersion: 'v1', parameters: {} }
           }
         ],
         root: {}
@@ -134,8 +144,94 @@ describe('Puck Integration & Security', () => {
     });
   });
 
+  describe('malformed canonical content and module_embed hardening', () => {
+    test('validateCanonicalContent rejects content with missing block ID', () => {
+      const commEnt = resolveProjectEntitlements('COMMUNITY');
+      const malformed = {
+        version: 1,
+        schemaVersion: 'syn-content-v1',
+        blocks: [
+          { id: '', type: 'heading', order: 0, data: { text: 'No ID' } }
+        ]
+      };
+      assert.throws(
+        () => validateCanonicalContent(malformed, commEnt),
+        (err: any) => err.message.includes('id') || err.message.includes('ID') || err.message.includes('Invalid')
+      );
+    });
+
+    test('validateCanonicalContent rejects content with missing version or schemaVersion', () => {
+      const commEnt = resolveProjectEntitlements('COMMUNITY');
+      const missingVersion = {
+        schemaVersion: 'syn-content-v1',
+        blocks: [{ id: 'b-1', type: 'heading', order: 0, data: { text: 'Heading' } }]
+      };
+      assert.throws(
+        () => validateCanonicalContent(missingVersion, commEnt),
+        (err: any) => err.message.includes('version') || err.message.includes('Invalid')
+      );
+    });
+
+    test('validateCanonicalContent rejects content with duplicate block IDs', () => {
+      const commEnt = resolveProjectEntitlements('COMMUNITY');
+      const duplicateIds = {
+        version: 1,
+        schemaVersion: 'syn-content-v1',
+        blocks: [
+          { id: 'dup-1', type: 'heading', order: 0, data: { text: 'Heading 1' } },
+          { id: 'dup-1', type: 'paragraph', order: 1, data: { text: 'Paragraph 1' } }
+        ]
+      };
+      assert.throws(
+        () => validateCanonicalContent(duplicateIds, commEnt),
+        (err: any) => err.message.includes('Duplicate') || err.message.includes('dup-1')
+      );
+    });
+
+    test('module_embed rejects unknown moduleId and invalid parameters types', () => {
+      const commercialEnt = resolveProjectEntitlements('COMMERCIAL');
+
+      // Unknown moduleId
+      const unknownModule = {
+        version: 1,
+        schemaVersion: 'syn-content-v1',
+        blocks: [
+          {
+            id: 'm-1',
+            type: 'module_embed',
+            order: 0,
+            data: { moduleId: 'unknown_module', schemaVersion: 'v1', parameters: {} }
+          }
+        ]
+      };
+      assert.throws(
+        () => validateCanonicalContent(unknownModule, commercialEnt),
+        (err: any) => err.message.includes('Neznámé') || err.message.includes('moduleId')
+      );
+
+      // Invalid parameter value type
+      const invalidParam = {
+        version: 1,
+        schemaVersion: 'syn-content-v1',
+        blocks: [
+          {
+            id: 'm-2',
+            type: 'module_embed',
+            order: 0,
+            data: { moduleId: 'contact_form', schemaVersion: 'v1', parameters: { nested: { object: true } } }
+          }
+        ]
+      };
+      assert.throws(
+        () => validateCanonicalContent(invalidParam, commercialEnt),
+        (err: any) => err.message.includes('parametru') || err.message.includes('Invalid')
+      );
+    });
+  });
+
   describe('unknown component', () => {
     test('unknown component => rejected', () => {
+      const commEnt = resolveProjectEntitlements('COMMUNITY');
       const puckData = {
         content: [
           {
@@ -147,7 +243,7 @@ describe('Puck Integration & Security', () => {
       };
       
       assert.throws(
-        () => puckDataToCanonical(puckData),
+        () => puckDataToCanonical(puckData, 'syn-content-v1', commEnt),
         (err: any) => err.message.includes('hacked_component') || err.message.includes('Neznámý')
       );
     });

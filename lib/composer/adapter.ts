@@ -1,4 +1,5 @@
 import { ContentBlock, ContentBlockType, PageContent } from "@/lib/domain/pages";
+import { validatePageContent } from "@/lib/domain/content/validation";
 import { COMPONENT_REGISTRY, getBlockDefinition } from "./registry";
 import { ProjectEntitlements } from "./types";
 import { isEntitlementSatisfied } from "./entitlements";
@@ -74,12 +75,17 @@ export function canonicalToPuckData(pageContent: PageContent): PuckData {
 /**
  * Transforms Puck editor data back into Canonical PageContent.
  * Validates against Component Registry schemas and strips unapproved JS/HTML.
+ * ProjectEntitlements is REQUIRED. No caller may silently omit entitlement enforcement.
  */
 export function puckDataToCanonical(
   puckData: PuckData,
   schemaVersion: string = "syn-content-v1",
-  entitlements?: ProjectEntitlements
+  entitlements: ProjectEntitlements
 ): PageContent {
+  if (!entitlements) {
+    throw new ApiError("INVALID_INPUT", "Oprávnění projektu jsou vyžadována pro konverzi obsahu editoru", 400);
+  }
+
   const items = Array.isArray(puckData?.content) ? puckData.content : [];
 
   const mapItem = (item: PuckBlockItem, order: number): ContentBlock => {
@@ -96,21 +102,22 @@ export function puckDataToCanonical(
 
     const def = COMPONENT_REGISTRY[blockType];
 
-    // 2. Enforce requiredEntitlement using the server-provided entitlement object
-    if (entitlements) {
-      const entCheck = isEntitlementSatisfied(def.requiredEntitlement, entitlements);
-      if (!entCheck.allowed) {
-        throw new ApiError(
-          "INVALID_INPUT",
-          entCheck.reason || `Komponenta '${blockType}' vyžaduje vyšší oprávnění.`,
-          400
-        );
-      }
+    // 2. Enforce requiredEntitlement using the required server-provided entitlement object
+    const entCheck = isEntitlementSatisfied(def.requiredEntitlement, entitlements);
+    if (!entCheck.allowed) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        entCheck.reason || `Komponenta '${blockType}' vyžaduje vyšší oprávnění.`,
+        400
+      );
     }
 
     // Filter properties to eliminate Puck internals
     const { id: rawId, ...restProps } = item.props || {};
-    const id = typeof rawId === "string" && rawId.length > 0 ? rawId : `block-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    if (typeof rawId !== "string" || rawId.trim().length === 0) {
+      throw new ApiError("INVALID_INPUT", "Chybí platné ID bloku v editoru", 400);
+    }
+    const id = rawId.trim();
 
     // 3. Reject validateData(valid=false)
     const validation = def.validateData(restProps);
@@ -147,11 +154,21 @@ export function puckDataToCanonical(
     return block;
   };
 
-  return {
+  const canonical: PageContent = {
     version: 1,
     schemaVersion,
     blocks: items.map((it, idx) => mapItem(it, idx)),
   };
+
+  try {
+    return validatePageContent(canonical);
+  } catch (err: unknown) {
+    throw new ApiError(
+      "INVALID_INPUT",
+      err instanceof Error ? err.message : "Chyba validace vytvořeného obsahu z editoru",
+      400
+    );
+  }
 }
 
 /**
@@ -159,28 +176,41 @@ export function puckDataToCanonical(
  * Component Registry definitions and ProjectEntitlements.
  */
 export function validateCanonicalContent(
-  pageContent: PageContent,
+  pageContent: unknown,
   entitlements: ProjectEntitlements
 ): PageContent {
-  if (!pageContent || typeof pageContent !== "object" || !Array.isArray(pageContent.blocks)) {
-    throw new ApiError("INVALID_INPUT", "Neplatný formát obsahu stránky: chybí seznam bloků", 400);
+  if (!entitlements) {
+    throw new ApiError("INVALID_INPUT", "Oprávnění projektu jsou vyžadována pro validaci obsahu", 400);
   }
 
+  // 1. First run existing validatePageContent from lib/domain/content/validation
+  let validated: PageContent;
+  try {
+    validated = validatePageContent(pageContent);
+  } catch (err: unknown) {
+    throw new ApiError(
+      "INVALID_INPUT",
+      err instanceof Error ? err.message : "Chyba validace obsahu stránky",
+      400
+    );
+  }
+
+  // 2. Recursively apply registry sanitization + entitlement checks
   const validateBlock = (b: ContentBlock, order: number): ContentBlock => {
-    if (!b || typeof b !== "object" || typeof b.type !== "string") {
-      throw new ApiError("INVALID_INPUT", "Neplatná struktura bloku v obsahu", 400);
+    if (typeof b.id !== "string" || b.id.trim().length === 0) {
+      throw new ApiError("INVALID_INPUT", "Chybí platné ID bloku v obsahu stránky", 400);
     }
 
     const blockType = b.type as ContentBlockType;
 
-    // 1. Reject unknown component types
+    // Reject unknown component types
     if (!(blockType in COMPONENT_REGISTRY)) {
       throw new ApiError("INVALID_INPUT", `Neznámý nebo nepodporovaný typ komponenty: ${b.type}`, 400);
     }
 
     const def = COMPONENT_REGISTRY[blockType];
 
-    // 2. Enforce requiredEntitlement
+    // Enforce requiredEntitlement
     const entCheck = isEntitlementSatisfied(def.requiredEntitlement, entitlements);
     if (!entCheck.allowed) {
       throw new ApiError(
@@ -190,7 +220,7 @@ export function validateCanonicalContent(
       );
     }
 
-    // 3. Reject validateData(valid=false)
+    // Reject validateData(valid=false)
     const validation = def.validateData(b.data || {});
     if (!validation.valid) {
       throw new ApiError(
@@ -200,7 +230,7 @@ export function validateCanonicalContent(
       );
     }
 
-    // 4. Reject nested children on components without supportsSlots
+    // Reject nested children on components without supportsSlots
     const hasChildren = Array.isArray(b.children) && b.children.length > 0;
     if (hasChildren && !def.supportsSlots) {
       throw new ApiError(
@@ -210,10 +240,8 @@ export function validateCanonicalContent(
       );
     }
 
-    const id = typeof b.id === "string" && b.id.length > 0 ? b.id : `block-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
     const validatedBlock: ContentBlock = {
-      id,
+      id: b.id,
       type: blockType,
       order,
       data: validation.sanitized,
@@ -226,9 +254,20 @@ export function validateCanonicalContent(
     return validatedBlock;
   };
 
-  return {
-    version: pageContent.version || 1,
-    schemaVersion: pageContent.schemaVersion || "syn-content-v1",
-    blocks: pageContent.blocks.map((block, idx) => validateBlock(block, idx)),
+  const sanitizedContent: PageContent = {
+    version: validated.version,
+    schemaVersion: validated.schemaVersion,
+    blocks: validated.blocks.map((block, idx) => validateBlock(block, idx)),
   };
+
+  // 3. Run validatePageContent again before returning
+  try {
+    return validatePageContent(sanitizedContent);
+  } catch (err: unknown) {
+    throw new ApiError(
+      "INVALID_INPUT",
+      err instanceof Error ? err.message : "Chyba sekundární validace obsahu stránky",
+      400
+    );
+  }
 }

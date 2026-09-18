@@ -148,9 +148,10 @@ export interface DividerBlockData {
 }
 
 export interface ModuleEmbedBlockData {
-  moduleKey: string;
+  moduleId: string;
   schemaVersion: string;
-  payload: Record<string, unknown>;
+  parameters: Record<string, string | number | boolean | null>;
+  fallbackText?: string;
 }
 
 export interface CustomSlotBlockData {

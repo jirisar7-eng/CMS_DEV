@@ -274,7 +274,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ block, isPreview =
             </div>
             <div>
               <div className="text-sm font-bold text-foreground">
-                Systémový modul: <span className="font-mono text-primary">{mData.moduleKey || 'Neznámý'}</span>
+                Systémový modul: <span className="font-mono text-primary">{mData.moduleId || 'Neznámý'}</span>
               </div>
               <div className="text-xs text-muted-foreground">
                 Verze rozhraní: {mData.schemaVersion || 'v1'}

@@ -514,7 +514,7 @@ export const COMPONENT_REGISTRY: Record<string, ComponentRegistryEntry<any>> = {
     requiredEntitlement: "commercial",
     icon: Box,
     fields: {
-      moduleKey: {
+      moduleId: {
         type: "select",
         label: "Systémový modul",
         options: [
@@ -524,21 +524,108 @@ export const COMPONENT_REGISTRY: Record<string, ComponentRegistryEntry<any>> = {
           { label: "Seznam novinek", value: "news_feed" },
         ],
       },
+      fallbackText: {
+        type: "text",
+        label: "Předvolený náhradní text",
+        placeholder: "Zobrazí se v případě výpadku modulu",
+      },
     },
     createDefaultData: (): ModuleEmbedBlockData => ({
-      moduleKey: "contact_form",
+      moduleId: "contact_form",
       schemaVersion: "v1",
-      payload: {},
+      parameters: {},
     }),
     validateData: (data: unknown) => {
-      const d = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
-      const moduleKey = sanitizePlainText(d.moduleKey) || "contact_form";
-      const schemaVersion = sanitizePlainText(d.schemaVersion) || "v1";
-      const payload = (d.payload && typeof d.payload === "object" ? d.payload : {}) as Record<string, unknown>;
-      return {
-        valid: true,
-        sanitized: { moduleKey, schemaVersion, payload },
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        return {
+          valid: false,
+          errors: ["Data musí být objekt"],
+          sanitized: { moduleId: "contact_form", schemaVersion: "v1", parameters: {} },
+        };
+      }
+      const d = data as Record<string, unknown>;
+
+      const allowedKeys = new Set(["moduleId", "schemaVersion", "parameters", "fallbackText"]);
+      for (const k of Object.keys(d)) {
+        if (!allowedKeys.has(k)) {
+          return {
+            valid: false,
+            errors: [`Neznámé pole v module_embed: ${k}`],
+            sanitized: { moduleId: "contact_form", schemaVersion: "v1", parameters: {} },
+          };
+        }
+      }
+
+      const moduleId = typeof d.moduleId === "string" ? sanitizePlainText(d.moduleId) : "";
+      const allowedModuleIds = new Set(["contact_form", "nav_header", "nav_footer", "news_feed"]);
+      if (!moduleId || !allowedModuleIds.has(moduleId)) {
+        return {
+          valid: false,
+          errors: [`Neznámé nebo neplatné moduleId: ${d.moduleId}`],
+          sanitized: { moduleId: "contact_form", schemaVersion: "v1", parameters: {} },
+        };
+      }
+
+      const schemaVersion = typeof d.schemaVersion === "string" ? sanitizePlainText(d.schemaVersion) : "";
+      if (!schemaVersion) {
+        return {
+          valid: false,
+          errors: ["Chybí nebo je neplatná schemaVersion"],
+          sanitized: { moduleId, schemaVersion: "v1", parameters: {} },
+        };
+      }
+
+      if (!d.parameters || typeof d.parameters !== "object" || Array.isArray(d.parameters)) {
+        return {
+          valid: false,
+          errors: ["parameters musí být objekt"],
+          sanitized: { moduleId, schemaVersion, parameters: {} },
+        };
+      }
+
+      const sanitizedParams: Record<string, string | number | boolean | null> = {};
+      for (const [k, v] of Object.entries(d.parameters as Record<string, unknown>)) {
+        if (v !== null && typeof v !== "string" && typeof v !== "number" && typeof v !== "boolean") {
+          return {
+            valid: false,
+            errors: [`Neplatný typ parametru pro ${k}`],
+            sanitized: { moduleId, schemaVersion, parameters: {} },
+          };
+        }
+        if (typeof v === "number" && !Number.isFinite(v)) {
+          return {
+            valid: false,
+            errors: [`Neplatné číslo v parametru ${k}`],
+            sanitized: { moduleId, schemaVersion, parameters: {} },
+          };
+        }
+        if (typeof v === "string") {
+          sanitizedParams[k] = sanitizePlainText(v);
+        } else {
+          sanitizedParams[k] = v;
+        }
+      }
+
+      let fallbackText: string | undefined = undefined;
+      if (d.fallbackText !== undefined) {
+        if (typeof d.fallbackText !== "string" || d.fallbackText.length > 1000) {
+          return {
+            valid: false,
+            errors: ["Neplatný fallbackText"],
+            sanitized: { moduleId, schemaVersion, parameters: sanitizedParams },
+          };
+        }
+        fallbackText = sanitizePlainText(d.fallbackText);
+      }
+
+      const sanitized: ModuleEmbedBlockData = {
+        moduleId,
+        schemaVersion,
+        parameters: sanitizedParams,
+        ...(fallbackText !== undefined ? { fallbackText } : {}),
       };
+
+      return { valid: true, sanitized };
     },
   },
 };
