@@ -1,3 +1,4 @@
+import 'server-only';
 import { prisma } from '@/lib/db';
 import { ProjectEntitlements } from './types';
 import { resolveProjectEntitlements } from './entitlements';

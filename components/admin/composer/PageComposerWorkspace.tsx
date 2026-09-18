@@ -11,13 +11,12 @@ import { AdminPageLifecycleState } from "@/lib/domain/pages-client/types";
 import { ProjectEntitlements } from "@/lib/composer/types";
 import { createAdminPagesClient } from "@/lib/domain/pages-client/client";
 import { normalizeAdminProjectId, withAdminProjectContext } from "@/lib/domain/pages-client/project-context";
-import { resolveProjectEntitlements } from "@/lib/composer/entitlements";
 import { AlertCircle, CheckCircle } from "lucide-react";
 
 interface PageComposerWorkspaceProps {
   pageId: string;
-  projectId?: string;
-  initialEntitlements?: ProjectEntitlements;
+  projectId: string;
+  initialEntitlements: ProjectEntitlements;
 }
 
 export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pageId, projectId: rawProjectId, initialEntitlements }) => {
@@ -28,9 +27,7 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
   const [initialData, setInitialData] = useState<PuckData | null>(null);
   const [page, setPage] = useState<PageDetail | null>(null);
   const [lifecycle, setLifecycle] = useState<AdminPageLifecycleState | null>(null);
-  const [entitlements, setEntitlements] = useState<ProjectEntitlements>(
-    initialEntitlements || resolveProjectEntitlements("COMMUNITY", { "labs.access": false })
-  );
+  const entitlements = initialEntitlements;
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
