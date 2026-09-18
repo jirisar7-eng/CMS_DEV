@@ -5,8 +5,10 @@
   "base_sha": "c9e30e9cea7453222613d481ddcf10446bd50016",
   "expected_branch": "task/SYN-WEB-002-ROUTING-REDIRECT-RUNTIME",
   "owner": "CHATGPT",
-  "status": "IN_PROGRESS",
-  "allowed_mutation_types": ["CODE"],
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE"
+  ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
     "lib/domain/routing/*",
