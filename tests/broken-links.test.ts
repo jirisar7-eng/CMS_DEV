@@ -6,7 +6,10 @@ import { prisma } from '../lib/db';
 
 function createMockPage(overrides: Partial<PageWithPublishedRevision> = {}): PageWithPublishedRevision {
   const id = overrides.id || 'page-1';
-  const publishedRevId = overrides.publishedRevisionId !== undefined ? overrides.publishedRevisionId : 'rev-1';
+  const publishedRevId =
+    overrides.publishedRevisionId !== undefined
+      ? overrides.publishedRevisionId
+      : (overrides.publishedRevision?.id ?? 'rev-1');
   const slug = overrides.publishedRevision?.slug ?? 'page-slug';
   const visibility = overrides.publishedRevision?.visibility ?? 'PUBLIC';
   const status = overrides.publishedRevision?.status ?? 'PUBLISHED';
