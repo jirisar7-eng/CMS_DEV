@@ -118,7 +118,7 @@ describe('Puck Integration & Security', () => {
       
       assert.throws(
         () => puckDataToCanonical(puckData, 'syn-content-v1', communityEnt),
-        (err: any) => err.message.includes('module_embed') || err.message.includes('oprávnění')
+        (err: any) => err?.code === 'INVALID_INPUT' && err.message.includes('komerční licenci')
       );
     });
 
@@ -139,7 +139,7 @@ describe('Puck Integration & Security', () => {
 
       assert.throws(
         () => validateCanonicalContent(canonicalPayload, communityEnt),
-        (err: any) => err.message.includes('rich_text') || err.message.includes('oprávnění')
+        (err: any) => err?.code === 'INVALID_INPUT' && err.message.includes('komerční licenci')
       );
     });
   });
