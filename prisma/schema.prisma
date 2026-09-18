@@ -33,6 +33,7 @@ model Project {
   contentReleases         ContentRelease[]
   seoSettings             ProjectSeoSettings?
   redirectRules           RedirectRule[]
+  searchDocuments         SearchDocument[]
 }
 
 // -----------------------------------------------------------------------------
@@ -54,10 +55,10 @@ model User {
   auditLogs            AuditLog[]
   createdPageRevisions PageRevision[]           @relation("PageRevisionCreatedBy")
   createdReleases      ContentRelease[]         @relation("ContentReleaseCreatedBy")
+  createdRedirects     RedirectRule[]
 
   @@index([status])
   @@index([email])
-  createdRedirects RedirectRule[]
 }
 
 model Session {
@@ -304,6 +305,7 @@ model Page {
   publishedRevision PageRevision?        @relation("PagePublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
   releaseItems      ContentReleaseItem[]
   navigationItems   NavigationItem[]
+  searchDocuments   SearchDocument[]
 
   @@unique([projectId, key])
   @@index([projectId])
@@ -348,8 +350,9 @@ model PageRevision {
   derivedFrom      PageRevision?  @relation("RevisionDerivation", fields: [derivedFromRevisionId], references: [id], onDelete: SetNull)
   derivedRevisions PageRevision[] @relation("RevisionDerivation")
 
-  draftForPages     Page[] @relation("PageDraftRevision")
-  publishedForPages Page[] @relation("PagePublishedRevision")
+  draftForPages     Page[]           @relation("PageDraftRevision")
+  publishedForPages Page[]           @relation("PagePublishedRevision")
+  searchDocuments   SearchDocument[]
 
   releaseItems         ContentReleaseItem[] @relation("ReleaseItemRevision")
   previousReleaseItems ContentReleaseItem[] @relation("ReleaseItemPreviousRevision")
@@ -467,23 +470,23 @@ model NavigationItem {
 // -----------------------------------------------------------------------------
 
 model ProjectSeoSettings {
-  id              String   @id @default(uuid())
-  projectId       String   @unique
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  defaultTitle    String?
-  titleTemplate   String?
+  id                 String   @id @default(uuid())
+  projectId          String   @unique
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defaultTitle       String?
+  titleTemplate      String?
   defaultDescription String?
-  defaultOgImage  String?
-  robotsTxt       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  defaultOgImage     String?
+  robotsTxt          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([projectId])
 }
 
 enum RedirectType {
   MOVED_PERMANENTLY // 301
-  FOUND             // 302
+  FOUND // 302
 }
 
 model RedirectRule {
@@ -502,4 +505,31 @@ model RedirectRule {
 
   @@unique([projectId, sourcePath])
   @@index([projectId, active])
+}
+
+// -----------------------------------------------------------------------------
+// SEARCH — DERIVED / REBUILDABLE INDEX
+// -----------------------------------------------------------------------------
+
+model SearchDocument {
+  id           String       @id @default(uuid())
+  projectId    String
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pageId       String
+  page         Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  revisionId   String
+  revision     PageRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  path         String
+  title        String
+  description  String?
+  locale       String
+  bodyText     String
+  indexVersion Int          @default(1)
+  indexedAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([projectId, pageId])
+  @@unique([projectId, path])
+  @@index([projectId, locale])
+  @@index([revisionId])
 }
