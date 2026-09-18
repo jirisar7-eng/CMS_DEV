@@ -31,7 +31,14 @@ export type PermissionKey =
   | 'navigation.create'
   | 'navigation.edit'
   | 'navigation.delete'
-  | 'navigation.publish';
+  | 'navigation.publish'
+  | 'seo.read'
+  | 'seo.update'
+  | 'seo.manage_defaults'
+  | 'redirects.read'
+  | 'redirects.create'
+  | 'redirects.update'
+  | 'redirects.delete';
 
 export async function hasPermission(
   userId: string,

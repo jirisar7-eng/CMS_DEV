@@ -31,6 +31,8 @@ model Project {
   brands                  Brand[]
   pages                   Page[]
   contentReleases         ContentRelease[]
+  seoSettings             ProjectSeoSettings?
+  redirectRules           RedirectRule[]
 }
 
 // -----------------------------------------------------------------------------
@@ -55,6 +57,7 @@ model User {
 
   @@index([status])
   @@index([email])
+  createdRedirects RedirectRule[]
 }
 
 model Session {
@@ -457,4 +460,46 @@ model NavigationItem {
   @@index([setId])
   @@index([parentId])
   @@index([pageId])
+}
+
+// -----------------------------------------------------------------------------
+// WEB STRUCTURE (SEO & REDIRECTS)
+// -----------------------------------------------------------------------------
+
+model ProjectSeoSettings {
+  id              String   @id @default(uuid())
+  projectId       String   @unique
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defaultTitle    String?
+  titleTemplate   String?
+  defaultDescription String?
+  defaultOgImage  String?
+  robotsTxt       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+enum RedirectType {
+  MOVED_PERMANENTLY // 301
+  FOUND             // 302
+}
+
+model RedirectRule {
+  id          String       @id @default(uuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourcePath  String
+  targetPath  String
+  type        RedirectType @default(MOVED_PERMANENTLY)
+  active      Boolean      @default(true)
+  priority    Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdById String?
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, sourcePath])
+  @@index([projectId, active])
 }
