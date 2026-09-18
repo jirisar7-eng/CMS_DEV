@@ -12,6 +12,7 @@ import {
   DividerBlockData,
   ModuleEmbedBlockData,
 } from '@/lib/composer/types';
+import { sanitizeRichText } from '@/lib/composer/registry';
 import {
   AlertCircle,
   CheckCircle,
@@ -94,7 +95,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ block, isPreview =
       return (
         <div
           className={`prose dark:prose-invert max-w-none text-foreground ${alignClass}`}
-          dangerouslySetInnerHTML={{ __html: rData.html || '<p></p>' }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichText(rData.html || '<p></p>') }}
         />
       );
     }

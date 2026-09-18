@@ -258,3 +258,51 @@ describe('Puck Integration & Security', () => {
     });
   });
 });
+
+test('R3-C rich-text sanitizer blocks stored XSS', () => {
+  const def = getBlockDefinition('rich_text');
+  const r = def.validateData({
+    html: '<p onclick="x()">Safe <strong>bold</strong></p><script>bad()</script><img src=x onerror=x()><a href="javascript:alert(1)" target="_blank" rel="evil">Link</a>'
+  });
+  const html = String(r.sanitized.html);
+  assert.ok(html.includes('<strong>bold</strong>'));
+  assert.ok(!html.includes('onclick'));
+  assert.ok(!html.includes('onerror'));
+  assert.ok(!html.includes('<script'));
+  assert.ok(!html.includes('bad()'));
+  assert.ok(html.includes('href="#"'));
+  assert.ok(html.includes('target="_blank"'));
+  assert.ok(html.includes('rel="noopener noreferrer"'));
+});
+
+test('R3-C URL sanitizer rejects dangerous schemes', () => {
+  const def = getBlockDefinition('button');
+  for (const url of [
+    'javascript:alert(1)',
+    'data:text/html,evil',
+    'vbscript:evil',
+    'java\nscript:alert(1)',
+    '//evil.example'
+  ]) {
+    assert.equal(def.validateData({ url, label: 'X' }).sanitized.url, '#');
+  }
+});
+
+test('R3-C canonical gate sanitizes rich text', () => {
+  const ent = resolveProjectEntitlements('COMMERCIAL');
+  const result = validateCanonicalContent({
+    version: 1,
+    schemaVersion: 'syn-content-v1',
+    blocks: [{
+      id: 'xss-1',
+      type: 'rich_text',
+      order: 0,
+      data: { html: '<p onclick="x()">OK</p><script>x()</script><a href="data:text/html,x">L</a>' }
+    }]
+  }, ent);
+
+  const html = String(result.blocks[0].data.html);
+  assert.ok(!html.includes('onclick'));
+  assert.ok(!html.includes('<script'));
+  assert.ok(!html.includes('data:'));
+});

@@ -27,6 +27,7 @@ import {
   ProjectEntitlements,
 } from "./types";
 import { isEntitlementSatisfied } from "./entitlements";
+import sanitizeHtml from "sanitize-html";
 
 /**
  * Text sanitization: removes dangerous control characters and script blocks.
@@ -41,27 +42,53 @@ export function sanitizePlainText(input: unknown): string {
 }
 
 /**
- * Rich text sanitization: allows safe formatting tags but removes harmful scripts/attributes.
+ * Rich-text allowlist sanitizer.
  */
 export function sanitizeRichText(input: unknown): string {
   if (typeof input !== "string") return "";
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/javascript:/gi, "")
-    .trim();
+
+  return sanitizeHtml(input, {
+    allowedTags: ["p","br","strong","em","u","s","ul","ol","li","blockquote","code","pre","a"],
+    allowedAttributes: { a: ["href","target","rel"] },
+    allowedSchemes: ["http","https","mailto","tel"],
+    allowProtocolRelative: false,
+    nonTextTags: ["script","style","iframe","object","embed","svg","math","template"],
+    transformTags: {
+      a: (_tag, attrs) => {
+        const href = sanitizeUrl(attrs.href);
+        const out: Record<string,string> = {};
+        if (href !== "#") out.href = href;
+        else out.href = "#";
+        if (attrs.target === "_blank") {
+          out.target = "_blank";
+          out.rel = "noopener noreferrer";
+        }
+        return { tagName: "a", attribs: out };
+      }
+    }
+  }).trim();
 }
 
 /**
- * URL sanitization: strictly prevents javascript:, data:, or vbscript: URIs.
+ * URL allowlist sanitizer.
  */
 export function sanitizeUrl(input: unknown): string {
   if (typeof input !== "string") return "#";
-  const trimmed = input.trim();
-  if (/^(javascript:|data:|vbscript:)/i.test(trimmed)) {
-    return "#";
+
+  const value = input.trim();
+  if (!value || value.startsWith("//") || value.startsWith("\\\\")) return "#";
+
+  const compact = value.replace(/[\s\u0000-\u001f\u007f]+/g, "");
+
+  if (/^(javascript|data|vbscript):/i.test(compact)) return "#";
+
+  const scheme = compact.match(/^([a-z][a-z0-9+.-]*):/i);
+  if (scheme) {
+    if (compact !== value) return "#";
+    if (!/^(https?|mailto|tel):/i.test(value)) return "#";
   }
-  return trimmed || "#";
+
+  return value;
 }
 
 /**
