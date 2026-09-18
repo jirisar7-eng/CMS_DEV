@@ -507,21 +507,15 @@ export class RoutingService {
     try {
       effectiveSeo = await SeoService.resolveEffectiveSeo(projectId, rawSeo);
     } catch {
-      effectiveSeo = {
-        metaTitle: revision.title || '',
-        metaDescription: revision.description || '',
-        canonicalUrl: pathnameOnly,
-        noIndex: false,
-        ogImage: '',
-      };
+      return null;
     }
 
     // Canonical content validation check
-    let validContent: unknown = revision.content;
+    let validContent: unknown;
     try {
       validContent = validatePageContent(revision.content);
     } catch {
-      validContent = revision.content;
+      return null;
     }
 
     const rawNav = revision.navigation && typeof revision.navigation === 'object'
