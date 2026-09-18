@@ -38,7 +38,10 @@ export type PermissionKey =
   | 'redirects.read'
   | 'redirects.create'
   | 'redirects.update'
-  | 'redirects.delete';
+  | 'redirects.delete'
+  | 'search.read_admin'
+  | 'search.manage'
+  | 'search.reindex';
 
 export async function hasPermission(
   userId: string,

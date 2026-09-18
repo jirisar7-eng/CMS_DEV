@@ -44,7 +44,8 @@ async function bootstrap() {
     'content.approve', 'content.publish', 'content.rollback', 'content.archive',
     'navigation.view', 'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.publish',
     'seo.read', 'seo.update', 'seo.manage_defaults',
-    'redirects.read', 'redirects.create', 'redirects.update', 'redirects.delete'
+    'redirects.read', 'redirects.create', 'redirects.update', 'redirects.delete',
+    'search.read_admin', 'search.manage', 'search.reindex'
   ];
 
   for (const permKey of initialPermissions) {
