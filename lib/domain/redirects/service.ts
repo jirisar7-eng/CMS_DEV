@@ -166,7 +166,7 @@ export class RedirectService {
   static async resolveRedirect(projectId: string, path: string): Promise<RedirectResolution> {
     let currentPath = this.normalizePath(path);
     let hops = 0;
-    let finalType: RedirectType | null = null;
+    let firstType: RedirectType | null = null;
     const visited = new Set<string>();
 
     while (hops < this.MAX_HOPS) {
@@ -188,8 +188,21 @@ export class RedirectService {
 
       if (!rule) break;
 
-      currentPath = rule.targetPath;
-      finalType = rule.type;
+      let normalizedTarget: string;
+      try {
+        normalizedTarget = this.normalizePath(rule.targetPath);
+      } catch {
+        return { targetPath: null, type: null };
+      }
+
+      if (this.isReserved(normalizedTarget)) {
+        return { targetPath: null, type: null };
+      }
+
+      currentPath = normalizedTarget;
+      if (firstType === null) {
+        firstType = rule.type;
+      }
       hops++;
     }
 
@@ -207,6 +220,6 @@ export class RedirectService {
       }
     }
 
-    return hops > 0 ? { targetPath: currentPath, type: finalType } : { targetPath: null, type: null };
+    return hops > 0 ? { targetPath: currentPath, type: firstType } : { targetPath: null, type: null };
   }
 }

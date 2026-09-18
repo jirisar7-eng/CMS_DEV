@@ -1,27 +1,24 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
+  "task_id": "SYN-WEB-002-ROUTING-REDIRECT-RUNTIME",
   "environment": "CMS_DEV",
-  "base_sha": "7244d1676baa868a0c7c061c0950f6dd05f16210",
-  "expected_branch": "task/SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
-  "owner": "AI_STUDIO",
+  "base_sha": "c9e30e9cea7453222613d481ddcf10446bd50016",
+  "expected_branch": "task/SYN-WEB-002-ROUTING-REDIRECT-RUNTIME",
+  "owner": "CHATGPT",
   "status": "COMPLETED",
   "allowed_mutation_types": [
-    "CODE",
-    "DB_SCHEMA"
+    "CODE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "prisma/schema.prisma",
-    "prisma/migrations/*",
-    "prisma/migrations/**",
-    "lib/auth/rbac.ts",
-    "scripts/bootstrap-admin.ts",
-    "lib/domain/seo/*",
-    "lib/domain/redirects/*",
-    "app/api/admin/projects/[projectId]/seo/*",
-    "app/api/admin/projects/[projectId]/redirects/*",
-    "tests/seo-domain.test.ts",
-    "tests/redirects-domain.test.ts"
+    "lib/domain/routing/*",
+    "lib/domain/routing/**",
+    "lib/domain/redirects/service.ts",
+    "app/api/public/route/*",
+    "app/api/public/route/**",
+    "app/api/admin/projects/[projectId]/routing/*",
+    "app/api/admin/projects/[projectId]/routing/**",
+    "tests/routing-domain.test.ts",
+    "tests/broken-links.test.ts"
   ]
 }
