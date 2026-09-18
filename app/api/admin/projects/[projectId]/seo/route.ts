@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
+import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
+import { SeoService } from '@/lib/domain/seo/service';
 
 export async function GET(
   req: NextRequest,
@@ -9,10 +11,17 @@ export async function GET(
   try {
     const params = await context.params;
     const { projectId } = params;
-    await requirePermission('seo.read', projectId);
+
+    const projectContext = await getActiveProjectContext(projectId);
+    if (projectContext.status !== 'PROJECT_VALID' || !projectContext.projectId) {
+      const status = projectContext.status === 'PROJECT_NOT_FOUND' ? 404 : 403;
+      return NextResponse.json({ error: projectContext.status }, { status });
+    }
+
+    await requirePermission('seo.read', projectContext.projectId);
 
     const seoSettings = await prisma.projectSeoSettings.findUnique({
-      where: { projectId },
+      where: { projectId: projectContext.projectId },
     });
 
     return NextResponse.json(seoSettings || {});
@@ -31,12 +40,36 @@ export async function PUT(
   try {
     const params = await context.params;
     const { projectId } = params;
-    await requirePermission('seo.manage_defaults', projectId);
 
-    const data = await req.json();
-    
+    const projectContext = await getActiveProjectContext(projectId);
+    if (projectContext.status !== 'PROJECT_VALID' || !projectContext.projectId) {
+      const status = projectContext.status === 'PROJECT_NOT_FOUND' ? 404 : 403;
+      return NextResponse.json({ error: projectContext.status }, { status });
+    }
+
+    await requirePermission('seo.manage_defaults', projectContext.projectId);
+
+    let data: any;
+    try {
+      data = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'INVALID_JSON' }, { status: 400 });
+    }
+
+    if (!data || typeof data !== 'object') {
+      return NextResponse.json({ error: 'INVALID_INPUT' }, { status: 400 });
+    }
+
+    if (data.canonicalUrl) {
+      try {
+        SeoService.validateCanonicalUrl(data.canonicalUrl);
+      } catch (e: any) {
+        return NextResponse.json({ error: e.message || 'INVALID_CANONICAL_URL' }, { status: 400 });
+      }
+    }
+
     const seoSettings = await prisma.projectSeoSettings.upsert({
-      where: { projectId },
+      where: { projectId: projectContext.projectId },
       update: {
         defaultTitle: data.defaultTitle,
         titleTemplate: data.titleTemplate,
@@ -45,7 +78,7 @@ export async function PUT(
         robotsTxt: data.robotsTxt,
       },
       create: {
-        projectId,
+        projectId: projectContext.projectId,
         defaultTitle: data.defaultTitle,
         titleTemplate: data.titleTemplate,
         defaultDescription: data.defaultDescription,

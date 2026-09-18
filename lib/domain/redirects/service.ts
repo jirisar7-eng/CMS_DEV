@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { RedirectType } from '@prisma/client';
+import path from 'path';
 
 export interface RedirectResolution {
   targetPath: string | null;
@@ -10,26 +11,75 @@ export class RedirectService {
   private static readonly RESERVED_ROUTES = ['/admin', '/api', '/_next'];
   private static readonly MAX_HOPS = 5;
 
-  private static isExternal(path: string): boolean {
-    return path.startsWith('http://') || path.startsWith('https://');
-  }
+  static normalizePath(rawPath: string): string {
+    if (typeof rawPath !== 'string' || !rawPath.trim()) {
+      throw new Error('INVALID_PATH');
+    }
+    const trimmed = rawPath.trim();
 
-  private static normalizePath(path: string): string {
-    if (this.isExternal(path)) return path;
-    if (!path.startsWith('/')) path = '/' + path;
-    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-    return path;
-  }
+    // Reject control characters (0x00 - 0x1F, 0x7F)
+    if (/[\x00-\x1F\x7F]/.test(trimmed)) {
+      throw new Error('INVALID_PATH');
+    }
 
-  private static isReserved(path: string): boolean {
-    if (this.isExternal(path)) return false;
-    const normalized = this.normalizePath(path);
-    return this.RESERVED_ROUTES.some(r => normalized.startsWith(r));
-  }
+    // Reject backslashes
+    if (trimmed.includes('\\')) {
+      throw new Error('INVALID_PATH');
+    }
 
-  static async validateRedirect(sourcePath: string, targetPath: string): Promise<void> {
-    if (this.isExternal(sourcePath) || this.isExternal(targetPath)) {
+    // Reject protocol-relative //host
+    if (trimmed.startsWith('//')) {
       throw new Error('EXTERNAL_TARGET_NOT_ALLOWED');
+    }
+
+    // Reject any URI scheme (http:, https:, javascript:, data:, etc.)
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+      throw new Error('EXTERNAL_TARGET_NOT_ALLOWED');
+    }
+
+    // Must be internal path
+    let p = trimmed;
+    if (!p.startsWith('/')) {
+      p = '/' + p;
+    }
+
+    // Normalize dot segments while preserving query / fragment
+    const queryIndex = p.search(/[?#]/);
+    const pathname = queryIndex !== -1 ? p.slice(0, queryIndex) : p;
+    const suffix = queryIndex !== -1 ? p.slice(queryIndex) : '';
+
+    let normalized = path.posix.normalize(pathname);
+    if (!normalized.startsWith('/')) {
+      normalized = '/' + normalized;
+    }
+    if (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
+    }
+
+    return normalized + suffix;
+  }
+
+  private static isReserved(normalizedPath: string): boolean {
+    const pathOnly = normalizedPath.split(/[?#]/)[0];
+    return this.RESERVED_ROUTES.some(r => pathOnly === r || pathOnly.startsWith(r + '/'));
+  }
+
+  static async validateRedirect(
+    sourcePathOrProjectId: string,
+    targetPathOrSourcePath: string,
+    maybeTargetPath?: string
+  ): Promise<{ src: string; tgt: string }> {
+    let projectId = '';
+    let sourcePath = '';
+    let targetPath = '';
+
+    if (maybeTargetPath !== undefined) {
+      projectId = sourcePathOrProjectId;
+      sourcePath = targetPathOrSourcePath;
+      targetPath = maybeTargetPath;
+    } else {
+      sourcePath = sourcePathOrProjectId;
+      targetPath = targetPathOrSourcePath;
     }
 
     const src = this.normalizePath(sourcePath);
@@ -38,20 +88,74 @@ export class RedirectService {
     if (this.isReserved(src) || this.isReserved(tgt)) {
       throw new Error('RESERVED_ROUTE');
     }
-    
+
     if (src === tgt) {
       throw new Error('SELF_REDIRECT');
     }
+
+    if (projectId) {
+      const isCycle = await this.detectCycle(projectId, src, tgt);
+      if (isCycle) {
+        throw new Error('CYCLE_DETECTED');
+      }
+    }
+
+    return { src, tgt };
   }
 
-  static async createRedirect(projectId: string, sourcePath: string, targetPath: string, type: RedirectType, priority: number = 0, createdById?: string) {
-    await this.validateRedirect(sourcePath, targetPath);
-    
+  static async detectCycle(projectId: string, sourcePath: string, targetPath: string): Promise<boolean> {
+    let current: string | null = targetPath;
+    const visited = new Set<string>();
+    visited.add(sourcePath);
+
+    let hops = 0;
+    while (current && hops < 50) {
+      if (current === sourcePath || visited.has(current)) {
+        return true;
+      }
+      visited.add(current);
+
+      const nextRule: { targetPath: string } | null = await prisma.redirectRule.findFirst({
+        where: {
+          projectId,
+          sourcePath: current,
+          active: true
+        },
+        orderBy: { priority: 'desc' },
+        select: { targetPath: true }
+      });
+
+      if (!nextRule) break;
+      current = nextRule.targetPath;
+      hops++;
+    }
+
+    return false;
+  }
+
+  static async createRedirect(
+    projectId: string,
+    sourcePath: string,
+    targetPath: string,
+    type: RedirectType,
+    priority: number = 0,
+    createdById?: string
+  ) {
+    if (type !== 'MOVED_PERMANENTLY' && type !== 'FOUND') {
+      throw new Error('INVALID_REDIRECT_TYPE');
+    }
+
+    if (typeof priority !== 'number' || !Number.isInteger(priority)) {
+      throw new Error('INVALID_PRIORITY');
+    }
+
+    const { src, tgt } = await this.validateRedirect(projectId, sourcePath, targetPath);
+
     return prisma.redirectRule.create({
       data: {
         projectId,
-        sourcePath: this.normalizePath(sourcePath),
-        targetPath: this.normalizePath(targetPath),
+        sourcePath: src,
+        targetPath: tgt,
         type,
         priority,
         createdById
@@ -72,13 +176,14 @@ export class RedirectService {
       }
       visited.add(currentPath);
 
-      const rule = await prisma.redirectRule.findFirst({
+      const rule: { targetPath: string; type: RedirectType } | null = await prisma.redirectRule.findFirst({
         where: {
           projectId,
           sourcePath: currentPath,
           active: true
         },
-        orderBy: { priority: 'desc' }
+        orderBy: { priority: 'desc' },
+        select: { targetPath: true, type: true }
       });
 
       if (!rule) break;
@@ -88,9 +193,18 @@ export class RedirectService {
       hops++;
     }
 
-    if (hops === this.MAX_HOPS) {
-      // Exceeded max hops, return null to avoid infinite loops
-      return { targetPath: null, type: null };
+    if (hops >= this.MAX_HOPS) {
+      const nextRule: { id: string } | null = await prisma.redirectRule.findFirst({
+        where: {
+          projectId,
+          sourcePath: currentPath,
+          active: true
+        },
+        select: { id: true }
+      });
+      if (nextRule) {
+        return { targetPath: null, type: null };
+      }
     }
 
     return hops > 0 ? { targetPath: currentPath, type: finalType } : { targetPath: null, type: null };
