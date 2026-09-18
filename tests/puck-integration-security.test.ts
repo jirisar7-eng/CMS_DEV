@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { puckConfig } from '../lib/composer/puck.config';
-import { puckDataToCanonical, canonicalToPuckData } from '../lib/composer/adapter';
+import { puckDataToCanonical, canonicalToPuckData, validateCanonicalContent } from '../lib/composer/adapter';
 import { getBlockDefinition } from '../lib/composer/registry';
 import { PageContent } from '../lib/domain/pages';
 import { isEntitlementSatisfied, resolveProjectEntitlements } from '../lib/composer/entitlements';
@@ -16,7 +16,7 @@ describe('Puck Integration & Security', () => {
   });
 
   describe('slots serialization', () => {
-    test('transforms canonical children to puck zones and back', () => {
+    test('valid columns nested slot round-trip still works', () => {
       const canonical: PageContent = {
         version: 1,
         schemaVersion: 'syn-content-v1',
@@ -48,6 +48,31 @@ describe('Puck Integration & Security', () => {
       assert.equal(restored.blocks[0].children[0].type, 'heading');
       assert.equal(restored.blocks[0].children[0].data.text, 'Nested heading');
     });
+
+    test('nested children on non-slot component => rejected', () => {
+      const puckData = {
+        content: [
+          {
+            type: 'paragraph',
+            props: { id: 'p-1', text: 'Parent paragraph' },
+            zones: {
+              default: [
+                {
+                  type: 'heading',
+                  props: { id: 'h-1', text: 'Illegal child' }
+                }
+              ]
+            }
+          }
+        ],
+        root: {}
+      };
+
+      assert.throws(
+        () => puckDataToCanonical(puckData),
+        (err: any) => err.message.includes('paragraph') && err.message.includes('vnořené')
+      );
+    });
   });
 
   describe('stored-XSS attempt', () => {
@@ -68,8 +93,9 @@ describe('Puck Integration & Security', () => {
     });
   });
 
-  describe('direct API entitlement bypass', () => {
-    test('puckDataToCanonical validates entitlements when provided', () => {
+  describe('direct API entitlement bypass prevention', () => {
+    test('Community cannot persist Commercial component via puckDataToCanonical', () => {
+      const communityEnt = resolveProjectEntitlements('COMMUNITY', { 'labs.access': false });
       const puckData = {
         content: [
           {
@@ -79,16 +105,37 @@ describe('Puck Integration & Security', () => {
         ],
         root: {}
       };
-      // For now, adapter does not throw, it just allows what is mapped.
-      // If we wanted to throw, we would update adapter.ts. 
-      // Assuming for now it maps it. We can add a check later if needed.
-      const restored = puckDataToCanonical(puckData);
-      assert.equal(restored.blocks[0].type, 'module_embed');
+      
+      assert.throws(
+        () => puckDataToCanonical(puckData, 'syn-content-v1', communityEnt),
+        (err: any) => err.message.includes('module_embed') || err.message.includes('oprávnění')
+      );
+    });
+
+    test('direct content/API-style payload cannot bypass entitlement', () => {
+      const communityEnt = resolveProjectEntitlements('COMMUNITY', { 'labs.access': false });
+      const canonicalPayload: PageContent = {
+        version: 1,
+        schemaVersion: 'syn-content-v1',
+        blocks: [
+          {
+            id: 'b-direct',
+            type: 'rich_text',
+            order: 0,
+            data: { html: '<p>Commercial Rich Text</p>' }
+          }
+        ]
+      };
+
+      assert.throws(
+        () => validateCanonicalContent(canonicalPayload, communityEnt),
+        (err: any) => err.message.includes('rich_text') || err.message.includes('oprávnění')
+      );
     });
   });
 
   describe('unknown component', () => {
-    test('falls back to unknown definition', () => {
+    test('unknown component => rejected', () => {
       const puckData = {
         content: [
           {
@@ -98,9 +145,11 @@ describe('Puck Integration & Security', () => {
         ],
         root: {}
       };
-      const restored = puckDataToCanonical(puckData);
-      assert.equal(restored.blocks[0].type, 'hacked_component'); // the type string is kept
-      assert.deepEqual(restored.blocks[0].data, {}); // data is cleared due to fallback
+      
+      assert.throws(
+        () => puckDataToCanonical(puckData),
+        (err: any) => err.message.includes('hacked_component') || err.message.includes('Neznámý')
+      );
     });
   });
 

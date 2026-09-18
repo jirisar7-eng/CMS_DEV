@@ -3,6 +3,18 @@ import { COMPONENT_REGISTRY, getBlockDefinition } from "./registry";
 import { ProjectEntitlements } from "./types";
 import { isEntitlementSatisfied } from "./entitlements";
 
+export class ApiError extends Error {
+  readonly code: string;
+  readonly status: number;
+
+  constructor(code: string, message: string, status: number = 400) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
 /**
  * Puck Data format representation
  */
@@ -71,25 +83,65 @@ export function puckDataToCanonical(
   const items = Array.isArray(puckData?.content) ? puckData.content : [];
 
   const mapItem = (item: PuckBlockItem, order: number): ContentBlock => {
+    if (!item || typeof item !== "object" || typeof item.type !== "string") {
+      throw new ApiError("INVALID_INPUT", "Neplatná položka v editoru", 400);
+    }
+
     const blockType = item.type as ContentBlockType;
-    const def = getBlockDefinition(blockType);
+
+    // 1. Reject unknown component types
+    if (!(blockType in COMPONENT_REGISTRY)) {
+      throw new ApiError("INVALID_INPUT", `Neznámý nebo nepodporovaný typ komponenty: ${item.type}`, 400);
+    }
+
+    const def = COMPONENT_REGISTRY[blockType];
+
+    // 2. Enforce requiredEntitlement using the server-provided entitlement object
+    if (entitlements) {
+      const entCheck = isEntitlementSatisfied(def.requiredEntitlement, entitlements);
+      if (!entCheck.allowed) {
+        throw new ApiError(
+          "INVALID_INPUT",
+          entCheck.reason || `Komponenta '${blockType}' vyžaduje vyšší oprávnění.`,
+          400
+        );
+      }
+    }
 
     // Filter properties to eliminate Puck internals
     const { id: rawId, ...restProps } = item.props || {};
     const id = typeof rawId === "string" && rawId.length > 0 ? rawId : `block-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-    // Validate and sanitize using canonical definition
-    const { sanitized } = def.validateData(restProps);
+    // 3. Reject validateData(valid=false)
+    const validation = def.validateData(restProps);
+    if (!validation.valid) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        `Neplatná data pro komponentu '${blockType}': ${validation.errors?.join(", ") || "chyba validace"}`,
+        400
+      );
+    }
+
+    const hasChildren = item.zones && Array.isArray(item.zones.default) && item.zones.default.length > 0;
+
+    // 4. Reject nested children on components without supportsSlots
+    if (hasChildren && !def.supportsSlots) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        `Komponenta '${blockType}' nepodporuje vnořené bloky (slots).`,
+        400
+      );
+    }
 
     const block: ContentBlock = {
       id,
       type: blockType,
       order,
-      data: sanitized,
+      data: validation.sanitized,
     };
 
-    if (item.zones && Array.isArray(item.zones.default) && item.zones.default.length > 0) {
-      block.children = item.zones.default.map((child, idx) => mapItem(child, idx));
+    if (hasChildren && def.supportsSlots) {
+      block.children = item.zones!.default.map((child, idx) => mapItem(child, idx));
     }
 
     return block;
@@ -99,5 +151,84 @@ export function puckDataToCanonical(
     version: 1,
     schemaVersion,
     blocks: items.map((it, idx) => mapItem(it, idx)),
+  };
+}
+
+/**
+ * Recursively validates and sanitizes a canonical PageContent object against
+ * Component Registry definitions and ProjectEntitlements.
+ */
+export function validateCanonicalContent(
+  pageContent: PageContent,
+  entitlements: ProjectEntitlements
+): PageContent {
+  if (!pageContent || typeof pageContent !== "object" || !Array.isArray(pageContent.blocks)) {
+    throw new ApiError("INVALID_INPUT", "Neplatný formát obsahu stránky: chybí seznam bloků", 400);
+  }
+
+  const validateBlock = (b: ContentBlock, order: number): ContentBlock => {
+    if (!b || typeof b !== "object" || typeof b.type !== "string") {
+      throw new ApiError("INVALID_INPUT", "Neplatná struktura bloku v obsahu", 400);
+    }
+
+    const blockType = b.type as ContentBlockType;
+
+    // 1. Reject unknown component types
+    if (!(blockType in COMPONENT_REGISTRY)) {
+      throw new ApiError("INVALID_INPUT", `Neznámý nebo nepodporovaný typ komponenty: ${b.type}`, 400);
+    }
+
+    const def = COMPONENT_REGISTRY[blockType];
+
+    // 2. Enforce requiredEntitlement
+    const entCheck = isEntitlementSatisfied(def.requiredEntitlement, entitlements);
+    if (!entCheck.allowed) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        entCheck.reason || `Komponenta '${b.type}' vyžaduje vyšší oprávnění.`,
+        400
+      );
+    }
+
+    // 3. Reject validateData(valid=false)
+    const validation = def.validateData(b.data || {});
+    if (!validation.valid) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        `Neplatná data pro komponentu '${b.type}': ${validation.errors?.join(", ") || "chyba validace"}`,
+        400
+      );
+    }
+
+    // 4. Reject nested children on components without supportsSlots
+    const hasChildren = Array.isArray(b.children) && b.children.length > 0;
+    if (hasChildren && !def.supportsSlots) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        `Komponenta '${b.type}' nepodporuje vnořené bloky (slots).`,
+        400
+      );
+    }
+
+    const id = typeof b.id === "string" && b.id.length > 0 ? b.id : `block-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+    const validatedBlock: ContentBlock = {
+      id,
+      type: blockType,
+      order,
+      data: validation.sanitized,
+    };
+
+    if (hasChildren && def.supportsSlots) {
+      validatedBlock.children = b.children!.map((child, idx) => validateBlock(child, idx));
+    }
+
+    return validatedBlock;
+  };
+
+  return {
+    version: pageContent.version || 1,
+    schemaVersion: pageContent.schemaVersion || "syn-content-v1",
+    blocks: pageContent.blocks.map((block, idx) => validateBlock(block, idx)),
   };
 }
