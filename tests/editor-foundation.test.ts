@@ -2,6 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { COMPONENT_REGISTRY, getBlockDefinition, getAvailableComponentTypes } from '../lib/composer/registry';
 import { resolveProjectEntitlements, isEntitlementSatisfied } from '../lib/composer/entitlements';
+import { resolveProjectEntitlementsServer } from '../lib/composer/entitlements.server';
 import { canonicalToPuckData, puckDataToCanonical } from '../lib/composer/adapter';
 import { PageContent } from '../lib/domain/pages';
 
@@ -92,6 +93,16 @@ describe('SYN-EDITOR-001: Visual Page Editor Foundation', () => {
 
       const entitlementsWithLabs = resolveProjectEntitlements('COMMUNITY', { 'labs.access': true, 'labs.new_components': true });
       assert.equal(isEntitlementSatisfied('labs', entitlementsWithLabs).allowed, true);
+    });
+
+    test('resolveProjectEntitlementsServer fails closed on missing/invalid project', async () => {
+      const entNull = await resolveProjectEntitlementsServer(null);
+      assert.equal(entNull.edition, 'COMMUNITY');
+      assert.equal(entNull.labs['labs.access'], false);
+
+      const entNonExistent = await resolveProjectEntitlementsServer('non-existent-project-id');
+      assert.equal(entNonExistent.edition, 'COMMUNITY');
+      assert.equal(entNonExistent.labs['labs.access'], false);
     });
   });
 

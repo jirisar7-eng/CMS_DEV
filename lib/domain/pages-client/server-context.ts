@@ -17,9 +17,9 @@ export interface ProjectContextResult {
   projectId: string | null;
 }
 
-export async function getActiveProjectContext(): Promise<ProjectContextResult> {
+export async function getActiveProjectContext(requestedProjectId?: string | null): Promise<ProjectContextResult> {
   const cookieStore = await cookies();
-  const rawId = cookieStore.get('syn_project_id')?.value;
+  const rawId = requestedProjectId || cookieStore.get('syn_project_id')?.value;
   const projectId = normalizeAdminProjectId(rawId);
 
   if (!projectId) {
