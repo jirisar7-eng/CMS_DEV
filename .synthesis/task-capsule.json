@@ -5,7 +5,7 @@
   "base_sha": "7244d1676baa868a0c7c061c0950f6dd05f16210",
   "expected_branch": "task/SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
   "owner": "AI_STUDIO",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "allowed_mutation_types": [
     "CODE",
     "DB_SCHEMA"
