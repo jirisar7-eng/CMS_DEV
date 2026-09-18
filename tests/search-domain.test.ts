@@ -829,4 +829,166 @@ describe('SYN-SEARCH-001 Search Domain Foundation', () => {
       }
     });
   });
+
+  describe('11. Canonical RoutingService Map Contract (Keyed by /path)', () => {
+    it('correctly maps route.pageId and route.path from RoutingService resolvableRoutes Map', () => {
+      const page1 = createMockPage({
+        id: 'page-abc-123',
+        publishedRevisionId: 'rev-abc-123',
+        publishedRevision: {
+          id: 'rev-abc-123',
+          pageId: 'page-abc-123',
+          revisionNumber: 1,
+          status: 'PUBLISHED',
+          title: 'Kanonická routa test',
+          slug: 'novinka',
+          locale: 'cs',
+          description: 'Popis testu',
+          visibility: 'PUBLIC',
+          content: {
+            version: 1,
+            schemaVersion: '1.0.0',
+            blocks: [{ id: 'b1', type: 'paragraph', order: 0, data: { text: 'Obsah článku' } }],
+          },
+          seo: { noIndex: false },
+          navigation: {},
+          schemaVersion: '1.0.0',
+        },
+      });
+
+      const page2 = createMockPage({
+        id: 'page-xyz-789',
+        publishedRevisionId: 'rev-xyz-789',
+        publishedRevision: {
+          id: 'rev-xyz-789',
+          pageId: 'page-xyz-789',
+          revisionNumber: 1,
+          status: 'PUBLISHED',
+          title: 'Druhá stránka',
+          slug: 'o-nas',
+          locale: 'cs',
+          description: null,
+          visibility: 'PUBLIC',
+          content: {
+            version: 1,
+            schemaVersion: '1.0.0',
+            blocks: [{ id: 'b2', type: 'paragraph', order: 0, data: { text: 'O nás text' } }],
+          },
+          seo: { noIndex: false },
+          navigation: {},
+          schemaVersion: '1.0.0',
+        },
+      });
+
+      // Canonical RoutingService returns Map<path, DerivedPublishedRoute>
+      // The keys of the map are the canonical URL paths (e.g. '/blog/novinka'), NOT pageIds!
+      const mockResolvableRoutes = new Map<string, { pageId: string; path: string }>([
+        ['/blog/novinka', { pageId: 'page-abc-123', path: '/blog/novinka' }],
+        ['/spolecnost/o-nas', { pageId: 'page-xyz-789', path: '/spolecnost/o-nas' }],
+      ]);
+
+      const mockRoutingService = {
+        derivePublishedRoutesFromPages(_projectId: string, _pages: PageWithPublishedRevision[]) {
+          return {
+            resolvableRoutes: mockResolvableRoutes,
+          };
+        },
+      };
+
+      const docs = generateSearchDocumentsFromPages('proj-1', [page1, page2], {
+        routingService: mockRoutingService,
+      });
+
+      assert.strictEqual(docs.length, 2);
+
+      const doc1 = docs.find(d => d.pageId === 'page-abc-123');
+      assert(doc1, 'Document for page-abc-123 must be generated');
+      assert.strictEqual(doc1.path, '/blog/novinka');
+      assert.strictEqual(doc1.title, 'Kanonická routa test');
+
+      const doc2 = docs.find(d => d.pageId === 'page-xyz-789');
+      assert(doc2, 'Document for page-xyz-789 must be generated');
+      assert.strictEqual(doc2.path, '/spolecnost/o-nas');
+    });
+  });
+
+  describe('12. Canonical Content Validation in Rebuild (Fail-Closed)', () => {
+    it('fails closed and excludes pages with invalid canonical PageContent from search index', () => {
+      const validPage = createMockPage({
+        id: 'page-valid',
+        publishedRevisionId: 'rev-valid',
+        publishedRevision: {
+          id: 'rev-valid',
+          pageId: 'page-valid',
+          revisionNumber: 1,
+          status: 'PUBLISHED',
+          title: 'Platná stránka',
+          slug: 'platna',
+          locale: 'cs',
+          description: 'Validní',
+          visibility: 'PUBLIC',
+          content: {
+            version: 1,
+            schemaVersion: '1.0.0',
+            blocks: [{ id: 'b1', type: 'paragraph', order: 0, data: { text: 'Validní odstavec' } }],
+          },
+          seo: { noIndex: false },
+          navigation: {},
+          schemaVersion: '1.0.0',
+        },
+      });
+
+      const invalidPages = [
+        // 1. Missing / non-object content
+        createMockPage({
+          id: 'page-invalid-null',
+          publishedRevision: { content: null } as unknown as any,
+        }),
+        // 2. String content (e.g. raw markdown not canonical blocks)
+        createMockPage({
+          id: 'page-invalid-string',
+          publishedRevision: { content: '# Raw Markdown String' } as unknown as any,
+        }),
+        // 3. Invalid version
+        createMockPage({
+          id: 'page-invalid-version',
+          publishedRevision: {
+            content: { version: -1, schemaVersion: '1.0.0', blocks: [] },
+          } as unknown as any,
+        }),
+        // 4. Missing schemaVersion
+        createMockPage({
+          id: 'page-invalid-schema',
+          publishedRevision: {
+            content: { version: 1, schemaVersion: '', blocks: [] },
+          } as unknown as any,
+        }),
+        // 5. Blocks is not an array
+        createMockPage({
+          id: 'page-invalid-blocks-type',
+          publishedRevision: {
+            content: { version: 1, schemaVersion: '1.0.0', blocks: 'invalid' },
+          } as unknown as any,
+        }),
+        // 6. Unknown / unapproved block type
+        createMockPage({
+          id: 'page-invalid-block-type',
+          publishedRevision: {
+            content: {
+              version: 1,
+              schemaVersion: '1.0.0',
+              blocks: [{ id: 'b-bad', type: 'unauthorized_script_block', order: 0, data: {} }],
+            },
+          } as unknown as any,
+        }),
+      ];
+
+      const allPages = [validPage, ...invalidPages];
+      const docs = generateSearchDocumentsFromPages('proj-1', allPages);
+
+      assert.strictEqual(docs.length, 1, 'Only the valid canonical page should be indexed');
+      assert.strictEqual(docs[0].pageId, 'page-valid');
+      assert.strictEqual(docs[0].path, '/platna');
+    });
+  });
 });

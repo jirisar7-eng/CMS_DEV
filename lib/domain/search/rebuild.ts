@@ -5,6 +5,7 @@ import {
   PageWithPublishedRevision,
 } from './types';
 import { extractCanonicalText } from './extractor';
+import { validatePageContent } from '../content/validation';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const require: any;
@@ -18,7 +19,7 @@ export interface GenerateDocumentsOptions {
       projectId: string,
       pages: PageWithPublishedRevision[]
     ): {
-      resolvableRoutes: Map<string, { path: string }>;
+      resolvableRoutes: Map<string, { pageId: string; path: string }>;
     };
   };
 }
@@ -139,8 +140,10 @@ function resolvePublishedPaths(
     try {
       const result = options.routingService.derivePublishedRoutesFromPages(projectId, pages);
       const map = new Map<string, string>();
-      for (const [pageId, route] of result.resolvableRoutes.entries()) {
-        map.set(pageId, route.path);
+      for (const route of result.resolvableRoutes.values()) {
+        if (route && typeof route.pageId === 'string' && typeof route.path === 'string') {
+          map.set(route.pageId, route.path);
+        }
       }
       return map;
     } catch {
@@ -155,8 +158,10 @@ function resolvePublishedPaths(
     if (routingModule?.RoutingService?.derivePublishedRoutesFromPages) {
       const result = routingModule.RoutingService.derivePublishedRoutesFromPages(projectId, pages);
       const map = new Map<string, string>();
-      for (const [pageId, route] of result.resolvableRoutes.entries()) {
-        map.set(pageId, route.path);
+      for (const route of result.resolvableRoutes.values()) {
+        if (route && typeof route.pageId === 'string' && typeof route.path === 'string') {
+          map.set(route.pageId, route.path);
+        }
       }
       return map;
     }
@@ -261,8 +266,17 @@ export function generateSearchDocumentsFromPages(
       continue;
     }
 
-    // Extract allowlisted text
-    const bodyText = extractCanonicalText(revision.content);
+    // Canonical content validation (fail-closed)
+    let validatedContent: unknown;
+    try {
+      validatedContent = validatePageContent(revision.content);
+    } catch {
+      // Invalid canonical content must not be indexed
+      continue;
+    }
+
+    // Extract allowlisted text from validated canonical content
+    const bodyText = extractCanonicalText(validatedContent);
 
     // Resolve description (revision description or SEO metaDescription)
     let description = revision.description;
