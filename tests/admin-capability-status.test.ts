@@ -1,7 +1,58 @@
+// @ts-nocheck
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import Module from 'node:module';
+
+class MockNextResponse {
+  status: number;
+  headers: Map<string, string>;
+  private _body: any;
+
+  constructor(body: any, init?: { status?: number; headers?: Record<string, string> }) {
+    this._body = body;
+    this.status = init?.status ?? 200;
+    this.headers = new Map(Object.entries(init?.headers || {}));
+  }
+
+  static json(body: any, init?: { status?: number; headers?: Record<string, string> }) {
+    return new MockNextResponse(JSON.stringify(body), {
+      status: init?.status ?? 200,
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    });
+  }
+
+  async json() {
+    return typeof this._body === 'string' ? JSON.parse(this._body) : this._body;
+  }
+}
+
+class MockNextRequest extends Request {
+  nextUrl: URL;
+  constructor(input: string | URL, init?: RequestInit) {
+    super(input, init);
+    this.nextUrl = new URL(typeof input === 'string' ? input : input.toString());
+  }
+}
+
+const originalRequire = Module.prototype.require;
+Module.prototype.require = function (id: string) {
+  if (id === 'next/server') {
+    return { NextResponse: MockNextResponse, NextRequest: MockNextRequest };
+  }
+  if (id === '@/lib/db') {
+    return { prisma: null };
+  }
+  if (id === '@/lib/auth/session') {
+    return { getSession: async () => ({ session: null, user: null }) };
+  }
+  if (id === '@/lib/auth/rbac') {
+    return { hasPermission: async () => false };
+  }
+  return originalRequire.apply(this, arguments);
+};
+
 import { 
   ADMIN_NAV_GROUPS, 
   ALL_ADMIN_NAV_ITEMS, 
@@ -10,9 +61,9 @@ import {
   getCapabilityStatus 
 } from '../lib/navigation/adminNav';
 import { CapabilityStatus } from '../components/admin/CapabilityStatusBadge';
-import { GET as healthHandler } from '../app/api/admin/health/route';
-import { NextRequest } from 'next/server';
 import { isDatabaseConfigured } from '../lib/runtime/database';
+
+const NextRequest = MockNextRequest;
 
 describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Security', () => {
   const rootDir = process.cwd();
@@ -64,13 +115,16 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
 
     it('verified ZÁKLAD capabilities are correctly marked', () => {
       assert.strictEqual(getCapabilityStatus('media'), 'ZÁKLAD');
+      assert.strictEqual(getCapabilityStatus('navigation'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('publishing'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('revisions'), 'ZÁKLAD');
+      assert.strictEqual(getCapabilityStatus('search'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('svg-editor'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('users'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('roles'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('audit'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('sessions'), 'ZÁKLAD');
+      assert.strictEqual(getCapabilityStatus('projects'), 'ZÁKLAD');
     });
 
     it('verified PLÁNOVÁNO capabilities are correctly marked', () => {
@@ -80,10 +134,8 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
     });
 
     it('verified POUZE UI capabilities are correctly marked', () => {
-      assert.strictEqual(getCapabilityStatus('navigation'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('seo'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('redirects'), 'POUZE UI');
-      assert.strictEqual(getCapabilityStatus('search'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('pwa'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('modules'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('notifications'), 'POUZE UI');
@@ -95,7 +147,6 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('integrations'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('diagnostics'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('logs'), 'POUZE UI');
-      assert.strictEqual(getCapabilityStatus('projects'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('deployment'), 'POUZE UI');
     });
 
@@ -110,8 +161,8 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['VYPNUTO'];
       assert.strictEqual(sum, 31);
       assert.strictEqual(stats['FUNKČNÍ'], 3);
-      assert.strictEqual(stats['ZÁKLAD'], 8);
-      assert.strictEqual(stats['POUZE UI'], 17);
+      assert.strictEqual(stats['ZÁKLAD'], 11);
+      assert.strictEqual(stats['POUZE UI'], 14);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
       assert.strictEqual(stats['VYPNUTO'], 0);
@@ -171,6 +222,15 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
   });
 
   describe('3. Runtime Health Endpoint Security & Storage Truthfulness (/api/admin/health)', () => {
+    let healthHandler: any;
+
+    beforeEach(async () => {
+      if (!healthHandler) {
+        const mod = await import('../app/api/admin/health/route');
+        healthHandler = mod.GET;
+      }
+    });
+
     it('AUTH: unauthenticated request without session cookie returns 401', async () => {
       const req = new NextRequest('http://localhost:3000/api/admin/health');
       const res = await healthHandler(req);
@@ -240,6 +300,50 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
     it('does not contain non-canonical ROZPRACOVÁNO status', () => {
       assert.doesNotMatch(badgeCode, /'ROZPRACOVÁNO'/);
       assert.doesNotMatch(badgeCode, /"ROZPRACOVÁNO"/);
+    });
+  });
+
+  describe('5. Admin Search UI & Server-Binding Truthfulness (app/admin/search)', () => {
+    const pagePath = path.join(rootDir, 'app/admin/search/page.tsx');
+    const workspacePath = path.join(rootDir, 'components/admin/search/SearchWorkspace.tsx');
+    const pageCode = fs.readFileSync(pagePath, 'utf8');
+    const workspaceCode = fs.readFileSync(workspacePath, 'utf8');
+
+    it('Search capability status is strictly ZÁKLAD in admin nav', () => {
+      assert.strictEqual(getCapabilityStatus('search'), 'ZÁKLAD');
+    });
+
+    it('app/admin/search/page.tsx resolves projectId via authoritative server context getActiveProjectId', () => {
+      assert.match(pageCode, /getActiveProjectId\(\)/);
+      assert.match(pageCode, /<SearchWorkspace\s+projectId=\{projectId\}/);
+    });
+
+    it('Search UI strictly omits fake analytics, top queries, and hardcoded fixture metrics', () => {
+      assert.doesNotMatch(workspaceCode, /topQueries/);
+      assert.doesNotMatch(workspaceCode, /24 stránek/);
+      assert.doesNotMatch(workspaceCode, /3 135/);
+      assert.doesNotMatch(workspaceCode, /12 ms/);
+      assert.doesNotMatch(workspaceCode, /100 % obsahu v indexu/);
+      assert.doesNotMatch(workspaceCode, /CTR/i);
+      assert.match(workspaceCode, /Analytika vyhledávacích dotazů zatím není součástí Search Foundation/);
+    });
+
+    it('Search UI binds to admin Search API GET and POST endpoints', () => {
+      assert.match(workspaceCode, /\/api\/admin\/projects\/.*\$\{encodeURIComponent\(projectId\)\}.*\/search/);
+      assert.match(workspaceCode, /method:\s*['"]GET['"]/);
+      assert.match(workspaceCode, /method:\s*['"]POST['"]/);
+    });
+
+    it('Search UI fails closed when projectId is null or missing', () => {
+      assert.match(workspaceCode, /Projekt není vybrán/);
+    });
+
+    it('Search UI maps error codes safely without exposing raw server internals', () => {
+      assert.match(workspaceCode, /Nejste přihlášeni nebo vypršela vaše relace/);
+      assert.match(workspaceCode, /Nemáte oprávnění/);
+      assert.match(workspaceCode, /Služba vyhledávání je dočasně nedostupná/);
+      assert.doesNotMatch(workspaceCode, /err\.stack/);
+      assert.doesNotMatch(workspaceCode, /error\.stack/);
     });
   });
 });

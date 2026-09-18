@@ -145,7 +145,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/search',
         icon: Search,
         group: 'OBSAH',
-        status: 'POUZE UI',
+        status: 'ZÁKLAD',
         helpKey: 'content.search.view',
         description: 'Fulltextový index webu a statistiky hledaných výrazů.',
       },
