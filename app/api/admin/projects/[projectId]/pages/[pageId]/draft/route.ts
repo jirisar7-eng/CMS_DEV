@@ -11,6 +11,8 @@ import {
   validateProjectId,
   validateUpdateDraftBody,
 } from '@/lib/domain/pages-api';
+import { resolveProjectEntitlementsServer } from '@/lib/composer/entitlements.server';
+import { validateCanonicalContent } from '@/lib/composer/adapter';
 
 export async function PATCH(
   request: NextRequest,
@@ -28,6 +30,11 @@ export async function PATCH(
 
     const body = await parseJsonBody(request);
     const validated = validateUpdateDraftBody(body);
+
+    if (validated.content) {
+      const entitlements = await resolveProjectEntitlementsServer(projectId);
+      validated.content = validateCanonicalContent(validated.content, entitlements);
+    }
 
     const service = getContentLifecycleService();
     const result = await service.updateDraft({

@@ -12,6 +12,8 @@ import {
   validateMutationOrigin,
   validateProjectId,
 } from '@/lib/domain/pages-api';
+import { resolveProjectEntitlementsServer } from '@/lib/composer/entitlements.server';
+import { validateCanonicalContent } from '@/lib/composer/adapter';
 
 export async function GET(
   request: NextRequest,
@@ -64,6 +66,9 @@ export const POST = async (
     const body = await parseJsonBody(request);
     const validated = validateCreatePageBody(body);
 
+    const entitlements = await resolveProjectEntitlementsServer(projectId);
+    const sanitizedContent = validateCanonicalContent(validated.content, entitlements);
+
     const service = getContentLifecycleService();
     const result = await service.createPageDraft({
       actorId,
@@ -73,7 +78,7 @@ export const POST = async (
       slug: validated.slug,
       locale: validated.locale,
       visibility: validated.visibility,
-      content: validated.content,
+      content: sanitizedContent,
       parentId: validated.parentId,
       description: validated.description,
     });

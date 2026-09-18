@@ -1,6 +1,6 @@
 import React from 'react';
 import { PageStatus } from '@/lib/domain/pages';
-import { ViewportMode, ContentCapabilities } from '@/lib/composer/types';
+import { ViewportMode, ContentCapabilities, ProjectEntitlements } from '@/lib/composer/types';
 import { PageStatusBadge } from '@/components/admin/pages/PageStatusBadge';
 import { CapabilityStatusBadge } from '@/components/admin/CapabilityStatusBadge';
 import { HelpTrigger } from '@/components/help/HelpTrigger';
@@ -15,6 +15,10 @@ import {
   Plus,
   Settings2,
   Check,
+  Undo2,
+  Redo2,
+  ListTree,
+  Sparkles,
 } from 'lucide-react';
 
 interface ComposerHeaderProps {
@@ -25,10 +29,15 @@ interface ComposerHeaderProps {
   isPreview: boolean;
   viewport: ViewportMode;
   capabilities: ContentCapabilities;
+  entitlements: ProjectEntitlements;
   selectedBlockId: string | null;
+  canUndo?: boolean;
+  canRedo?: boolean;
   onBack: () => void;
   onTogglePreview: () => void;
   onSaveDraft: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
   onChangeViewport: (v: ViewportMode) => void;
   onOpenPaletteMobile: () => void;
   onOpenInspectorMobile: () => void;
@@ -42,10 +51,15 @@ export const ComposerHeader: React.FC<ComposerHeaderProps> = ({
   isPreview,
   viewport,
   capabilities,
+  entitlements,
   selectedBlockId,
+  canUndo = false,
+  canRedo = false,
   onBack,
   onTogglePreview,
   onSaveDraft,
+  onUndo,
+  onRedo,
   onChangeViewport,
   onOpenPaletteMobile,
   onOpenInspectorMobile,
@@ -75,8 +89,11 @@ export const ComposerHeader: React.FC<ComposerHeaderProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">Editor obsahu</span>
+            <span className="hidden sm:inline">Puck Visual Editor</span>
             <CapabilityStatusBadge status="FUNKČNÍ" size="sm" />
+            <span className="hidden md:inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono bg-muted text-muted-foreground">
+              {entitlements.edition}
+            </span>
             {isDirty ? (
               <span className="inline-flex items-center gap-1 text-amber-800 dark:text-amber-300 font-medium">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
@@ -92,47 +109,81 @@ export const ComposerHeader: React.FC<ComposerHeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Preview Viewport controls (Only active in Preview mode) */}
-      {isPreview && (
-        <div className="hidden md:flex items-center p-1 rounded-lg border border-border bg-muted/40">
-          <button
-            type="button"
-            onClick={() => onChangeViewport('desktop')}
-            className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
-              viewport === 'desktop'
-                ? 'bg-background shadow-2xs text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            title="Desktop (100%)"
-          >
-            <Monitor className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeViewport('tablet')}
-            className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
-              viewport === 'tablet'
-                ? 'bg-background shadow-2xs text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            title="Tablet (768px)"
-          >
-            <Tablet className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeViewport('mobile')}
-            className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
-              viewport === 'mobile'
-                ? 'bg-background shadow-2xs text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            title="Mobil (375px)"
-          >
-            <Smartphone className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      {/* Center: History (Undo/Redo) & Preview Viewport controls */}
+      <div className="hidden md:flex items-center gap-2">
+        {/* Undo / Redo controls */}
+        {!isPreview && (
+          <div className="flex items-center p-0.5 rounded-lg border border-border bg-muted/30">
+            <button
+              type="button"
+              id="btn-composer-undo"
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Zpět (Undo)"
+              aria-label="Zpět (Undo)"
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              id="btn-composer-redo"
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Vpřed (Redo)"
+              aria-label="Vpřed (Redo)"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Viewport switch in Preview Mode */}
+        {isPreview && (
+          <div className="flex items-center p-1 rounded-lg border border-border bg-muted/40">
+            <button
+              type="button"
+              id="btn-viewport-desktop"
+              onClick={() => onChangeViewport('desktop')}
+              className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
+                viewport === 'desktop'
+                  ? 'bg-background shadow-2xs text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Desktop (100%)"
+            >
+              <Monitor className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              id="btn-viewport-tablet"
+              onClick={() => onChangeViewport('tablet')}
+              className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
+                viewport === 'tablet'
+                  ? 'bg-background shadow-2xs text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Tablet (768px)"
+            >
+              <Tablet className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              id="btn-viewport-mobile"
+              onClick={() => onChangeViewport('mobile')}
+              className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
+                viewport === 'mobile'
+                  ? 'bg-background shadow-2xs text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Mobil (375px)"
+            >
+              <Smartphone className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Right: Mobile Sheet triggers & Main Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -172,7 +223,7 @@ export const ComposerHeader: React.FC<ComposerHeaderProps> = ({
             onClick={onTogglePreview}
             className={`px-3 py-2 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium rounded-lg border transition-colors ${
               isPreview
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'border-primary bg-primary/10 text-primary font-semibold'
                 : 'border-border bg-background hover:bg-muted text-foreground'
             }`}
           >
@@ -197,7 +248,7 @@ export const ComposerHeader: React.FC<ComposerHeaderProps> = ({
             id="btn-save-draft"
             onClick={onSaveDraft}
             disabled={isSaving || !isDirty}
-            className="px-3.5 sm:px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-2 text-xs sm:text-sm font-medium rounded-lg text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="px-3.5 sm:px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-2 text-xs sm:text-sm font-medium rounded-lg text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>{isSaving ? 'Ukládám...' : 'Uložit koncept'}</span>
