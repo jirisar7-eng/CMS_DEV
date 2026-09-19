@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-SEC-001-IDENTITY-ACCESS-FOUNDATION",
+  "environment": "CMS_DEV",
+  "base_sha": "0c84cc1d93b070efff99b802a50683af8b66258c",
+  "expected_branch": "task/SYN-SEC-001-IDENTITY-ACCESS-FOUNDATION",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/admin/layout.tsx",
+    "app/admin/login/actions.ts",
+    "app/admin/login/page.tsx",
+    "components/admin/auth/LoginForm.tsx",
+    "components/admin/auth/LogoutButton.tsx",
+    "components/admin/AdminShell.tsx",
+    "docs/architecture/SYN-SEC-001.md",
+    "lib/auth/audit.ts",
+    "lib/auth/rbac.ts",
+    "lib/auth/session.ts",
+    "lib/db.ts",
+    "middleware.ts",
+    "package-lock.json",
+    "package.json",
+    "prisma/migrations/20260915120000_init_auth_rbac/migration.sql",
+    "prisma/schema.prisma",
+    "scripts/bootstrap-admin.ts"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    "deploy/*",
+    "infra/*",
+    "bun.lock"
+  ]
+}

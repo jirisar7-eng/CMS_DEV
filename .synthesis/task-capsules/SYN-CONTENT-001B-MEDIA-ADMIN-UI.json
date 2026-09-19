@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-CONTENT-001B-MEDIA-ADMIN-UI",
+  "environment": "CMS_DEV",
+  "base_sha": "8617330d878707d3d234e2ccb3ea27f348870cdf",
+  "expected_branch": "task/SYN-CONTENT-001B-MEDIA-ADMIN-UI",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/admin/media/actions.ts",
+    "components/admin/media/MediaLibraryWorkspace.tsx",
+    "components/admin/media/MediaAssetCard.tsx",
+    "components/admin/media/MediaList.tsx",
+    "components/admin/media/MediaDetailDrawer.tsx"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "deploy/*",
+    "infra/*",
+    "package.json",
+    "bun.lock"
+  ]
+}

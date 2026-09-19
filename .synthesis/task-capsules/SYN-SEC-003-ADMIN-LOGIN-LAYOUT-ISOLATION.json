@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
+  "environment": "CMS_DEV",
+  "base_sha": "52415206dcd51612f6f51ead7fc839e53487dc5b",
+  "expected_branch": "task/SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/admin/login/*",
+    "app/(auth)/admin/login/*",
+    "components/admin/auth/LoginForm.tsx",
+    "components/admin/auth/LogoutButton.tsx",
+    "tests/admin-nodb-fallback.test.ts",
+    "tests/brand-admin-login.test.ts",
+    "tests/admin-login-route-isolation.test.ts",
+    "tests/brand-admin-shell.test.ts"
+  ],
+  "forbidden_paths": [
+    "middleware.ts",
+    "app/admin/layout.tsx",
+    "lib/auth/*",
+    "lib/runtime/*",
+    "prisma/*",
+    "bun.lock"
+  ]
+}

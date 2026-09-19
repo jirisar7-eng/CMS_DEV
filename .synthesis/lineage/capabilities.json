@@ -1,0 +1,384 @@
+{
+  "registry_version": "1.0.0",
+  "capabilities": [
+    {
+      "capability_id": "governance",
+      "canonical_owner_paths": [
+        ".synthesis/**",
+        "scripts/ci/**",
+        "scripts/lineage/**",
+        "app/api/admin/health/**"
+      ],
+      "data_models": [],
+      "api_boundaries": [
+        "/api/admin/health"
+      ],
+      "depends_on_capabilities": [],
+      "project_scoped": false,
+      "security_boundary": "SYSTEM_GOVERNANCE",
+      "visibility": "OWNER_INTERNAL",
+      "source_tasks": [
+        "SYN-DEPLOY-001-CMS-DEV-CONTAINER",
+        "SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
+        "SYN-ADMIN-STATUS-001-CAPABILITY-MAP"
+      ],
+      "last_merge_sha": "2cf4fcb9a4353bc2c48883fd1e4061631358d41c",
+      "ssot_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT"
+    },
+    {
+      "capability_id": "identity_rbac",
+      "canonical_owner_paths": [
+        "lib/auth/**",
+        "app/(auth)/admin/login/**"
+      ],
+      "data_models": [
+        "User",
+        "Session",
+        "Role",
+        "Permission",
+        "RolePermission",
+        "UserRole",
+        "UserPermissionOverride",
+        "AuditLog"
+      ],
+      "api_boundaries": [
+        "/admin/login"
+      ],
+      "depends_on_capabilities": [],
+      "project_scoped": false,
+      "security_boundary": "AUTH_SESSION_COOKIE_RBAC",
+      "visibility": "OWNER_INTERNAL",
+      "source_tasks": [
+        "SYN-SEC-001-IDENTITY-ACCESS-FOUNDATION",
+        "SYN-SEC-002-ADMIN-NODB-FALLBACK",
+        "SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
+        "SYN-SEC-004-DEPENDENCY-HARDENING"
+      ],
+      "last_merge_sha": "c0f3b9f776db98c9f7d9ad2c4931067d279e4b59",
+      "ssot_role": "Canonical identity, session, and role-based access control SSOT"
+    },
+    {
+      "capability_id": "project_context",
+      "canonical_owner_paths": [
+        "lib/domain/pages-client/project-context.ts",
+        "lib/domain/pages-client/server-context.ts",
+        "lib/domain/pages-client/useProject.ts",
+        "app/api/admin/projects/route.ts",
+        "app/admin/projects/**",
+        "components/admin/ProjectSelector.tsx"
+      ],
+      "data_models": [
+        "Project"
+      ],
+      "api_boundaries": [
+        "/api/admin/projects"
+      ],
+      "depends_on_capabilities": [
+        "identity_rbac"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_TENANT_BOUNDARY",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION"
+      ],
+      "last_merge_sha": "91c947eb8dcf91995e5c06ba3859f7d862277fa7",
+      "ssot_role": "Project Context = canonical project/tenant boundary"
+    },
+    {
+      "capability_id": "content_lifecycle",
+      "canonical_owner_paths": [
+        "lib/domain/content/**",
+        "lib/domain/pages-persistence/**",
+        "lib/domain/pages-api/**",
+        "app/api/admin/projects/[projectId]/pages/**"
+      ],
+      "data_models": [
+        "Page",
+        "PageRevision",
+        "ContentRelease",
+        "ContentReleaseItem"
+      ],
+      "api_boundaries": [
+        "/api/admin/projects/[projectId]/pages",
+        "/api/admin/projects/[projectId]/pages/[pageId]",
+        "/api/admin/projects/[projectId]/pages/[pageId]/actions/approve",
+        "/api/admin/projects/[projectId]/pages/[pageId]/actions/publish",
+        "/api/admin/projects/[projectId]/pages/[pageId]/actions/reopen-draft",
+        "/api/admin/projects/[projectId]/pages/[pageId]/actions/request-changes",
+        "/api/admin/projects/[projectId]/pages/[pageId]/actions/rollback",
+        "/api/admin/projects/[projectId]/pages/[pageId]/actions/submit-review"
+      ],
+      "depends_on_capabilities": [
+        "project_context",
+        "identity_rbac"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_PAGES_MANAGE",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-CONTENT-001-CONTENT-LIFECYCLE-FOUNDATION",
+        "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER"
+      ],
+      "last_merge_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
+      "ssot_role": "Page / PageRevision / ContentRelease = canonical content SSOT"
+    },
+    {
+      "capability_id": "admin_pages",
+      "canonical_owner_paths": [
+        "app/admin/pages/**",
+        "components/admin/pages/**"
+      ],
+      "data_models": [],
+      "api_boundaries": [
+        "/api/admin/projects/[projectId]/pages"
+      ],
+      "depends_on_capabilities": [
+        "content_lifecycle",
+        "project_context"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_PAGES_READ",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER"
+      ],
+      "last_merge_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
+      "ssot_role": "Admin Pages UI workspace consuming content lifecycle SSOT"
+    },
+    {
+      "capability_id": "visual_editor",
+      "canonical_owner_paths": [
+        "lib/composer/**",
+        "components/admin/composer/**",
+        "app/api/admin/projects/[projectId]/pages/[pageId]/draft/**"
+      ],
+      "data_models": [],
+      "api_boundaries": [
+        "/api/admin/projects/[projectId]/pages/[pageId]/draft"
+      ],
+      "depends_on_capabilities": [
+        "admin_pages",
+        "content_lifecycle"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_PAGES_EDIT",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-EDITOR-001-VISUAL-PAGE-EDITOR-FOUNDATION"
+      ],
+      "last_merge_sha": "7244d1676baa868a0c7c061c0950f6dd05f16210",
+      "ssot_role": "Puck / Visual Editor = adapter, NOT SSOT"
+    },
+    {
+      "capability_id": "navigation",
+      "canonical_owner_paths": [
+        "lib/domain/navigation/**",
+        "app/admin/navigation/**",
+        "components/admin/navigation/**",
+        "app/api/admin/navigation/**",
+        "app/api/public/navigation/**"
+      ],
+      "data_models": [
+        "NavigationSet",
+        "NavigationItem"
+      ],
+      "api_boundaries": [
+        "/api/admin/navigation",
+        "/api/admin/navigation/[setId]/[[...action]]",
+        "/api/public/navigation"
+      ],
+      "depends_on_capabilities": [
+        "project_context",
+        "content_lifecycle"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_NAVIGATION_MANAGE",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-NAV-001-NAVIGATION-FOUNDATION"
+      ],
+      "last_merge_sha": "194028387621c8bf00267680b13704458e686a49",
+      "ssot_role": "Project-scoped navigation hierarchy SSOT referencing canonical Page records"
+    },
+    {
+      "capability_id": "seo",
+      "canonical_owner_paths": [
+        "lib/domain/seo/**",
+        "app/admin/seo/**",
+        "components/admin/seo/**",
+        "app/api/admin/projects/[projectId]/seo/**"
+      ],
+      "data_models": [
+        "ProjectSeoSettings"
+      ],
+      "api_boundaries": [
+        "/api/admin/projects/[projectId]/seo"
+      ],
+      "depends_on_capabilities": [
+        "project_context",
+        "content_lifecycle"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_SEO_MANAGE",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
+        "SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER"
+      ],
+      "last_merge_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
+      "ssot_role": "Project-scoped SEO metadata SSOT; Sitemap runtime = planned / not falsely complete"
+    },
+    {
+      "capability_id": "redirects",
+      "canonical_owner_paths": [
+        "lib/domain/redirects/**",
+        "app/admin/redirects/**",
+        "components/admin/redirects/**",
+        "app/api/admin/projects/[projectId]/redirects/**"
+      ],
+      "data_models": [
+        "RedirectRule"
+      ],
+      "api_boundaries": [
+        "/api/admin/projects/[projectId]/redirects",
+        "/api/admin/projects/[projectId]/redirects/[ruleId]"
+      ],
+      "depends_on_capabilities": [
+        "project_context"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_REDIRECTS_MANAGE",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
+        "SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER"
+      ],
+      "last_merge_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
+      "ssot_role": "Redirect rule SSOT; Redirect runtime = consumes published content + RedirectRule"
+    },
+    {
+      "capability_id": "public_routing",
+      "canonical_owner_paths": [
+        "lib/domain/routing/**",
+        "app/api/public/route/**",
+        "app/api/admin/projects/[projectId]/routing/**"
+      ],
+      "data_models": [],
+      "api_boundaries": [
+        "/api/public/route",
+        "/api/admin/projects/[projectId]/routing",
+        "/api/admin/projects/[projectId]/routing/validate"
+      ],
+      "depends_on_capabilities": [
+        "content_lifecycle",
+        "redirects"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PUBLIC_ROUTING_FIREWALL",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-WEB-002-ROUTING-REDIRECT-RUNTIME"
+      ],
+      "last_merge_sha": "ebfb8e4b0559247c39dc3a2c03fdbfeef9fd7e97",
+      "ssot_role": "Public edge resolution runtime consuming published ContentRelease and RedirectRule"
+    },
+    {
+      "capability_id": "search",
+      "canonical_owner_paths": [
+        "lib/domain/search/**",
+        "app/admin/search/**",
+        "components/admin/search/**",
+        "app/api/admin/projects/[projectId]/search/**",
+        "app/api/public/search/**"
+      ],
+      "data_models": [
+        "SearchDocument"
+      ],
+      "api_boundaries": [
+        "/api/admin/projects/[projectId]/search",
+        "/api/public/search"
+      ],
+      "depends_on_capabilities": [
+        "project_context",
+        "content_lifecycle"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_SEARCH_MANAGE",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-SEARCH-001-SEARCH-FOUNDATION"
+      ],
+      "last_merge_sha": "6887f26deb3849676e9c0c3ac3bce40d11b8cf7b",
+      "ssot_role": "SearchDocument = derived/rebuildable index, NOT SSOT; indexes published content lifecycle"
+    },
+    {
+      "capability_id": "media",
+      "canonical_owner_paths": [
+        "lib/domain/media/**",
+        "app/admin/media/**",
+        "components/admin/media/**",
+        "app/api/media/**"
+      ],
+      "data_models": [
+        "MediaAsset",
+        "MediaAssetVersion",
+        "MediaUsageReference"
+      ],
+      "api_boundaries": [
+        "/api/media/[id]"
+      ],
+      "depends_on_capabilities": [
+        "project_context"
+      ],
+      "project_scoped": true,
+      "security_boundary": "PROJECT_SCOPED_RBAC_MEDIA_MANAGE",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-MEDIA-001A-PERSISTENCE-FOUNDATION",
+        "SYN-CONTENT-001A-MEDIA-RUNTIME-R1",
+        "SYN-CONTENT-001B-MEDIA-ADMIN-UI",
+        "SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER"
+      ],
+      "last_merge_sha": "afdd8cbd51ecbd18357bc94da324f7bef00573b6",
+      "ssot_role": "Media asset versioning and usage reference SSOT; Media Replace = SAFELY_DISABLED / deferred"
+    },
+    {
+      "capability_id": "brand",
+      "canonical_owner_paths": [
+        "lib/domain/brand/**",
+        "app/admin/brands/**",
+        "app/admin/themes/**",
+        "components/admin/brand/**"
+      ],
+      "data_models": [
+        "Brand",
+        "BrandVersion"
+      ],
+      "api_boundaries": [],
+      "depends_on_capabilities": [
+        "identity_rbac"
+      ],
+      "project_scoped": false,
+      "security_boundary": "SYSTEM_OR_PROJECT_RBAC_BRAND_MANAGE",
+      "visibility": "SAFE_PUBLIC_METADATA",
+      "source_tasks": [
+        "SYN-BRAND-001-SYNTHESIS-CMS-BRAND-FOUNDATION",
+        "SYN-BRAND-002-BRAND-STUDIO",
+        "SYN-BRAND-003-COMPLETE-SYNTHESIS-CMS-BRAND"
+      ],
+      "last_merge_sha": "52415206dcd51612f6f51ead7fc839e53487dc5b",
+      "ssot_role": "Canonical brand token and visual identity SSOT supporting SYSTEM and PROJECT scopes"
+    }
+  ],
+  "ssot_rules": {
+    "content_ssot": "Page / PageRevision / ContentRelease = canonical content SSOT",
+    "visual_editor_role": "Puck / Visual Editor = adapter, NOT SSOT",
+    "search_role": "SearchDocument = derived/rebuildable index, NOT SSOT",
+    "project_context_role": "Project Context = canonical project/tenant boundary",
+    "capability_map_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT",
+    "redirect_runtime_role": "Redirect runtime = consumes published content + RedirectRule",
+    "media_replace_role": "Media Replace = SAFELY_DISABLED / deferred",
+    "sitemap_runtime_role": "Sitemap runtime = planned / not falsely complete"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "task_id": "SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
+  "environment": "CMS_DEV",
+  "base_sha": "948a9fe75d4c5fdcab333341c594333436106c1d",
+  "expected_branch": "task/SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE",
+    "CONFIG",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "package.json",
+    "package-lock.json",
+    "prisma/schema.prisma",
+    "lib/domain/media/prismaRepository.ts",
+    "lib/domain/media/s3StorageProvider.ts",
+    "deploy/cms-dev/compose.yml"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "docs/environment/ENV-LEGACY-*",
+    "infra/*"
+  ]
+}

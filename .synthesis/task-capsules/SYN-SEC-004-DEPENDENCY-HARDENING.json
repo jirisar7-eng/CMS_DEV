@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-SEC-004-DEPENDENCY-HARDENING",
+  "environment": "CMS_DEV",
+  "base_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
+  "expected_branch": "task/SYN-SEC-004-DEPENDENCY-HARDENING",
+  "owner": "VPS",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "DEPENDENCY"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "package.json",
+    "package-lock.json"
+  ],
+  "forbidden_paths": [
+    "bun.lock"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "task_id": "SYN-SVG-005-INTEGRATION",
+  "environment": "CMS_DEV",
+  "base_sha": "7f20667c5ef6d22f5cd57e73f30c93d3c91bccec",
+  "expected_branch": "task/SYN-SVG-005-EDITOR-PREVIEW",
+  "owner": "AI_STUDIO",
+  "status": "INTEGRATION",
+  "allowed_mutation_types": [
+    "CODE",
+    "CONFIG",
+    "DEPENDENCY",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/admin/svg-editor/*",
+    "components/admin/svg-editor/*",
+    "lib/svg-security/*",
+    "lib/navigation/adminNav.ts",
+    "lib/help/types.ts",
+    "lib/help/registry.ts",
+    "package.json",
+    "package-lock.json"
+  ],
+  "forbidden_paths": [
+    ".env*",
+    "docs/environment/ENV-LEGACY-*",
+    "deployment/*",
+    "infra/*"
+  ]
+}

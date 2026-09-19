@@ -1,0 +1,50 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER",
+  "environment": "CMS_DEV",
+  "base_sha": "f6a7ea108e38ad5c96ba27839fa167506dedeeec",
+  "expected_branch": "task/SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "lib/domain/pages.ts",
+    "lib/domain/pages-persistence/*",
+    "lib/domain/pages-api/*",
+    "app/api/admin/projects/[projectId]/pages/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/draft/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/submit-review/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/request-changes/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/approve/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/publish/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/rollback/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/actions/reopen-draft/route.ts",
+    "tests/admin-pages-persistence.test.ts",
+    "tests/admin-pages-read-api.test.ts",
+    "tests/admin-pages-write-api.test.ts",
+    "tests/admin-pages-publish-api.test.ts",
+    "lib/domain/pages-client/*",
+    "tests/admin-pages-client.test.ts",
+    "app/admin/pages/*",
+    "components/admin/pages/*",
+    "components/admin/composer/PageComposerWorkspace.tsx",
+    "tests/admin-pages-ui-cutover.test.ts"
+  ],
+  "forbidden_paths": [
+    "components/admin/navigation/*",
+    "lib/domain/pagesFixture.ts",
+    "lib/domain/content/lifecycle/*",
+    "lib/auth/session.ts",
+    "lib/auth/rbac.ts",
+    "prisma/*",
+    "middleware.ts",
+    "scripts/bootstrap-admin.ts",
+    "package.json",
+    "package-lock.json",
+    "bun.lock"
+  ]
+}

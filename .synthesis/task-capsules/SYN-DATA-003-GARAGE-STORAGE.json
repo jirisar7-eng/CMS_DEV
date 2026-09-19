@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "task_id": "SYN-DATA-003-GARAGE-STORAGE",
+  "environment": "CMS_DEV",
+  "base_sha": "188e5e265c1f91ee2bc57770b81d827e71113a0b",
+  "expected_branch": "task/SYN-DATA-003-GARAGE-STORAGE",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "CONFIG",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "deploy/cms-dev/*"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "docs/environment/ENV-LEGACY-*",
+    "infra/*"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-SEARCH-001-SEARCH-FOUNDATION",
+  "environment": "CMS_DEV",
+  "base_sha": "ebfb8e4b0559247c39dc3a2c03fdbfeef9fd7e97",
+  "expected_branch": "task/SYN-SEARCH-001-SEARCH-FOUNDATION",
+  "owner": "CHATGPT",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE",
+    "DB_SCHEMA"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "prisma/migrations/**",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "lib/domain/search/*",
+    "lib/domain/search/**",
+    "app/api/public/search/*",
+    "app/api/public/search/**",
+    "app/api/admin/projects/[projectId]/search/*",
+    "app/api/admin/projects/[projectId]/search/**",
+    "app/admin/search/page.tsx",
+    "components/admin/search/*",
+    "components/admin/search/**",
+    "lib/navigation/adminNav.ts",
+    "tests/search-domain.test.ts",
+    "tests/search-api.test.ts",
+    "tests/admin-capability-status.test.ts"
+  ]
+}

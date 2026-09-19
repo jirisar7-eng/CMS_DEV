@@ -1,38 +1,23 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER",
+  "task_id": "SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
   "environment": "CMS_DEV",
-  "base_sha": "afdd8cbd51ecbd18357bc94da324f7bef00573b6",
-  "expected_branch": "task/SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER",
+  "base_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
+  "expected_branch": "task/SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
   "owner": "AI_STUDIO",
   "status": "COMPLETED",
   "allowed_mutation_types": [
-    "CODE"
+    "GOVERNANCE",
+    "EVIDENCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "app/admin/seo/*",
-    "app/admin/seo/**",
-    "components/admin/seo/*",
-    "components/admin/seo/**",
-    "app/admin/redirects/*",
-    "app/admin/redirects/**",
-    "components/admin/redirects/*",
-    "components/admin/redirects/**",
-    "app/api/admin/projects/[projectId]/seo/*",
-    "app/api/admin/projects/[projectId]/seo/**",
-    "app/api/admin/projects/[projectId]/redirects/*",
-    "app/api/admin/projects/[projectId]/redirects/**",
-    "lib/domain/seo/*",
-    "lib/domain/seo/**",
-    "lib/domain/redirects/*",
-    "lib/domain/redirects/**",
-    "lib/navigation/adminNav.ts",
-    "tests/admin-capability-status.test.ts",
-    "tests/seo-domain.test.ts",
-    "tests/redirects-domain.test.ts",
-    "tests/seo-admin-cutover.test.ts",
-    "tests/redirects-admin-cutover.test.ts",
-    "tests/seo-redirects-admin-cutover.test.ts"
+    ".synthesis/task-capsules/*",
+    ".synthesis/task-capsules/**",
+    ".synthesis/lineage/*",
+    ".synthesis/lineage/**",
+    "scripts/lineage/*",
+    "scripts/lineage/**",
+    "tests/lineage-registry.test.ts"
   ]
 }

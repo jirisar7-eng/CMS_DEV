@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER",
+  "environment": "CMS_DEV",
+  "base_sha": "6887f26deb3849676e9c0c3ac3bce40d11b8cf7b",
+  "expected_branch": "task/SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER",
+  "owner": "CHATGPT",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/admin/media/page.tsx",
+    "app/admin/media/actions.ts",
+    "app/api/media/[id]/route.ts",
+    "components/admin/media/*",
+    "components/admin/media/**",
+    "lib/domain/media/*",
+    "lib/domain/media/**",
+    "lib/navigation/adminNav.ts",
+    "tests/media-rbac-authorization.test.ts",
+    "tests/media-project-isolation.test.ts",
+    "tests/media-admin-runtime.test.ts",
+    "tests/admin-capability-status.test.ts",
+    "tests/media-clamav-security.test.ts"
+  ]
+}

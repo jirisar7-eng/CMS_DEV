@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-EDITOR-001-VISUAL-PAGE-EDITOR-FOUNDATION",
+  "environment": "CMS_DEV",
+  "base_sha": "194028387621c8bf00267680b13704458e686a49",
+  "expected_branch": "task/SYN-EDITOR-001-VISUAL-PAGE-EDITOR-FOUNDATION",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE",
+    "CONFIG",
+    "DOCS"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "docs/architecture/SYN-EDITOR-001-VISUAL-PAGE-EDITOR-FOUNDATION.md",
+    "lib/composer/*",
+    "lib/domain/pages/*",
+    "lib/domain/pages-client/*",
+    "lib/domain/pages-persistence/*",
+    "lib/domain/pages.ts",
+    "components/admin/composer/*",
+    "components/preview/*",
+    "app/api/admin/entitlements/*",
+    "app/api/admin/editor/*",
+    "app/api/admin/projects/[projectId]/pages/route.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/draft/route.ts",
+    "app/admin/pages/[id]/edit/*",
+    "app/admin/pages/[id]/edit/page.tsx",
+    "app/preview/site/page.tsx",
+    "tests/editor-foundation.test.ts",
+    "tests/editor-*.test.ts",
+    "tests/puck-*.test.ts",
+    "package.json",
+    "package-lock.json",
+    "tests/puck-integration-security.test.ts"
+  ],
+  "forbidden_paths": [
+    "bun.lock"
+  ]
+}
