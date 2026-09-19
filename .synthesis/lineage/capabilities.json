@@ -382,7 +382,7 @@
       "security_boundary": "SYSTEM_GOVERNANCE",
       "visibility": "OWNER_INTERNAL",
       "source_tasks": [
-        "SYN-PLUGIN-001-PLUGIN-MANIFEST-REGISTRY-FOUNDATION"
+        "SYN-PLUGIN-001"
       ],
       "last_merge_sha": "1cfdf81b29be8f93f03710590c71a72705ac8038",
       "ssot_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"

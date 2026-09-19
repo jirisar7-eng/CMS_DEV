@@ -125,15 +125,11 @@ export function validateLineage(options = {}) {
   }
 
   const registeredTaskIds = new Set([
-    'SYN-PLUGIN-001-PLUGIN-MANIFEST-REGISTRY-FOUNDATION',
-    'SYN-SYSTEM-MAP-001-READONLY-RESOLVER',
-    'SYN-SYSTEM-MAP-002-ADMIN-UI'
+    'SYN-PLUGIN-001'
   ]);
   const seenPrNumbers = new Set();
   const validMergeShas = new Set([
-    '1cfdf81b29be8f93f03710590c71a72705ac8038',
-    '59aab75699b39b8081e0655091cf908e7e470346',
-    'b1919ef082a38a5b9d8e07d09d58737ef288f602'
+    '1cfdf81b29be8f93f03710590c71a72705ac8038'
   ]);
 
   if (tasksData) {
