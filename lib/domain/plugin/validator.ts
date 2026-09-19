@@ -75,7 +75,7 @@ const VALID_LIFECYCLE_STATES: PluginLifecycleState[] = [
 
 const SLUG_REGEX = /^[a-z0-9-]+$/;
 const SEMVER_REGEX = /^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/;
-const VERSION_RANGE_REGEX = /^([\^~><=]*\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?|\*|\d+\.x)$/;
+const VERSION_RANGE_REGEX = /^([\^~><=]*\d+(\.(\d+|[xX]))*(-[a-zA-Z0-9.-]+)?|\*)$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SECRET_PATTERNS = [
