@@ -29,7 +29,6 @@ export type PluginLifecycleState =
   | 'DRAFT'
   | 'STABLE'
   | 'DEPRECATED'
-  | 'DISABLED'
   | 'ARCHIVED';
 
 export interface PluginCapability {
@@ -73,6 +72,13 @@ export interface PluginAuthor {
   url?: string;
 }
 
+export interface PluginLegalMetadata {
+  license: string;
+  termsUrl?: string;
+  privacyUrl?: string;
+  securityPolicyUrl?: string;
+}
+
 export interface PluginLifecycleMetadata {
   state: PluginLifecycleState;
   deprecatedAt?: string;
@@ -95,7 +101,7 @@ export interface PluginManifest {
   category: PluginCategory;
   author: string | PluginAuthor;
   homepage?: string;
-  license?: string;
+  legal?: PluginLegalMetadata;
   lifecycle?: PluginLifecycleMetadata;
   compatibility?: PluginCompatibilityMetadata;
   dependencies?: PluginDependency[];
@@ -105,7 +111,6 @@ export interface PluginManifest {
   requiredEntitlements?: string[];
   configSchema?: PluginConfigSchema;
   isCore?: false;
-  experimental?: boolean;
 }
 
 export interface ValidationIssue {
