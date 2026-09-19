@@ -9,7 +9,7 @@ import {
   DependencyKind,
   PluginLifecycleState,
 } from './contracts';
-import { PluginRegistry, globalPluginRegistry } from './registry';
+import type { PluginRegistry } from './registry';
 
 const ALLOWED_TOP_LEVEL_KEYS = new Set([
   'id',
@@ -20,7 +20,7 @@ const ALLOWED_TOP_LEVEL_KEYS = new Set([
   'category',
   'author',
   'homepage',
-  'license',
+  'legal',
   'lifecycle',
   'compatibility',
   'dependencies',
@@ -30,7 +30,6 @@ const ALLOWED_TOP_LEVEL_KEYS = new Set([
   'requiredEntitlements',
   'configSchema',
   'isCore',
-  'experimental',
 ]);
 
 const VALID_TYPES: PluginType[] = [
@@ -71,7 +70,6 @@ const VALID_LIFECYCLE_STATES: PluginLifecycleState[] = [
   'DRAFT',
   'STABLE',
   'DEPRECATED',
-  'DISABLED',
   'ARCHIVED',
 ];
 
@@ -93,6 +91,16 @@ const UNSAFE_CODE_PATTERNS = [
   /<script\b/i,
   /javascript:/i,
 ];
+
+function isValidHttpUrl(urlStr: any): boolean {
+  if (typeof urlStr !== 'string') return false;
+  try {
+    const parsed = new URL(urlStr);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 function checkProhibitedTypesAndValues(
   obj: any,
@@ -254,7 +262,17 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
     });
   }
 
-  // 8. Author & License validation by PluginType
+  // 8. Homepage URL validation
+  if (manifest.homepage !== undefined && !isValidHttpUrl(manifest.homepage)) {
+    issues.push({
+      code: 'INVALID_HOMEPAGE_URL',
+      message: 'Homepage must be a valid http or https URL',
+      field: 'homepage',
+      severity: 'ERROR',
+    });
+  }
+
+  // 9. Author & Legal metadata validation by PluginType
   if (!manifest.author) {
     issues.push({
       code: 'INVALID_AUTHOR',
@@ -280,7 +298,10 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
         severity: 'ERROR',
       });
     }
-    if (manifest.author.email && (!typeof manifest.author.email === 'string' || !EMAIL_REGEX.test(manifest.author.email))) {
+    if (
+      manifest.author.email !== undefined &&
+      (typeof manifest.author.email !== 'string' || !EMAIL_REGEX.test(manifest.author.email))
+    ) {
       issues.push({
         code: 'INVALID_AUTHOR_EMAIL',
         message: 'Author email must be a valid email address',
@@ -288,28 +309,69 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
         severity: 'ERROR',
       });
     }
-  }
-
-  const requiresLicense = ['OFFICIAL', 'THIRD_PARTY', 'COMMUNITY'].includes(manifest.type);
-  if (requiresLicense) {
-    if (!manifest.license || typeof manifest.license !== 'string' || manifest.license.trim() === '') {
+    if (manifest.author.url !== undefined && !isValidHttpUrl(manifest.author.url)) {
       issues.push({
-        code: 'LICENSE_REQUIRED',
-        message: `Plugin type '${manifest.type}' requires a valid license string (e.g. "MIT", "Proprietary")`,
-        field: 'license',
+        code: 'INVALID_AUTHOR_URL',
+        message: 'Author url must be a valid http or https URL',
+        field: 'author.url',
         severity: 'ERROR',
       });
     }
-  } else if (manifest.license !== undefined && (typeof manifest.license !== 'string' || manifest.license.trim() === '')) {
-    issues.push({
-      code: 'INVALID_LICENSE',
-      message: 'License must be a non-empty string if provided',
-      field: 'license',
-      severity: 'ERROR',
-    });
   }
 
-  // 9. Lifecycle metadata
+  const requiresLegal = ['OFFICIAL', 'THIRD_PARTY', 'COMMUNITY'].includes(manifest.type);
+  if (requiresLegal && !manifest.legal) {
+    issues.push({
+      code: 'LEGAL_REQUIRED',
+      message: `Plugin type '${manifest.type}' requires legal metadata with license`,
+      field: 'legal',
+      severity: 'ERROR',
+    });
+  } else if (manifest.legal) {
+    if (typeof manifest.legal !== 'object' || Array.isArray(manifest.legal)) {
+      issues.push({
+        code: 'INVALID_LEGAL_METADATA',
+        message: 'Legal metadata must be an object',
+        field: 'legal',
+        severity: 'ERROR',
+      });
+    } else {
+      if (!manifest.legal.license || typeof manifest.legal.license !== 'string' || manifest.legal.license.trim() === '') {
+        issues.push({
+          code: 'INVALID_LICENSE',
+          message: 'Legal license must be a valid non-empty string',
+          field: 'legal.license',
+          severity: 'ERROR',
+        });
+      }
+      if (manifest.legal.termsUrl !== undefined && !isValidHttpUrl(manifest.legal.termsUrl)) {
+        issues.push({
+          code: 'INVALID_LEGAL_URL',
+          message: 'Legal termsUrl must be a valid http or https URL',
+          field: 'legal.termsUrl',
+          severity: 'ERROR',
+        });
+      }
+      if (manifest.legal.privacyUrl !== undefined && !isValidHttpUrl(manifest.legal.privacyUrl)) {
+        issues.push({
+          code: 'INVALID_LEGAL_URL',
+          message: 'Legal privacyUrl must be a valid http or https URL',
+          field: 'legal.privacyUrl',
+          severity: 'ERROR',
+        });
+      }
+      if (manifest.legal.securityPolicyUrl !== undefined && !isValidHttpUrl(manifest.legal.securityPolicyUrl)) {
+        issues.push({
+          code: 'INVALID_LEGAL_URL',
+          message: 'Legal securityPolicyUrl must be a valid http or https URL',
+          field: 'legal.securityPolicyUrl',
+          severity: 'ERROR',
+        });
+      }
+    }
+  }
+
+  // 10. Lifecycle metadata
   if (manifest.lifecycle && typeof manifest.lifecycle === 'object') {
     if (!manifest.lifecycle.state || !VALID_LIFECYCLE_STATES.includes(manifest.lifecycle.state)) {
       issues.push({
@@ -321,7 +383,7 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
     }
   }
 
-  // 10. Compatibility metadata
+  // 11. Compatibility metadata
   if (manifest.compatibility && typeof manifest.compatibility === 'object') {
     const { minCmsVersion, maxCmsVersion } = manifest.compatibility;
     if (minCmsVersion && (typeof minCmsVersion !== 'string' || !VERSION_RANGE_REGEX.test(minCmsVersion))) {
@@ -342,7 +404,7 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
     }
   }
 
-  // 11. Capabilities validation
+  // 12. Capabilities validation
   if (manifest.capabilities !== undefined) {
     if (!Array.isArray(manifest.capabilities)) {
       issues.push({
@@ -375,7 +437,7 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
     }
   }
 
-  // 12. Dependencies validation & duplicate check
+  // 13. Dependencies validation & duplicate check
   if (manifest.dependencies !== undefined) {
     if (!Array.isArray(manifest.dependencies)) {
       issues.push({
@@ -439,7 +501,7 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
     }
   }
 
-  // 13. Config schema sensitive field default value check
+  // 14. Config schema sensitive field default value check
   if (manifest.configSchema && Array.isArray(manifest.configSchema.fields)) {
     for (const field of manifest.configSchema.fields) {
       if (
@@ -468,8 +530,12 @@ export function validatePluginManifest(manifest: any): ManifestValidationResult 
 
 export function validatePluginDependencies(
   pluginId: string,
-  registry: PluginRegistry = globalPluginRegistry
+  registry: PluginRegistry
 ): DependencyCheckResult {
+  if (!registry) {
+    throw new Error('PluginRegistry instance must be explicitly provided to validatePluginDependencies');
+  }
+
   const issues: ValidationIssue[] = [];
   const missingDependencies: string[] = [];
   const circularDependencies: string[][] = [];
@@ -519,7 +585,6 @@ export function validatePluginDependencies(
     }
 
     const nextPath = [...currentPath, currentId];
-    // ONLY REQUIRED dependencies are traversed for cycle detection / missing checks!
     const requiredDeps = (manifest.dependencies || []).filter((d) => d.kind === 'REQUIRED');
 
     for (const dep of requiredDeps) {

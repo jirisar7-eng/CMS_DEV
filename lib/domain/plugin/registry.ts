@@ -28,10 +28,6 @@ export class PluginRegistry {
     this.manifests.set(manifest.id, JSON.parse(JSON.stringify(manifest)));
   }
 
-  public unregisterPlugin(id: string): boolean {
-    return this.manifests.delete(id);
-  }
-
   public getPlugin(id: string): PluginManifest | undefined {
     const manifest = this.manifests.get(id);
     return manifest ? JSON.parse(JSON.stringify(manifest)) : undefined;
@@ -47,14 +43,6 @@ export class PluginRegistry {
 
   public hasPlugin(id: string): boolean {
     return this.manifests.has(id);
-  }
-
-  public clearRegistry(): void {
-    this.manifests.clear();
-  }
-
-  public resetToDefaults(): void {
-    this.clearRegistry();
   }
 }
 
