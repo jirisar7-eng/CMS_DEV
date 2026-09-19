@@ -52,6 +52,7 @@ export interface MediaSecurityInfo {
   pipelineId?: string;
   scannerId?: string;
   scannerReason?: string;
+  contentVerified?: boolean;
 }
 
 export interface MediaAsset {

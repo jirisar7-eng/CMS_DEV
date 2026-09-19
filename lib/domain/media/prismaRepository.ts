@@ -378,7 +378,7 @@ export class PrismaMediaRepository implements IMediaRepository {
       where: { assetId },
       orderBy: { usedAt: 'desc' },
     });
-    return dbRefs.map(r => this.mapUsageReference(r));
+    return dbRefs.map((r: any) => this.mapUsageReference(r));
   }
 
   async isDeletionAllowed(id: string, projectId?: string): Promise<boolean> {
