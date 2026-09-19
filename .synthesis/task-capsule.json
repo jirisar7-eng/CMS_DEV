@@ -1,34 +1,28 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-SEARCH-001-SEARCH-FOUNDATION",
+  "task_id": "SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER",
   "environment": "CMS_DEV",
-  "base_sha": "ebfb8e4b0559247c39dc3a2c03fdbfeef9fd7e97",
-  "expected_branch": "task/SYN-SEARCH-001-SEARCH-FOUNDATION",
+  "base_sha": "6887f26deb3849676e9c0c3ac3bce40d11b8cf7b",
+  "expected_branch": "task/SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER",
   "owner": "CHATGPT",
   "status": "COMPLETED",
   "allowed_mutation_types": [
-    "CODE",
-    "DB_SCHEMA"
+    "CODE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "prisma/schema.prisma",
-    "prisma/migrations/*",
-    "prisma/migrations/**",
-    "lib/auth/rbac.ts",
-    "scripts/bootstrap-admin.ts",
-    "lib/domain/search/*",
-    "lib/domain/search/**",
-    "app/api/public/search/*",
-    "app/api/public/search/**",
-    "app/api/admin/projects/[projectId]/search/*",
-    "app/api/admin/projects/[projectId]/search/**",
-    "app/admin/search/page.tsx",
-    "components/admin/search/*",
-    "components/admin/search/**",
+    "app/admin/media/page.tsx",
+    "app/admin/media/actions.ts",
+    "app/api/media/[id]/route.ts",
+    "components/admin/media/*",
+    "components/admin/media/**",
+    "lib/domain/media/*",
+    "lib/domain/media/**",
     "lib/navigation/adminNav.ts",
-    "tests/search-domain.test.ts",
-    "tests/search-api.test.ts",
-    "tests/admin-capability-status.test.ts"
+    "tests/media-rbac-authorization.test.ts",
+    "tests/media-project-isolation.test.ts",
+    "tests/media-admin-runtime.test.ts",
+    "tests/admin-capability-status.test.ts",
+    "tests/media-clamav-security.test.ts"
   ]
 }

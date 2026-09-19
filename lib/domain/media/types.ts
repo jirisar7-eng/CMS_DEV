@@ -50,6 +50,9 @@ export interface MediaSecurityInfo {
   checksumSha256: string;
   scannedAt: string;
   pipelineId?: string;
+  scannerId?: string;
+  scannerReason?: string;
+  contentVerified?: boolean;
 }
 
 export interface MediaAsset {
@@ -95,17 +98,31 @@ export interface StorageProvider {
   exists(key: string): Promise<boolean>;
 }
 
+export type MalwareScanResultStatus =
+  | 'CLEAN'
+  | 'INFECTED'
+  | 'TIMEOUT'
+  | 'CONNECTION_FAILED'
+  | 'MALFORMED_RESPONSE'
+  | 'CONFIGURATION_MISSING';
+
+export interface MalwareScanResult {
+  clean: boolean;
+  status: MalwareScanResultStatus;
+  threat?: string;
+  reasonCode?: string;
+  scannedAt: string;
+  scannerId: string;
+  checksumSha256?: string;
+}
+
 /**
  * MalwareScanner Interface (Pluggable abstraction: ClamAV, VirusTotal, etc.)
  */
 export interface MalwareScanner {
   id: string;
   name: string;
-  scan(file: { name: string; type: string; size: number; data?: Blob | ArrayBuffer }): Promise<{
-    clean: boolean;
-    threat?: string;
-    scannedAt: string;
-  }>;
+  scan(file: { name: string; type: string; size: number; data?: Buffer | Uint8Array | Blob | ArrayBuffer }): Promise<MalwareScanResult>;
 }
 
 /**
@@ -200,18 +217,18 @@ export interface MediaAssetVersion {
  */
 export interface IMediaRepository {
   createAsset(assetInput: Omit<MediaAsset, 'id' | 'createdAt' | 'updatedAt' | 'usageCount' | 'usageReferences'>): Promise<MediaAsset> | MediaAsset;
-  getById(id: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
-  list(filters?: MediaFilterOptions): Promise<MediaAsset[]> | MediaAsset[];
-  updateMetadata(id: string, metadata: Partial<MediaMetadata>): Promise<MediaAsset | undefined> | MediaAsset | undefined;
-  updateUrl(id: string, url: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
-  createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>): Promise<MediaAssetVersion> | MediaAssetVersion;
-  listVersions(assetId: string): Promise<MediaAssetVersion[]> | MediaAssetVersion[];
-  setCurrentVersion(assetId: string, versionId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
-  changeStatus(id: string, status: MediaStatus): Promise<MediaAsset | undefined> | MediaAsset | undefined;
-  addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>): Promise<MediaUsageReference> | MediaUsageReference;
-  removeUsageReference(assetId: string, referenceId: string): Promise<void> | void;
-  listUsageReferences(assetId: string): Promise<MediaUsageReference[]> | MediaUsageReference[];
-  isDeletionAllowed(id: string): Promise<boolean> | boolean;
-  archiveAsset(id: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
-  deleteAsset(id: string): Promise<void> | void;
+  getById(id: string, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  list(projectId: string, filters?: MediaFilterOptions): Promise<MediaAsset[]> | MediaAsset[];
+  updateMetadata(id: string, metadata: Partial<MediaMetadata>, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  updateUrl(id: string, url: string, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>, projectId: string): Promise<MediaAssetVersion> | MediaAssetVersion;
+  listVersions(assetId: string, projectId: string): Promise<MediaAssetVersion[]> | MediaAssetVersion[];
+  setCurrentVersion(assetId: string, versionId: string, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  changeStatus(id: string, status: MediaStatus, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>, projectId: string): Promise<MediaUsageReference> | MediaUsageReference;
+  removeUsageReference(assetId: string, referenceId: string, projectId: string): Promise<void> | void;
+  listUsageReferences(assetId: string, projectId: string): Promise<MediaUsageReference[]> | MediaUsageReference[];
+  isDeletionAllowed(id: string, projectId: string): Promise<boolean> | boolean;
+  archiveAsset(id: string, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  deleteAsset(id: string, projectId: string): Promise<void> | void;
 }

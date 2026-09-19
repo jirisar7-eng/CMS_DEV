@@ -1,4 +1,46 @@
 import assert from 'assert';
+import Module from 'node:module';
+import path from 'node:path';
+
+class MockNextResponse {
+  status: number;
+  headers: Headers;
+  private _body: any;
+
+  constructor(body: any, init?: { status?: number; headers?: Headers | Record<string, string> }) {
+    this._body = body;
+    this.status = init?.status ?? 200;
+    this.headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers as Record<string, string>);
+  }
+
+  static json(body: any, init?: { status?: number; headers?: Headers | Record<string, string> }) {
+    return new MockNextResponse(body, init);
+  }
+}
+
+class MockNextRequest {
+  url: string;
+  headers = new Headers();
+  constructor(url: string) {
+    this.url = url;
+  }
+}
+
+const originalRequire = (Module.prototype as any).require;
+(Module.prototype as any).require = function (id: string) {
+  if (id === 'next/server') {
+    return { NextResponse: MockNextResponse, NextRequest: MockNextRequest };
+  }
+  if (id === '@/lib/domain/navigation/public-context') {
+    return { resolvePublicProjectContext: async () => 'proj-1' };
+  }
+  if (id.startsWith('@/')) {
+    const relativePath = id.slice(2);
+    return originalRequire.call(this, path.resolve(__dirname, '../../../../', relativePath));
+  }
+  return originalRequire.call(this, id);
+};
+
 import { MediaService } from '../service';
 import { MockStorageProvider } from '../mockProviders';
 
@@ -15,8 +57,6 @@ class StatefulMockStorage extends MockStorageProvider {
 import { MediaRepository } from '../repository';
 import { prepareSvgAssetDraft } from '../svgAssetLifecycle.server';
 import { MediaAsset } from '../types';
-import { GET } from '../../../../app/api/media/[id]/route';
-import { NextRequest } from 'next/server';
 
 const TESTS = [
   {
@@ -121,6 +161,7 @@ const TESTS = [
         metadata: { altText: '', title: 'Malware', description: '', tags: [] },
         projectId: 'proj-1',
         security: {
+          contentVerified: true,
           scanned: true,
           clean: false,
           threat: 'Eicar',
@@ -131,7 +172,7 @@ const TESTS = [
       });
 
       try {
-        await service.changeStatus(asset.id, 'PUBLISHED');
+        await service.changeStatus(asset.id, 'PUBLISHED', 'proj-1');
         assert.fail('Should reject transition');
       } catch (err) {
         assert.ok(err instanceof Error);
@@ -185,10 +226,10 @@ const TESTS = [
         pageId: 'page-home',
         pageTitle: 'Home',
         pageSlug: '/',
-      });
+      }, 'proj-1');
 
       try {
-        await service.deleteAsset(asset.id);
+        await service.deleteAsset(asset.id, 'proj-1');
         assert.fail('Should fail due to usage');
       } catch (err) {
         assert.ok(err instanceof Error);
@@ -214,7 +255,7 @@ const TESTS = [
       };
 
       try {
-        await service.deleteAsset(asset.id);
+        await service.deleteAsset(asset.id, 'proj-1');
         assert.fail('Should fail because storage failed');
       } catch (err) {
         assert.ok(err instanceof Error);
@@ -222,7 +263,7 @@ const TESTS = [
       }
 
       // Assert DB asset still exists
-      const dbAsset = await mockRepo.getById(asset.id);
+      const dbAsset = await mockRepo.getById(asset.id, 'proj-1');
       assert.ok(dbAsset, 'DB asset must remain intact if storage deletion fails');
     }
   },
@@ -231,12 +272,13 @@ const TESTS = [
     name: '8. Public endpoint blocks non-PUBLISHED assets',
     run: async () => {
       const { mediaService } = await import('../service');
+      const { GET } = await import('../../../../app/api/media/[id]/route');
       
       const originalGetAsset = mediaService.getAsset;
       const originalGetDownload = mediaService.getAssetDownload;
 
       try {
-        mediaService.getAsset = async (id: string) => {
+        mediaService.getAsset = async (id: string, projectId: string) => {
           if (id === 'draft') return { status: 'DRAFT' } as MediaAsset;
           if (id === 'quarantined') return { status: 'QUARANTINED' } as MediaAsset;
           if (id === 'ready') return { status: 'READY' } as MediaAsset;
@@ -244,24 +286,24 @@ const TESTS = [
           return undefined;
         };
         
-        mediaService.getAssetDownload = async (id: string) => {
+        mediaService.getAssetDownload = async (id: string, projectId: string) => {
           return { data: Buffer.from('data'), mimeType: 'image/jpeg', sizeBytes: 4, filename: 'test.jpg' };
         };
 
-        const draftReq = new NextRequest('http://localhost/api/media/draft');
-        const draftRes = await GET(draftReq, { params: Promise.resolve({ id: 'draft' }) });
+        const draftReq = new MockNextRequest('http://localhost/api/media/draft');
+        const draftRes = await GET(draftReq as any, { params: Promise.resolve({ id: 'draft' }) });
         assert.strictEqual(draftRes.status, 403, 'DRAFT must be blocked publicly');
 
-        const quarReq = new NextRequest('http://localhost/api/media/quarantined');
-        const quarRes = await GET(quarReq, { params: Promise.resolve({ id: 'quarantined' }) });
+        const quarReq = new MockNextRequest('http://localhost/api/media/quarantined');
+        const quarRes = await GET(quarReq as any, { params: Promise.resolve({ id: 'quarantined' }) });
         assert.strictEqual(quarRes.status, 403, 'QUARANTINED must be blocked publicly');
 
-        const readyReq = new NextRequest('http://localhost/api/media/ready');
-        const readyRes = await GET(readyReq, { params: Promise.resolve({ id: 'ready' }) });
+        const readyReq = new MockNextRequest('http://localhost/api/media/ready');
+        const readyRes = await GET(readyReq as any, { params: Promise.resolve({ id: 'ready' }) });
         assert.strictEqual(readyRes.status, 403, 'READY must be blocked publicly');
 
-        const pubReq = new NextRequest('http://localhost/api/media/published');
-        const pubRes = await GET(pubReq, { params: Promise.resolve({ id: 'published' }) });
+        const pubReq = new MockNextRequest('http://localhost/api/media/published');
+        const pubRes = await GET(pubReq as any, { params: Promise.resolve({ id: 'published' }) });
         assert.strictEqual(pubRes.status, 200, 'PUBLISHED must be allowed publicly');
       } finally {
         mediaService.getAsset = originalGetAsset;
@@ -282,12 +324,12 @@ const TESTS = [
       const asset = await service.uploadAsset(file, metadata, 'proj-1');
       
       const originalDeleteAsset = mockRepo.deleteAsset;
-      mockRepo.deleteAsset = async (id: string) => {
+      mockRepo.deleteAsset = async (id: string, projectId: string) => {
         throw new Error('DB connection lost');
       };
 
       try {
-        await service.deleteAsset(asset.id);
+        await service.deleteAsset(asset.id, 'proj-1');
         assert.fail('Should fail on DB error');
       } catch (err) {
         assert.ok(err instanceof Error);
@@ -313,7 +355,7 @@ const TESTS = [
       const metadata = { title: 'Test', altText: '', description: '', tags: [] };
       const asset = await service.uploadAsset(file, metadata, 'proj-1');
       
-      mockRepo.deleteAsset = async (id: string) => {
+      mockRepo.deleteAsset = async (id: string, projectId: string) => {
         throw new Error('DB error');
       };
       
@@ -322,7 +364,7 @@ const TESTS = [
       };
 
       try {
-        await service.deleteAsset(asset.id);
+        await service.deleteAsset(asset.id, 'proj-1');
         assert.fail('Should fail on DB error and compensation error');
       } catch (err) {
         assert.ok(err instanceof Error);
@@ -342,12 +384,12 @@ const TESTS = [
       const metadata = { title: 'Test', altText: '', description: '', tags: [] };
       const asset = await service.uploadAsset(file, metadata, 'proj-1');
 
-      await service.deleteAsset(asset.id);
+      await service.deleteAsset(asset.id, 'proj-1');
 
       const existsInStorage = await mockStorage.exists(asset.storageKey);
       assert.strictEqual(existsInStorage, false, 'Storage object must be deleted');
       
-      const dbAsset = await mockRepo.getById(asset.id);
+      const dbAsset = await mockRepo.getById(asset.id, 'proj-1');
       assert.strictEqual(dbAsset, undefined, 'DB record must be deleted');
     }
   }

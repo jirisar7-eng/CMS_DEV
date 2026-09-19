@@ -11,16 +11,7 @@ interface MediaUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUploadSuccess: (asset: MediaAsset) => void;
-  onUploadFile: (params: {
-    file: { name: string; type: string; size: number };
-    metadata: {
-      title?: string;
-      altText?: string;
-      description?: string;
-      tags?: string[];
-      author?: string;
-    };
-  }) => Promise<{ success: boolean; asset?: MediaAsset; error?: string }>;
+  onUploadFile: (formData: FormData) => Promise<{ success: boolean; asset?: MediaAsset; error?: string }>;
 }
 
 export function MediaUploadModal({
@@ -81,37 +72,22 @@ export function MediaUploadModal({
 
     setIsUploading(true);
     setErrorMessage(null);
-    setUploadProgress(15);
-    setUploadStage('Validace parametrů a MIME typu...');
+    setUploadProgress(20);
+    setUploadStage('Přenos binárních dat na server...');
 
     try {
-      await new Promise(r => setTimeout(r, 200));
-      setUploadProgress(45);
-      setUploadStage('Antivirová kontrola a skenování aktivního obsahu...');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('title', title || selectedFile.name);
+      formData.append('altText', altText);
+      formData.append('description', description);
+      formData.append('tags', tagsInput);
+      formData.append('author', author);
 
-      await new Promise(r => setTimeout(r, 250));
-      setUploadProgress(80);
-      setUploadStage('Ukládání do bezpečného objektového úložiště...');
+      setUploadProgress(60);
+      setUploadStage('Zpracování média a uložení do úložiště...');
 
-      const tags = tagsInput
-        .split(',')
-        .map(t => t.trim())
-        .filter(Boolean);
-
-      const res = await onUploadFile({
-        file: {
-          name: selectedFile.name,
-          type: selectedFile.type,
-          size: selectedFile.size,
-        },
-        metadata: {
-          title: title || selectedFile.name,
-          altText,
-          description,
-          tags,
-          author,
-        },
-      });
+      const res = await onUploadFile(formData);
 
       if (!res.success || !res.asset) {
         setErrorMessage(res.error || 'Nahrání souboru selhalo.');
@@ -121,7 +97,6 @@ export function MediaUploadModal({
 
       setUploadProgress(100);
       setUploadStage('Dokončeno.');
-      await new Promise(r => setTimeout(r, 150));
 
       onUploadSuccess(res.asset);
       handleReset();

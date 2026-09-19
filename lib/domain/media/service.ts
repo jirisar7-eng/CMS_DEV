@@ -5,23 +5,29 @@ import {
   MediaFilterOptions,
   IMediaRepository,
   StorageProvider,
+  MalwareScanner,
   MediaStatus,
   MediaUsageReference,
 } from './types';
 import { resolveMediaType, DEFAULT_UPLOAD_POLICY } from './mockProviders';
 import { prepareSvgAssetDraft } from './svgAssetLifecycle.server';
+import { verifyContentMime } from './contentVerification';
 
 export class MediaService {
   constructor(
     private readonly repository: IMediaRepository,
-    private readonly storageProvider: StorageProvider
+    private readonly storageProvider: StorageProvider,
+    private readonly malwareScanner?: MalwareScanner
   ) {}
 
   async uploadAsset(
     file: { name: string; type: string; size: number; data: Buffer },
-    metadata: MediaMetadata,
+    metadata: Partial<MediaMetadata> & { title: string },
     projectId: string
   ): Promise<MediaAsset> {
+    if (!projectId) {
+      throw new Error('projectId is required for uploading an asset');
+    }
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     if (DEFAULT_UPLOAD_POLICY.disallowedExtensions.includes(ext)) {
       throw new Error(`Disallowed file extension: .${ext}`);
@@ -33,6 +39,15 @@ export class MediaService {
     if (!file.type || !DEFAULT_UPLOAD_POLICY.allowedMimeTypes.includes(file.type)) {
       throw new Error(`MIME type not allowed or empty: ${file.type}`);
     }
+
+    const fullMetadata: MediaMetadata = {
+      title: metadata.title,
+      altText: metadata.altText || '',
+      description: metadata.description || '',
+      tags: metadata.tags || [],
+      caption: metadata.caption,
+      author: metadata.author,
+    };
 
     const storageKey = `ast_${randomUUID()}`;
     const mediaType = resolveMediaType(file.type, file.name);
@@ -56,19 +71,109 @@ export class MediaService {
       }
       finalData = Buffer.from(draftResult.canonicalSvg, 'utf8');
       finalSize = draftResult.sizeBytes;
-      status = 'READY'; // SVG has valid pipeline evidence
-      securityInfo = {
-        scanned: true,
-        clean: true,
-        activeContent: true, // SVG
-        checksumSha256: draftResult.canonicalChecksumSha256,
-        scannedAt: new Date().toISOString(),
-        pipelineId: draftResult.pipelineId,
-      };
+
+      let clamResult: any = null;
+      if (this.malwareScanner) {
+        clamResult = await this.malwareScanner.scan({
+          name: file.name,
+          type: file.type,
+          size: finalSize,
+          data: finalData,
+        });
+      }
+
+      if (clamResult && !clamResult.clean) {
+        status = 'QUARANTINED';
+        securityInfo = {
+          scanned: true,
+          clean: false,
+          threat: 'Malware detected in SVG',
+          activeContent: true,
+          checksumSha256: draftResult.canonicalChecksumSha256,
+          scannedAt: new Date().toISOString(),
+          pipelineId: draftResult.pipelineId,
+          scannerId: clamResult.scannerId,
+          scannerReason: clamResult.status,
+        };
+      } else {
+        status = 'READY'; // SVG has valid SVG pipeline evidence
+        securityInfo = {
+          scanned: true,
+          clean: true,
+          activeContent: true, // SVG
+          checksumSha256: draftResult.canonicalChecksumSha256,
+          scannedAt: new Date().toISOString(),
+          pipelineId: draftResult.pipelineId,
+          scannerId: clamResult?.scannerId || 'svg-sanitizer-pipeline',
+          scannerReason: 'CLEAN',
+        };
+      }
     } else {
-      // Calculate SHA256 for non-SVG
+      // Non-SVG Security Pipeline
       const crypto = await import('crypto');
-      securityInfo.checksumSha256 = crypto.createHash('sha256').update(finalData).digest('hex');
+      const checksumSha256 = crypto.createHash('sha256').update(finalData).digest('hex');
+
+      // Step 1: Server-side Content/MIME Magic Bytes Verification
+      const contentCheck = verifyContentMime(finalData, file.type, file.name);
+
+      if (!contentCheck.valid) {
+        status = 'QUARANTINED';
+        securityInfo = {
+          scanned: false,
+          clean: false,
+          contentVerified: false,
+          activeContent: false,
+          checksumSha256,
+          scannedAt: new Date().toISOString(),
+          scannerReason: contentCheck.reasonCode || 'CONTENT_VERIFICATION_FAILED',
+        };
+      } else if (this.malwareScanner) {
+        // Step 2: Malware Scan actual bytes
+        const scanResult = await this.malwareScanner.scan({
+          name: file.name,
+          type: file.type,
+          size: finalSize,
+          data: finalData,
+        });
+
+        if (scanResult.clean && scanResult.status === 'CLEAN') {
+          status = 'READY';
+          securityInfo = {
+            scanned: true,
+            clean: true,
+            contentVerified: true,
+            activeContent: false,
+            checksumSha256: scanResult.checksumSha256 || checksumSha256,
+            scannedAt: scanResult.scannedAt,
+            scannerId: scanResult.scannerId,
+            scannerReason: scanResult.status,
+          };
+        } else {
+          status = 'QUARANTINED';
+          securityInfo = {
+            scanned: scanResult.status === 'INFECTED',
+            clean: false,
+            contentVerified: true,
+            threat: scanResult.status === 'INFECTED' ? 'Malware detected' : undefined,
+            activeContent: false,
+            checksumSha256: scanResult.checksumSha256 || checksumSha256,
+            scannedAt: scanResult.scannedAt || new Date().toISOString(),
+            scannerId: scanResult.scannerId,
+            scannerReason: scanResult.status || scanResult.reasonCode || 'SCAN_FAILED',
+          };
+        }
+      } else {
+        status = 'QUARANTINED';
+        securityInfo = {
+          scanned: false,
+          clean: false,
+          contentVerified: true,
+          activeContent: false,
+          checksumSha256,
+          scannedAt: new Date().toISOString(),
+          scannerReason: 'NO_SCANNER_CONFIGURED',
+        };
+      }
     }
 
     // Upload to storage
@@ -88,14 +193,14 @@ export class MediaService {
         sizeBytes: finalSize,
         url: '', // Temporary
         status,
-        metadata,
+        metadata: fullMetadata,
         projectId,
         security: securityInfo,
       });
       
       const publicUrl = `/api/media/${asset.id}`;
       if (this.repository.updateUrl) {
-        asset = (await this.repository.updateUrl(asset.id, publicUrl)) || asset;
+        asset = (await this.repository.updateUrl(asset.id, publicUrl, projectId)) || asset;
       }
       return asset;
     } catch (err) {
@@ -109,51 +214,97 @@ export class MediaService {
     }
   }
 
-  async getAsset(id: string): Promise<MediaAsset | undefined> {
-    return this.repository.getById(id);
+  async getAsset(id: string, projectId: string): Promise<MediaAsset | undefined> {
+    if (!projectId) throw new Error('projectId is required for getAsset');
+    return this.repository.getById(id, projectId);
   }
 
-  async listAssets(filters?: MediaFilterOptions): Promise<MediaAsset[]> {
-    return this.repository.list(filters);
+  async listAssets(projectId: string, filters?: MediaFilterOptions): Promise<MediaAsset[]> {
+    if (!projectId) throw new Error('projectId is required for listAssets');
+    return this.repository.list(projectId, filters);
   }
 
-  async updateMetadata(id: string, metadata: Partial<MediaMetadata>): Promise<MediaAsset | undefined> {
-    return this.repository.updateMetadata(id, metadata);
+  async updateMetadata(id: string, metadata: Partial<MediaMetadata>, projectId: string): Promise<MediaAsset | undefined> {
+    if (!projectId) throw new Error('projectId is required for updateMetadata');
+    return this.repository.updateMetadata(id, metadata, projectId);
   }
 
-  async changeStatus(id: string, status: MediaStatus): Promise<MediaAsset | undefined> {
-    const asset = await this.repository.getById(id);
+  async changeStatus(id: string, status: MediaStatus, projectId: string): Promise<MediaAsset | undefined> {
+    if (!projectId) throw new Error('projectId is required for changeStatus');
+    const asset = await this.repository.getById(id, projectId);
     if (!asset) {
       throw new Error('Asset not found');
     }
 
-    const currentStatus = (asset.status as string).toUpperCase();
     const targetStatus = (status as string).toUpperCase();
 
     if (targetStatus === 'READY' || targetStatus === 'PUBLISHED') {
       const security = asset.security as any;
-      if (!security?.scanned || !security?.clean) {
-        throw new Error('Asset cannot be READY or PUBLISHED without successful security scan evidence');
-      }
 
       if (asset.mediaType === 'vector' || asset.mimeType === 'image/svg+xml') {
+        if (!security?.scanned || !security?.clean) {
+          throw new Error('SVG asset cannot be READY or PUBLISHED without successful security scan evidence');
+        }
         if (!security?.pipelineId) {
           throw new Error('SVG asset cannot be READY or PUBLISHED without successful security pipeline evidence');
+        }
+      } else {
+        if (!security?.contentVerified) {
+          throw new Error('Non-SVG asset cannot be READY or PUBLISHED without successful content signature verification');
+        }
+        if (!security?.scanned || !security?.clean) {
+          throw new Error('Asset cannot be READY or PUBLISHED without successful security scan evidence');
+        }
+        if (!security?.scannerId || security?.scannerId !== 'clamav') {
+          throw new Error('Non-SVG asset cannot be READY or PUBLISHED without valid ClamAV malware scanner evidence');
+        }
+        if (!security?.checksumSha256) {
+          throw new Error('Non-SVG asset cannot be READY or PUBLISHED without valid checksum evidence');
         }
       }
     }
 
-    return this.repository.changeStatus(id, status);
+    return this.repository.changeStatus(id, status, projectId);
   }
 
-  async deleteAsset(id: string): Promise<void> {
-    // 1. Check if deletion is allowed
-    const isAllowed = await this.repository.isDeletionAllowed(id);
-    if (!isAllowed) {
-      throw new Error('Deletion is not allowed for this asset (it is either published or still in use)');
+  async archiveAsset(id: string, projectId: string) {
+    if (!projectId) throw new Error('projectId is required for archiveAsset');
+    return this.changeStatus(id, 'ARCHIVED', projectId);
+  }
+
+  async restoreAsset(id: string, projectId: string) {
+    if (!projectId) throw new Error('projectId is required for restoreAsset');
+    const asset = await this.getAsset(id, projectId);
+    if (!asset) {
+      throw new Error('Media asset not found in project');
     }
 
-    const asset = await this.repository.getById(id);
+    const isSvg = asset.mediaType === 'vector' || asset.mimeType === 'image/svg+xml';
+    const sec = asset.security as any;
+    let targetStatus: MediaStatus = 'QUARANTINED';
+
+    if (isSvg) {
+      if (sec?.scanned && sec?.clean && sec?.pipelineId) {
+        targetStatus = 'READY';
+      }
+    } else {
+      if (sec?.contentVerified && sec?.scanned && sec?.clean && sec?.scannerId === 'clamav' && sec?.checksumSha256) {
+        targetStatus = 'READY';
+      }
+    }
+
+    return this.changeStatus(id, targetStatus, projectId);
+  }
+
+  async deleteAsset(id: string, projectId: string): Promise<void> {
+    if (!projectId) throw new Error('projectId is required for deleteAsset');
+    // 1. Check if deletion is allowed
+    const isAllowed = await this.repository.isDeletionAllowed(id, projectId);
+    if (!isAllowed) {
+      throw new Error('Deletion is not allowed for this asset (it is either published, still in use, or not found in project)');
+    }
+
+    const asset = await this.repository.getById(id, projectId);
     if (!asset) {
       throw new Error('Asset not found');
     }
@@ -171,7 +322,7 @@ export class MediaService {
 
     // 4. Delete from DB 
     try {
-      await this.repository.deleteAsset(id);
+      await this.repository.deleteAsset(id, projectId);
     } catch (dbErr) {
       // Rollback: restore the storage object
       try {
@@ -188,8 +339,9 @@ export class MediaService {
     }
   }
 
-  async getAssetDownload(id: string): Promise<{ data: Buffer; mimeType: string; sizeBytes: number; filename: string }> {
-    const asset = await this.repository.getById(id);
+  async getAssetDownload(id: string, projectId: string): Promise<{ data: Buffer; mimeType: string; sizeBytes: number; filename: string }> {
+    if (!projectId) throw new Error('projectId is required for getAssetDownload');
+    const asset = await this.repository.getById(id, projectId);
     if (!asset) {
       throw new Error('Asset not found');
     }
@@ -204,11 +356,44 @@ export class MediaService {
   }
 }
 
-import { PrismaMediaRepository } from './prismaRepository';
-import { S3StorageProvider } from './s3StorageProvider';
+let defaultMediaServiceInstance: MediaService | null = null;
 
-// Singleton instance for the real runtime composition
-export const mediaService = new MediaService(
-  new PrismaMediaRepository(),
-  new S3StorageProvider()
-);
+// Singleton instance getter for the real runtime composition
+export function getMediaService(): MediaService {
+  if (!defaultMediaServiceInstance) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaMediaRepository } = require('./prismaRepository');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { S3StorageProvider } = require('./s3StorageProvider');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { ClamAvMalwareScanner } = require('./clamAvScanner');
+
+    let scanner: MalwareScanner | undefined = undefined;
+    if (process.env.CMS_MALWARE_SCANNER === 'clamav' || process.env.CMS_CLAMAV_HOST) {
+      scanner = new ClamAvMalwareScanner();
+    } else {
+      // Production runtime composition: if ClamAV is configured via env, scanner is used.
+      // If unconfigured, scanner is ClamAvMalwareScanner (which fails closed with CONFIGURATION_MISSING on scan).
+      scanner = new ClamAvMalwareScanner();
+    }
+
+    defaultMediaServiceInstance = new MediaService(
+      new PrismaMediaRepository(),
+      new S3StorageProvider(),
+      scanner
+    );
+  }
+  return defaultMediaServiceInstance;
+}
+
+export const mediaService = {
+  uploadAsset: (...args: Parameters<MediaService['uploadAsset']>) => getMediaService().uploadAsset(...args),
+  getAsset: (...args: Parameters<MediaService['getAsset']>) => getMediaService().getAsset(...args),
+  listAssets: (...args: Parameters<MediaService['listAssets']>) => getMediaService().listAssets(...args),
+  updateMetadata: (...args: Parameters<MediaService['updateMetadata']>) => getMediaService().updateMetadata(...args),
+  changeStatus: (...args: Parameters<MediaService['changeStatus']>) => getMediaService().changeStatus(...args),
+  archiveAsset: (...args: Parameters<MediaService['archiveAsset']>) => getMediaService().archiveAsset(...args),
+  restoreAsset: (...args: Parameters<MediaService['restoreAsset']>) => getMediaService().restoreAsset(...args),
+  deleteAsset: (...args: Parameters<MediaService['deleteAsset']>) => getMediaService().deleteAsset(...args),
+  getAssetDownload: (...args: Parameters<MediaService['getAssetDownload']>) => getMediaService().getAssetDownload(...args),
+};

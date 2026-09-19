@@ -6,26 +6,28 @@ import {
   Upload,
   LayoutGrid,
   List,
-  Filter,
   ArrowUpDown,
   Image as ImageIcon,
-  FileText,
-  FileCode,
   HardDrive,
   CheckCircle2,
   Archive,
-  Info,
-  Layers,
-  Sparkles,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   MediaAsset,
-  MediaFilterOptions,
   MediaSortOption,
   MediaType,
 } from '@/lib/domain/media/types';
-import { listMediaAssets } from '@/app/admin/media/actions';
+import {
+  listMediaAssets,
+  uploadMediaAsset,
+  updateMediaMetadata,
+  archiveMediaAsset,
+  restoreMediaAsset,
+  replaceMediaAsset,
+  deleteMediaAsset,
+} from '@/app/admin/media/actions';
 import { MediaGrid } from './MediaGrid';
 import { MediaList } from './MediaList';
 import { MediaDetailDrawer } from './MediaDetailDrawer';
@@ -36,7 +38,11 @@ import { CapabilityStatusBadge } from '@/components/admin/CapabilityStatusBadge'
 import { HelpTrigger } from '@/components/help/HelpTrigger';
 import { formatBytes } from './MediaAssetCard';
 
-export function MediaLibraryWorkspace() {
+interface MediaLibraryWorkspaceProps {
+  initialProjectId?: string | null;
+}
+
+export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspaceProps) {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -69,14 +75,14 @@ export function MediaLibraryWorkspace() {
     setIsLoading(true);
     setAuthError(null);
     try {
-      const response = await listMediaAssets({});
+      const response = await listMediaAssets();
       if (response.error) {
         setAuthError(response.error);
         setAssets([]);
       } else {
         setAssets(response.data || []);
       }
-    } catch (e) {
+    } catch (e: any) {
       showToast('Nepodařilo se načíst média', 'error');
     } finally {
       setIsLoading(false);
@@ -87,7 +93,7 @@ export function MediaLibraryWorkspace() {
     let mounted = true;
     const initialLoad = async () => {
       try {
-        const response = await listMediaAssets({});
+        const response = await listMediaAssets();
         if (!mounted) return;
         if (response.error) {
           setAuthError(response.error);
@@ -104,7 +110,6 @@ export function MediaLibraryWorkspace() {
     initialLoad();
     return () => { mounted = false; };
   }, [showToast]);
-
 
   // Filtered and sorted assets
   const filteredAssets = useMemo(() => {
@@ -167,18 +172,35 @@ export function MediaLibraryWorkspace() {
     };
   }, [assets]);
 
-  // Actions
+  // Handlers
   const handleOpenDetail = (asset: MediaAsset) => {
     setSelectedAsset(asset);
     setIsDetailOpen(true);
   };
 
-  const handleUpdateMetadata = (assetId: string, metadata: Partial<MediaAsset['metadata']>) => {
-    showToast('Vyžaduje aktivní oprávnění správce', 'error');
+  const handleUpdateMetadata = async (assetId: string, metadata: Partial<MediaAsset['metadata']>) => {
+    const res = await updateMediaMetadata(assetId, metadata);
+    if (res.error) {
+      showToast(res.error, 'error');
+    } else if (res.data) {
+      showToast('Metadata byla úspěšně uložena.');
+      setSelectedAsset(res.data);
+      refreshAssets();
+    }
   };
 
-  const handleToggleArchive = (assetId: string, currentlyArchived: boolean) => {
-    showToast('Vyžaduje aktivní oprávnění správce', 'error');
+  const handleToggleArchive = async (assetId: string, currentlyArchived: boolean) => {
+    const res = currentlyArchived
+      ? await restoreMediaAsset(assetId)
+      : await archiveMediaAsset(assetId);
+
+    if (res.error) {
+      showToast(res.error, 'error');
+    } else if (res.data) {
+      showToast(currentlyArchived ? 'Médium bylo obnoveno z archivu.' : 'Médium bylo archivováno.');
+      setSelectedAsset(res.data);
+      refreshAssets();
+    }
   };
 
   const handleOpenReplace = (asset: MediaAsset) => {
@@ -191,13 +213,21 @@ export function MediaLibraryWorkspace() {
     setIsDeleteOpen(true);
   };
 
-  const handleConfirmDelete = (assetId: string) => {
-    showToast('Vyžaduje aktivní oprávnění správce', 'error');
-    setIsDeleteOpen(false);
+  const handleConfirmDelete = async (assetId: string) => {
+    const res = await deleteMediaAsset(assetId);
+    if (res.error) {
+      showToast(res.error, 'error');
+    } else {
+      showToast('Médium bylo úspěšně smazáno.');
+      setIsDeleteOpen(false);
+      setIsDetailOpen(false);
+      setSelectedAsset(null);
+      refreshAssets();
+    }
   };
 
-  const handleArchiveInstead = (assetId: string) => {
-    showToast('Vyžaduje aktivní oprávnění správce', 'error');
+  const handleArchiveInstead = async (assetId: string) => {
+    await handleToggleArchive(assetId, false);
     setIsDeleteOpen(false);
   };
 
@@ -242,6 +272,16 @@ export function MediaLibraryWorkspace() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             type="button"
+            onClick={() => refreshAssets()}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card text-foreground text-xs font-semibold hover:bg-muted transition-colors shadow-2xs"
+            title="Aktualizovat seznam"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Obnovit</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setIsUploadOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-xs"
           >
@@ -251,16 +291,16 @@ export function MediaLibraryWorkspace() {
         </div>
       </div>
 
-      {/* Truthfulness Notice Banner */}
-      <div className="p-3.5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 text-indigo-900 dark:text-indigo-200 text-xs flex items-start gap-3">
-        <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <span className="font-bold block text-destructive">BEZPEČNOSTNÍ BLOK: Chybí Auth Hranice</span>
-          <p className="text-[11px] leading-relaxed opacity-90 text-destructive/80">
-            Knihovna médií je připravena na reálná data. Čtení i zápis jsou však dočasně uzamčeny (fail-closed), protože projekt dosud nedefinuje bezpečnou admin RBAC (Role-Based Access Control) hranici.
-          </p>
+      {/* Auth Error Banner if present */}
+      {authError && (
+        <div className="p-3.5 rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive text-xs flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <span className="font-bold block">Chyba přístupu k médiím</span>
+            <p className="text-[11px] leading-relaxed opacity-90">{authError}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Statistics Cards Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -466,7 +506,10 @@ export function MediaLibraryWorkspace() {
           setIsDetailOpen(true);
           showToast(`Médium „${newAsset.metadata.title}“ bylo úspěšně nahráno.`);
         }}
-        onUploadFile={(params) => { showToast('Vyžaduje aktivní oprávnění správce', 'error'); return { success: false, error: 'Vyžaduje aktivní oprávnění správce' } as any; }}
+        onUploadFile={async (formData) => {
+          const res = await uploadMediaAsset(formData);
+          return { success: !res.error && !!res.data, asset: res.data, error: res.error };
+        }}
       />
 
       <MediaReplaceModal
@@ -481,7 +524,10 @@ export function MediaLibraryWorkspace() {
           setSelectedAsset(updated);
           showToast(`Soubor pro médium „${updated.metadata.title}“ byl úspěšně nahrazen.`);
         }}
-        onReplaceFile={(id, file) => { showToast('Vyžaduje aktivní oprávnění správce', 'error'); return Promise.resolve({ success: false, error: 'Vyžaduje aktivní oprávnění správce' }); }}
+        onReplaceFile={async (formData) => {
+          const res = await replaceMediaAsset(formData);
+          return { success: !res.error && !!res.data, asset: res.data, error: res.error };
+        }}
       />
 
       <MediaDeleteModal

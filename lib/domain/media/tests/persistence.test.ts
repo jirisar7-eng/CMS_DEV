@@ -85,7 +85,7 @@ export const TESTS = [
           canonicalChecksumSha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
         },
         originalFilename: 'document.pdf',
-      });
+      }, 'synthesis-main');
 
       assert.strictEqual(version.security.canonicalChecksumSha256, '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08');
     },
@@ -141,13 +141,13 @@ export const TESTS = [
         blockId: 'block-1',
         blockType: 'Hero',
         field: 'bg',
-      });
+      }, 'synthesis-main');
 
-      const allowed = await repo.isDeletionAllowed(asset.id);
+      const allowed = await repo.isDeletionAllowed(asset.id, 'synthesis-main');
       assert.strictEqual(allowed, false, 'Deletion must be BLOCKED when usage references exist');
 
       try {
-        await repo.deleteAsset(asset.id);
+        await repo.deleteAsset(asset.id, 'synthesis-main');
         assert.fail('Should have thrown an error attempting to delete used asset');
       } catch (err) {
         assert.ok(err instanceof Error, 'Expected a fail-closed throw on deleting actively referenced asset');
@@ -179,19 +179,19 @@ export const TESTS = [
       });
 
       // Transition to archived
-      const archived = await repo.archiveAsset(asset.id);
+      const archived = await repo.archiveAsset(asset.id, 'synthesis-main');
       assert.ok(archived);
       if (archived) {
-        assert.strictEqual(archived.status, 'archived');
+        assert.strictEqual(archived.status.toUpperCase(), 'ARCHIVED');
       }
 
       // Deletion allowed
-      const allowed = await repo.isDeletionAllowed(asset.id);
+      const allowed = await repo.isDeletionAllowed(asset.id, 'synthesis-main');
       assert.strictEqual(allowed, true);
 
       // Perform deletion
-      await repo.deleteAsset(asset.id);
-      const deletedCheck = await repo.getById(asset.id);
+      await repo.deleteAsset(asset.id, 'synthesis-main');
+      const deletedCheck = await repo.getById(asset.id, 'synthesis-main');
       assert.strictEqual(deletedCheck, undefined, 'Asset must be successfully removed');
     },
   },
@@ -258,7 +258,7 @@ export const TESTS = [
 
       // Attempt to change status to PUBLISHED directly must be rejected/prevented
       try {
-        const updated = await repo.changeStatus(asset.id, 'PUBLISHED');
+        const updated = await repo.changeStatus(asset.id, 'PUBLISHED', 'synthesis-main');
         if (updated && updated.status === 'PUBLISHED') {
           assert.fail('Should not be allowed to transition from QUARANTINED to PUBLISHED status directly');
         }
