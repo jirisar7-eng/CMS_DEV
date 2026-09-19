@@ -27,6 +27,7 @@ const sampleSeoPlugin: PluginManifest = {
   },
   compatibility: {
     minCmsVersion: '1.0.0',
+    supportedCmsVersions: ['1.0.x', '^1.1.0'],
   },
   isCore: false,
 };
@@ -160,7 +161,104 @@ describe('SYN-PLUGIN-001: Plugin Manifest & Registry Foundation', () => {
     });
   });
 
-  describe('6. Dependency Validation with Explicit Registry Parameter', () => {
+  describe('6. Hardening: Circular Reference & Plain Object Enforcement', () => {
+    it('detects circular references in manifest and rejects safely without stack overflow', () => {
+      const circularManifest: any = { ...sampleSeoPlugin };
+      circularManifest.self = circularManifest;
+
+      const result = validatePluginManifest(circularManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'CIRCULAR_MANIFEST_OBJECT'));
+    });
+
+    it('rejects manifest or sub-objects that are not plain objects (e.g. class instances)', () => {
+      class CustomAuthor {
+        name = 'Custom Author';
+      }
+
+      const classManifest: any = {
+        ...sampleSeoPlugin,
+        author: new CustomAuthor(),
+      };
+
+      const result = validatePluginManifest(classManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'NOT_PLAIN_OBJECT'));
+    });
+  });
+
+  describe('7. Hardening: Duplicate Capabilities, Hooks, Permissions, and Entitlements', () => {
+    it('rejects manifest with duplicate capability IDs', () => {
+      const dupCapManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        capabilities: [
+          { id: 'panel-a', type: 'UI_PANEL', name: 'Panel A' },
+          { id: 'panel-a', type: 'REST_API', name: 'API Panel' },
+        ],
+      };
+
+      const result = validatePluginManifest(dupCapManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'DUPLICATE_CAPABILITY_ID'));
+    });
+
+    it('rejects manifest with duplicate hook registrations', () => {
+      const dupHookManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        hooks: [
+          { name: 'beforeSave', target: 'Article' },
+          { name: 'beforeSave', target: 'Article' },
+        ],
+      };
+
+      const result = validatePluginManifest(dupHookManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'DUPLICATE_HOOK'));
+    });
+
+    it('rejects manifest with duplicate permissions or entitlements', () => {
+      const dupPermManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        requiredPermissions: ['read:articles', 'read:articles'],
+        requiredEntitlements: ['premium-seo', 'premium-seo'],
+      };
+
+      const result = validatePluginManifest(dupPermManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'DUPLICATE_PERMISSION'));
+      assert.ok(result.issues.some((i) => i.code === 'DUPLICATE_ENTITLEMENT'));
+    });
+  });
+
+  describe('8. Hardening: Supported CMS Versions Validation', () => {
+    it('validates supportedCmsVersions array with valid semver ranges', () => {
+      const validCmsVersionsManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        compatibility: {
+          supportedCmsVersions: ['1.0.0', '^1.2.0', '2.x'],
+        },
+      };
+
+      const result = validatePluginManifest(validCmsVersionsManifest);
+      assert.strictEqual(result.valid, true);
+    });
+
+    it('rejects invalid or duplicate supportedCmsVersions', () => {
+      const invalidCmsVersionsManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        compatibility: {
+          supportedCmsVersions: ['invalid-version', '1.0.0', '1.0.0'],
+        },
+      };
+
+      const result = validatePluginManifest(invalidCmsVersionsManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'INVALID_SUPPORTED_CMS_VERSION'));
+      assert.ok(result.issues.some((i) => i.code === 'DUPLICATE_SUPPORTED_CMS_VERSION'));
+    });
+  });
+
+  describe('9. Dependency Validation with Explicit Registry Parameter', () => {
     it('requires explicit registry parameter for validatePluginDependencies', () => {
       assert.throws(
         () => validatePluginDependencies('seo-analyzer', undefined as any),
