@@ -1,3 +1,10 @@
+export type PluginType =
+  | 'OFFICIAL'
+  | 'THIRD_PARTY'
+  | 'COMMUNITY'
+  | 'PRIVATE'
+  | 'EXPERIMENTAL';
+
 export type PluginCategory =
   | 'SEO'
   | 'MARKETING'
@@ -16,6 +23,15 @@ export type PluginCapabilityType =
   | 'BACKGROUND_SERVICE'
   | 'COMPOSER_BLOCK';
 
+export type DependencyKind = 'REQUIRED' | 'OPTIONAL' | 'INTEGRATION';
+
+export type PluginLifecycleState =
+  | 'DRAFT'
+  | 'STABLE'
+  | 'DEPRECATED'
+  | 'DISABLED'
+  | 'ARCHIVED';
+
 export interface PluginCapability {
   id: string;
   type: PluginCapabilityType;
@@ -32,8 +48,8 @@ export interface PluginHook {
 
 export interface PluginDependency {
   pluginId: string;
+  kind: DependencyKind;
   versionRange?: string;
-  optional?: boolean; // Default false (REQUIRED dependency)
 }
 
 export interface PluginConfigField {
@@ -44,7 +60,7 @@ export interface PluginConfigField {
   required?: boolean;
   options?: { label: string; value: string }[];
   description?: string;
-  sensitive?: boolean; // Sensitive fields must NOT include hardcoded secrets in manifest
+  sensitive?: boolean;
 }
 
 export interface PluginConfigSchema {
@@ -57,42 +73,38 @@ export interface PluginAuthor {
   url?: string;
 }
 
-export interface PluginManifest {
-  /** Unique plugin identifier in slug format (e.g. "seo-analyzer") */
-  id: string;
-  /** Human-readable display name */
-  name: string;
-  /** Semver version string (e.g. "1.0.0") */
-  version: string;
-  /** Functional description of the plugin */
-  description: string;
-  /** Plugin category */
-  category: PluginCategory;
-  /** Author or maintainer information */
-  author: string | PluginAuthor;
-  /** Documentation or home page URL */
-  homepage?: string;
-  /** Open source or commercial license identifier */
-  license?: string;
-  /** Minimum compatible CMS core version */
+export interface PluginLifecycleMetadata {
+  state: PluginLifecycleState;
+  deprecatedAt?: string;
+  sunsetAt?: string;
+  deprecationNotice?: string;
+}
+
+export interface PluginCompatibilityMetadata {
   minCmsVersion?: string;
-  /** Maximum compatible CMS core version */
   maxCmsVersion?: string;
-  /** Dependencies on other plugins */
+  supportedCmsVersions?: string[];
+}
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  type: PluginType;
+  category: PluginCategory;
+  author: string | PluginAuthor;
+  homepage?: string;
+  license?: string;
+  lifecycle?: PluginLifecycleMetadata;
+  compatibility?: PluginCompatibilityMetadata;
   dependencies?: PluginDependency[];
-  /** Extension capabilities exported by this plugin */
   capabilities?: PluginCapability[];
-  /** System event hooks subscribed by this plugin */
   hooks?: PluginHook[];
-  /** RBAC permissions required to configure or manage this plugin */
   requiredPermissions?: string[];
-  /** Project entitlements required to enable this plugin */
   requiredEntitlements?: string[];
-  /** Declarative configuration schema */
   configSchema?: PluginConfigSchema;
-  /** Core module flag - plugins are extension modules, NOT core system modules */
   isCore?: false;
-  /** Experimental / Beta release indicator */
   experimental?: boolean;
 }
 
