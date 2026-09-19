@@ -6,16 +6,13 @@ import {
   GitCommit,
   GitBranch,
   Search,
-  CheckCircle2,
-  AlertTriangle,
   FileCode,
-  Layers,
   ChevronDown,
   ChevronRight,
   ShieldCheck,
   Calendar,
 } from 'lucide-react';
-import { InternalSystemMap, InternalTaskRecord } from './types';
+import { InternalSystemMap } from './types';
 
 export interface LineageHistoryTabProps {
   data: InternalSystemMap;
@@ -27,7 +24,7 @@ export function LineageHistoryTab({
   onSelectCapability,
 }: LineageHistoryTabProps) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'VERIFIED' | 'COMPLETED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'MERGED' | 'COMPLETED'>('ALL');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
 
   const filteredTasks = (data.tasks || []).filter((task) => {
@@ -46,7 +43,7 @@ export function LineageHistoryTab({
     return matchesSearch && matchesStatus;
   });
 
-  const verifiedCount = data.tasks.filter((t) => t.derived_status === 'VERIFIED').length;
+  const mergedCount = data.tasks.filter((t) => t.derived_status === 'MERGED').length;
   const capsuleCount = data.tasks.filter((t) => t.capsule_present).length;
 
   return (
@@ -68,10 +65,10 @@ export function LineageHistoryTab({
         <div className="p-4 bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 shadow-sm flex items-center justify-between">
           <div>
             <div className="text-xs text-stone-500 font-medium uppercase tracking-wider">
-              Ověřený stav (VERIFIED)
+              Sloučené úlohy (MERGED)
             </div>
             <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-              {verifiedCount}
+              {mergedCount}
             </div>
           </div>
           <ShieldCheck className="w-8 h-8 text-emerald-500/30" />
@@ -80,7 +77,7 @@ export function LineageHistoryTab({
         <div className="p-4 bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 shadow-sm flex items-center justify-between">
           <div>
             <div className="text-xs text-stone-500 font-medium uppercase tracking-wider">
-              Aktivní kapsle úloh
+              Historické úlohy s kapslí
             </div>
             <div className="text-2xl font-bold font-mono text-indigo-600 dark:text-indigo-400 mt-1">
               {capsuleCount}
@@ -105,11 +102,11 @@ export function LineageHistoryTab({
 
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'VERIFIED' | 'COMPLETED')}
+          onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'MERGED' | 'COMPLETED')}
           className="bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded px-2 py-1.5 text-xs text-stone-800 dark:text-stone-200 focus:outline-none"
         >
           <option value="ALL">Všechny stavy</option>
-          <option value="VERIFIED">Pouze VERIFIED</option>
+          <option value="MERGED">Pouze MERGED</option>
           <option value="COMPLETED">Pouze COMPLETED</option>
         </select>
       </div>
@@ -118,8 +115,8 @@ export function LineageHistoryTab({
       <div className="space-y-3">
         {filteredTasks.length > 0 ? (
           filteredTasks.map((task) => {
-            const isExpanded = expandedTask === (task.task_id || `pr-${task.pr_number}`);
             const taskIdKey = task.task_id || `pr-${task.pr_number}`;
+            const isExpanded = expandedTask === taskIdKey;
 
             return (
               <div
@@ -178,12 +175,12 @@ export function LineageHistoryTab({
                   <div className="flex items-center gap-2 shrink-0">
                     <span
                       className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded flex items-center gap-1 ${
-                        task.derived_status === 'VERIFIED'
+                        task.derived_status === 'MERGED'
                           ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
                           : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20'
                       }`}
                     >
-                      <CheckCircle2 className="w-3 h-3" />
+                      <ShieldCheck className="w-3 h-3" />
                       {task.derived_status}
                     </span>
                   </div>
