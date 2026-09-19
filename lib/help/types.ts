@@ -50,6 +50,7 @@ export type HelpKey =
   | 'security.sessions.view'
   | 'security.privacy.view'
   // Systém (System)
+  | 'system.map.view'
   | 'system.settings.view'
   | 'system.integrations.view'
   | 'system.diagnostics.view'

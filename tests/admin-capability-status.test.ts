@@ -87,9 +87,9 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(ADMIN_NAV_GROUPS.length, 8);
     });
 
-    it('contains exactly 31 architectural capabilities (excluding dashboard)', () => {
+    it('contains exactly 32 architectural capabilities (excluding dashboard)', () => {
       const nonDashboardItems = ALL_ADMIN_NAV_ITEMS.filter((item) => item.id !== 'dashboard');
-      assert.strictEqual(nonDashboardItems.length, 31);
+      assert.strictEqual(nonDashboardItems.length, 32);
     });
 
     it('every capability has an authoritative status from the 6-status model', () => {
@@ -109,6 +109,15 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.doesNotMatch(navFile, /"UI PŘIPRAVENO"/);
       assert.doesNotMatch(navFile, /'ROZPRACOVÁNO'/);
       assert.doesNotMatch(navFile, /"ROZPRACOVÁNO"/);
+    });
+
+    it('System Map capability is correctly registered in SYSTÉM with status ZÁKLAD and helpKey system.map.view', () => {
+      const item = getCapabilityById('system-map');
+      assert.ok(item, 'system-map capability must exist');
+      assert.strictEqual(item.group, 'SYSTÉM');
+      assert.strictEqual(item.href, '/admin/system-map');
+      assert.strictEqual(item.status, 'ZÁKLAD');
+      assert.strictEqual(item.helpKey, 'system.map.view');
     });
 
     it('verified FUNKČNÍ capabilities are correctly marked', () => {
@@ -154,7 +163,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('deployment'), 'POUZE UI');
     });
 
-    it('getCapabilityStats() sums up exactly to the 31 capabilities across the 6 canonical statuses', () => {
+    it('getCapabilityStats() sums up exactly to the 32 capabilities across the 6 canonical statuses', () => {
       const stats = getCapabilityStats();
       const sum = 
         stats['PLÁNOVÁNO'] + 
@@ -163,9 +172,9 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['FUNKČNÍ'] + 
         stats['DOKONČENO'] + 
         stats['VYPNUTO'];
-      assert.strictEqual(sum, 31);
+      assert.strictEqual(sum, 32);
       assert.strictEqual(stats['FUNKČNÍ'], 4);
-      assert.strictEqual(stats['ZÁKLAD'], 12);
+      assert.strictEqual(stats['ZÁKLAD'], 13);
       assert.strictEqual(stats['POUZE UI'], 12);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
