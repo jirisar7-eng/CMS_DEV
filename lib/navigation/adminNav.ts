@@ -24,6 +24,7 @@ import {
   Laptop,
   ShieldQuestion,
   Settings,
+  Map,
   Plug,
   Activity,
   Terminal,
@@ -335,6 +336,16 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     id: 'SYSTÉM',
     name: 'Systém',
     items: [
+      {
+        id: 'system-map',
+        name: 'Mapa systému',
+        href: '/admin/system-map',
+        icon: Map,
+        group: 'SYSTÉM',
+        status: 'POUZE UI',
+        helpKey: 'system.status_model',
+        description: 'Interaktivní mapa systému, architektury a přehled modulů.',
+      },
       {
         id: 'settings',
         name: 'Nastavení',
