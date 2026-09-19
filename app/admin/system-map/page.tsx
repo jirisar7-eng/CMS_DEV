@@ -22,7 +22,7 @@ export default async function SystemMapPage() {
           Přístup odepřen
         </h2>
         <p className="text-xs text-stone-500 dark:text-stone-400">
-          Pro zobrazení mapy systému musíte být přihlášeni do administrace.
+          Nemáte oprávnění k této části administrace.
         </p>
       </div>
     );
@@ -39,7 +39,7 @@ export default async function SystemMapPage() {
           Nedostatečná oprávnění
         </h2>
         <p className="text-xs text-stone-500 dark:text-stone-400">
-          Nemáte potřebná oprávnění (system_map.read_basic ani system_map.read_internal) pro přístup k mapě systému.
+          Nemáte oprávnění k této části administrace.
         </p>
       </div>
     );
