@@ -214,25 +214,28 @@ export class MediaService {
     }
   }
 
-  async getAsset(id: string, projectId?: string): Promise<MediaAsset | undefined> {
+  async getAsset(id: string, projectId: string): Promise<MediaAsset | undefined> {
+    if (!projectId) throw new Error('projectId is required for getAsset');
     return this.repository.getById(id, projectId);
   }
 
-  async listAssets(projectIdOrFilters?: string | MediaFilterOptions, filtersArg?: MediaFilterOptions): Promise<MediaAsset[]> {
-    return this.repository.list(projectIdOrFilters as any, filtersArg);
+  async listAssets(projectId: string, filters?: MediaFilterOptions): Promise<MediaAsset[]> {
+    if (!projectId) throw new Error('projectId is required for listAssets');
+    return this.repository.list(projectId, filters);
   }
 
-  async updateMetadata(id: string, metadata: Partial<MediaMetadata>, projectId?: string): Promise<MediaAsset | undefined> {
+  async updateMetadata(id: string, metadata: Partial<MediaMetadata>, projectId: string): Promise<MediaAsset | undefined> {
+    if (!projectId) throw new Error('projectId is required for updateMetadata');
     return this.repository.updateMetadata(id, metadata, projectId);
   }
 
-  async changeStatus(id: string, status: MediaStatus, projectId?: string): Promise<MediaAsset | undefined> {
+  async changeStatus(id: string, status: MediaStatus, projectId: string): Promise<MediaAsset | undefined> {
+    if (!projectId) throw new Error('projectId is required for changeStatus');
     const asset = await this.repository.getById(id, projectId);
     if (!asset) {
       throw new Error('Asset not found');
     }
 
-    const currentStatus = (asset.status as string).toUpperCase();
     const targetStatus = (status as string).toUpperCase();
 
     if (targetStatus === 'READY' || targetStatus === 'PUBLISHED') {
@@ -265,14 +268,36 @@ export class MediaService {
   }
 
   async archiveAsset(id: string, projectId: string) {
+    if (!projectId) throw new Error('projectId is required for archiveAsset');
     return this.changeStatus(id, 'ARCHIVED', projectId);
   }
 
   async restoreAsset(id: string, projectId: string) {
-    return this.changeStatus(id, 'DRAFT', projectId);
+    if (!projectId) throw new Error('projectId is required for restoreAsset');
+    const asset = await this.getAsset(id, projectId);
+    if (!asset) {
+      throw new Error('Media asset not found in project');
+    }
+
+    const isSvg = asset.mediaType === 'vector' || asset.mimeType === 'image/svg+xml';
+    const sec = asset.security as any;
+    let targetStatus: MediaStatus = 'QUARANTINED';
+
+    if (isSvg) {
+      if (sec?.scanned && sec?.clean && sec?.pipelineId) {
+        targetStatus = 'READY';
+      }
+    } else {
+      if (sec?.contentVerified && sec?.scanned && sec?.clean && sec?.scannerId === 'clamav' && sec?.checksumSha256) {
+        targetStatus = 'READY';
+      }
+    }
+
+    return this.changeStatus(id, targetStatus, projectId);
   }
 
-  async deleteAsset(id: string, projectId?: string): Promise<void> {
+  async deleteAsset(id: string, projectId: string): Promise<void> {
+    if (!projectId) throw new Error('projectId is required for deleteAsset');
     // 1. Check if deletion is allowed
     const isAllowed = await this.repository.isDeletionAllowed(id, projectId);
     if (!isAllowed) {
@@ -314,7 +339,8 @@ export class MediaService {
     }
   }
 
-  async getAssetDownload(id: string, projectId?: string): Promise<{ data: Buffer; mimeType: string; sizeBytes: number; filename: string }> {
+  async getAssetDownload(id: string, projectId: string): Promise<{ data: Buffer; mimeType: string; sizeBytes: number; filename: string }> {
+    if (!projectId) throw new Error('projectId is required for getAssetDownload');
     const asset = await this.repository.getById(id, projectId);
     if (!asset) {
       throw new Error('Asset not found');
@@ -362,11 +388,10 @@ export function getMediaService(): MediaService {
 
 export const mediaService = {
   uploadAsset: (...args: Parameters<MediaService['uploadAsset']>) => getMediaService().uploadAsset(...args),
-  replaceAsset: (...args: Parameters<MediaService['replaceAsset']>) => getMediaService().replaceAsset(...args),
   getAsset: (...args: Parameters<MediaService['getAsset']>) => getMediaService().getAsset(...args),
-  getAssetByStorageKey: (...args: Parameters<MediaService['getAssetByStorageKey']>) => getMediaService().getAssetByStorageKey(...args),
   listAssets: (...args: Parameters<MediaService['listAssets']>) => getMediaService().listAssets(...args),
   updateMetadata: (...args: Parameters<MediaService['updateMetadata']>) => getMediaService().updateMetadata(...args),
+  changeStatus: (...args: Parameters<MediaService['changeStatus']>) => getMediaService().changeStatus(...args),
   archiveAsset: (...args: Parameters<MediaService['archiveAsset']>) => getMediaService().archiveAsset(...args),
   restoreAsset: (...args: Parameters<MediaService['restoreAsset']>) => getMediaService().restoreAsset(...args),
   deleteAsset: (...args: Parameters<MediaService['deleteAsset']>) => getMediaService().deleteAsset(...args),

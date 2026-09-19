@@ -12,6 +12,9 @@ Module.prototype.require = function (id: string) {
   if (id === '@/lib/db') {
     return { prisma: {} };
   }
+  if (id === '@prisma/client' || id.includes('.prisma/client')) {
+    return { PrismaClient: class {}, Prisma: { JsonNull: null } };
+  }
   if (id === '@aws-sdk/client-s3') {
     return { S3Client: class {}, PutObjectCommand: class {}, GetObjectCommand: class {}, DeleteObjectCommand: class {} };
   }

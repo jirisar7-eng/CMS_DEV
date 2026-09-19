@@ -349,19 +349,19 @@ export class MediaRepository implements IMediaRepository {
     return [...this.assets];
   }
 
-  getById(id: string, projectId?: string): MediaAsset | undefined {
+  getById(id: string, projectId: string): MediaAsset | undefined {
+    if (!projectId) return undefined;
     const asset = this.assets.find(a => a.id === id);
     if (!asset) return undefined;
-    if (projectId && asset.projectId !== projectId) return undefined;
+    if (asset.projectId !== projectId) return undefined;
     return asset;
   }
 
-  filter(options: MediaFilterOptions = {}, projectId?: string): MediaAsset[] {
+  filter(options: MediaFilterOptions = {}, projectId: string): MediaAsset[] {
     let result = [...this.assets];
 
-    if (projectId) {
-      result = result.filter(a => a.projectId === projectId);
-    }
+    if (!projectId) return [];
+    result = result.filter(a => a.projectId === projectId);
 
     if (options.status && options.status !== 'all') {
       result = result.filter(a => a.status === options.status);
@@ -503,7 +503,7 @@ export class MediaRepository implements IMediaRepository {
     };
   }
 
-  updateUrl(id: string, url: string, projectId?: string): MediaAsset | undefined {
+  updateUrl(id: string, url: string, projectId: string): MediaAsset | undefined {
     const asset = this.getById(id, projectId);
     if (!asset) return undefined;
     asset.url = url;
@@ -517,7 +517,7 @@ export class MediaRepository implements IMediaRepository {
   updateMetadata(
     id: string,
     metadataUpdate: Partial<MediaAsset['metadata']>,
-    projectId?: string
+    projectId: string
   ): MediaAsset | undefined {
     const asset = this.getById(id, projectId);
     if (!asset) return undefined;
@@ -535,9 +535,10 @@ export class MediaRepository implements IMediaRepository {
    */
   async replaceFile(
     id: string,
-    file: { name: string; type: string; size: number; data?: Blob | ArrayBuffer }
+    file: { name: string; type: string; size: number; data?: Blob | ArrayBuffer },
+    projectId: string
   ): Promise<UploadPipelineResult> {
-    const asset = this.getById(id);
+    const asset = this.getById(id, projectId);
     if (!asset) {
       return { success: false, error: 'Médium nebylo nalezeno.' };
     }
@@ -591,8 +592,8 @@ export class MediaRepository implements IMediaRepository {
   /**
    * Archive asset
    */
-  archive(id: string): MediaAsset | undefined {
-    const asset = this.getById(id);
+  archive(id: string, projectId: string): MediaAsset | undefined {
+    const asset = this.getById(id, projectId);
     if (!asset) return undefined;
 
     asset.status = 'archived';
@@ -603,8 +604,8 @@ export class MediaRepository implements IMediaRepository {
   /**
    * Restore asset from archive
    */
-  restore(id: string): MediaAsset | undefined {
-    const asset = this.getById(id);
+  restore(id: string, projectId: string): MediaAsset | undefined {
+    const asset = this.getById(id, projectId);
     if (!asset) return undefined;
 
     asset.status = 'ready';
@@ -616,8 +617,8 @@ export class MediaRepository implements IMediaRepository {
    * Safe Delete: Checks usage references.
    * If usageCount > 0, deletion is BLOCKED to prevent broken references.
    */
-  delete(id: string): { success: boolean; error?: string; references?: MediaAsset['usageReferences'] } {
-    const asset = this.getById(id);
+  delete(id: string, projectId: string): { success: boolean; error?: string; references?: MediaAsset['usageReferences'] } {
+    const asset = this.getById(id, projectId);
     if (!asset) {
       return { success: false, error: 'Médium nebylo nalezeno.' };
     }
@@ -648,14 +649,12 @@ export class MediaRepository implements IMediaRepository {
     return newAsset;
   }
 
-  async list(projectIdOrFilters?: string | MediaFilterOptions, filtersArg?: MediaFilterOptions): Promise<MediaAsset[]> {
-    if (typeof projectIdOrFilters === 'string') {
-      return this.filter(filtersArg, projectIdOrFilters);
-    }
-    return this.filter(projectIdOrFilters);
+  async list(projectId: string, filters?: MediaFilterOptions): Promise<MediaAsset[]> {
+    if (!projectId) return [];
+    return this.filter(filters, projectId);
   }
 
-  async createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>, projectId?: string): Promise<MediaAssetVersion> {
+  async createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>, projectId: string): Promise<MediaAssetVersion> {
     const asset = this.getById(assetId, projectId);
     if (!asset) {
       throw new Error(`Asset ${assetId} not found`);
@@ -675,15 +674,14 @@ export class MediaRepository implements IMediaRepository {
     return newVersion;
   }
 
-  async listVersions(assetId: string, projectId?: string): Promise<MediaAssetVersion[]> {
-    if (projectId) {
-      const asset = this.getById(assetId, projectId);
-      if (!asset) return [];
-    }
+  async listVersions(assetId: string, projectId: string): Promise<MediaAssetVersion[]> {
+    if (!projectId) return [];
+    const asset = this.getById(assetId, projectId);
+    if (!asset) return [];
     return this.versions.filter(v => v.assetId === assetId);
   }
 
-  async setCurrentVersion(assetId: string, versionId: string, projectId?: string): Promise<MediaAsset | undefined> {
+  async setCurrentVersion(assetId: string, versionId: string, projectId: string): Promise<MediaAsset | undefined> {
     const asset = this.getById(assetId, projectId);
     if (!asset) return undefined;
     const version = this.versions.find(v => v.id === versionId && v.assetId === assetId);
@@ -706,7 +704,7 @@ export class MediaRepository implements IMediaRepository {
     return asset;
   }
 
-  async changeStatus(id: string, status: MediaStatus, projectId?: string): Promise<MediaAsset | undefined> {
+  async changeStatus(id: string, status: MediaStatus, projectId: string): Promise<MediaAsset | undefined> {
     const asset = this.getById(id, projectId);
     if (!asset) return undefined;
     asset.status = status;
@@ -714,7 +712,7 @@ export class MediaRepository implements IMediaRepository {
     return asset;
   }
 
-  async addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>, projectId?: string): Promise<MediaUsageReference> {
+  async addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>, projectId: string): Promise<MediaUsageReference> {
     const asset = this.getById(assetId, projectId);
     if (!asset) throw new Error('Asset not found');
     const newRef: MediaUsageReference = {
@@ -727,30 +725,30 @@ export class MediaRepository implements IMediaRepository {
     return newRef;
   }
 
-  async removeUsageReference(assetId: string, referenceId: string, projectId?: string): Promise<void> {
+  async removeUsageReference(assetId: string, referenceId: string, projectId: string): Promise<void> {
     const asset = this.getById(assetId, projectId);
     if (!asset) return;
     asset.usageReferences = asset.usageReferences.filter(r => r.id !== referenceId);
     asset.usageCount = asset.usageReferences.length;
   }
 
-  async listUsageReferences(assetId: string, projectId?: string): Promise<MediaUsageReference[]> {
+  async listUsageReferences(assetId: string, projectId: string): Promise<MediaUsageReference[]> {
     const asset = this.getById(assetId, projectId);
     if (!asset) return [];
     return [...asset.usageReferences];
   }
 
-  async isDeletionAllowed(id: string, projectId?: string): Promise<boolean> {
+  async isDeletionAllowed(id: string, projectId: string): Promise<boolean> {
     const asset = this.getById(id, projectId);
     if (!asset) return false;
     return asset.usageCount === 0;
   }
 
-  async archiveAsset(id: string, projectId?: string): Promise<MediaAsset | undefined> {
+  async archiveAsset(id: string, projectId: string): Promise<MediaAsset | undefined> {
     return this.changeStatus(id, 'ARCHIVED', projectId);
   }
 
-  async deleteAsset(id: string, projectId?: string): Promise<void> {
+  async deleteAsset(id: string, projectId: string): Promise<void> {
     const allowed = await this.isDeletionAllowed(id, projectId);
     if (!allowed) {
       throw new Error(`Deletion blocked: Asset ${id} is actively referenced or does not exist.`);

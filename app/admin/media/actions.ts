@@ -232,98 +232,13 @@ export async function restoreMediaAsset(id: string): Promise<ActionResponse<Medi
 }
 
 /**
- * Replaces media asset file with FormData (real file bytes) scoped to the active project with media.edit check.
+ * Replaces media asset file (Disabled in this version - returns NOT_AVAILABLE without state mutation).
  */
-export async function replaceMediaAsset(formData: FormData): Promise<ActionResponse<MediaAsset>> {
-  if (!isDatabaseConfigured()) {
-    return { error: 'Databáze není dostupná.', code: 'INTERNAL_ERROR' };
-  }
-
-  const context = await getActiveProjectContext();
-  if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
-    return { error: 'Přístup odepřen nebo chybí projektový kontext.', code: 'FORBIDDEN' };
-  }
-
-  const canEdit = await hasPermission(context.userId, 'media.edit', context.projectId);
-  if (!canEdit) {
-    return { error: 'Nedostatečná oprávnění: vyžadováno media.edit.', code: 'FORBIDDEN' };
-  }
-
-  const id = formData.get('id') as string;
-  const file = formData.get('file') as File | null;
-  if (!id || !file || typeof file === 'string') {
-    return { error: 'Chybí ID média nebo soubor pro nahrazení.', code: 'INVALID_INPUT' };
-  }
-
-  try {
-    const asset = await mediaService.getAsset(id, context.projectId);
-    if (!asset) {
-      return { error: 'Médium nebylo nalezeno.', code: 'NOT_FOUND' };
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // We upload as a new version or replace
-    const isSvg = file.type === 'image/svg+xml' || file.name.endsWith('.svg');
-    let finalData = buffer;
-    let finalSize = file.size;
-    let status = isSvg ? 'READY' : 'QUARANTINED';
-    let securityInfo: any = {
-      scanned: false,
-      clean: false,
-      activeContent: false,
-      checksumSha256: '',
-      scannedAt: new Date().toISOString(),
-    };
-
-    if (isSvg) {
-      const { prepareSvgAssetDraft } = await import('@/lib/domain/media/svgAssetLifecycle.server');
-      const draft = prepareSvgAssetDraft(buffer.toString('utf8'));
-      if (!draft.success) {
-        return { error: `Chyba SVG: ${draft.message}`, code: 'INVALID_INPUT' };
-      }
-      finalData = Buffer.from(draft.canonicalSvg, 'utf8');
-      finalSize = draft.sizeBytes;
-      securityInfo = {
-        scanned: true,
-        clean: true,
-        activeContent: true,
-        checksumSha256: draft.canonicalChecksumSha256,
-        scannedAt: new Date().toISOString(),
-        pipelineId: draft.pipelineId,
-      };
-    } else {
-      const crypto = await import('crypto');
-      securityInfo.checksumSha256 = crypto.createHash('sha256').update(finalData).digest('hex');
-    }
-
-    // Put object into storage using same storageKey
-    const { mediaService: realMediaService } = await import('@/lib/domain/media/service');
-    // We update through PrismaMediaRepository createVersion & setCurrentVersion
-    const { PrismaMediaRepository } = await import('@/lib/domain/media/prismaRepository');
-    const repo = new PrismaMediaRepository();
-    const version = await repo.createVersion(
-      id,
-      {
-        status: status as any,
-        mimeType: file.type,
-        sizeBytes: finalSize,
-        storageKey: asset.storageKey,
-        security: securityInfo,
-        originalFilename: file.name,
-      },
-      context.projectId
-    );
-
-    await repo.setCurrentVersion(id, version.id, context.projectId);
-    const updated = await repo.getById(id, context.projectId);
-
-    return { data: updated };
-  } catch (err: any) {
-    console.error('replaceMediaAsset error:', err);
-    return { error: err.message || 'Chyba při nahrazování souboru.', code: 'INTERNAL_ERROR' };
-  }
+export async function replaceMediaAsset(_formData: FormData): Promise<ActionResponse<MediaAsset>> {
+  return {
+    error: 'Nahrazení souboru zatím není v této verzi bezpečně dostupné.',
+    code: 'INVALID_INPUT',
+  };
 }
 
 /**
