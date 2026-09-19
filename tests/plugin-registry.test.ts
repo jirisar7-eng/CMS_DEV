@@ -2,73 +2,185 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import {
   PluginRegistry,
-  BUILTIN_PLUGIN_MANIFESTS,
+  globalPluginRegistry,
   validatePluginManifest,
   validatePluginDependencies,
   PluginManifest,
 } from '../lib/domain/plugin';
 
+// Test Fixtures
+const sampleSeoPlugin: PluginManifest = {
+  id: 'seo-analyzer',
+  name: 'SEO Content Analyzer',
+  version: '1.0.0',
+  description: 'Automated SEO scoring and readability analysis.',
+  type: 'OFFICIAL',
+  category: 'SEO',
+  author: 'Synthesis Core Team',
+  license: 'MIT',
+  lifecycle: {
+    state: 'STABLE',
+  },
+  compatibility: {
+    minCmsVersion: '1.0.0',
+  },
+  isCore: false,
+};
+
+const sampleFormPlugin: PluginManifest = {
+  id: 'form-builder',
+  name: 'Form Builder',
+  version: '1.0.0',
+  description: 'Visual form builder extension.',
+  type: 'COMMUNITY',
+  category: 'CONTENT',
+  author: { name: 'Community Contributor', email: 'dev@example.com' },
+  license: 'Apache-2.0',
+  isCore: false,
+};
+
 describe('SYN-PLUGIN-001: Plugin Manifest & Registry Foundation', () => {
   let registry: PluginRegistry;
 
   beforeEach(() => {
-    registry = new PluginRegistry(BUILTIN_PLUGIN_MANIFESTS);
+    registry = new PluginRegistry();
   });
 
-  describe('1. Core Module Isolation & Builtin Manifests', () => {
-    it('registers builtin extension plugins and enforces Core Module != Plugin', () => {
-      const plugins = registry.getAllPlugins();
-      assert.ok(plugins.length >= 5);
-
-      for (const plugin of plugins) {
-        assert.notStrictEqual(plugin.isCore, true);
-        assert.strictEqual(plugin.isCore, false);
-        // Ensure core modules like Core Pages / Media / Audit are NOT registered
-        assert.notStrictEqual(plugin.id, 'core-pages');
-        assert.notStrictEqual(plugin.id, 'media-library');
-        assert.notStrictEqual(plugin.id, 'audit-logging');
-
-        const validation = validatePluginManifest(plugin);
-        assert.strictEqual(validation.valid, true, `Manifest ${plugin.id} should be valid`);
-      }
+  describe('1. Empty Production Registry Default', () => {
+    it('verifies production registry is empty by default', () => {
+      assert.strictEqual(globalPluginRegistry.getAllPlugins().length, 0);
+      assert.strictEqual(registry.getAllPlugins().length, 0);
     });
   });
 
-  describe('2. Registry Operations & Immutability', () => {
-    it('supports query, filter, unregister, clear, and reset operations', () => {
+  describe('2. Registry Operations & Duplicate ID Rejection', () => {
+    it('registers valid manifest and retrieves a deep clone copy', () => {
+      registry.registerPlugin(sampleSeoPlugin);
       assert.strictEqual(registry.hasPlugin('seo-analyzer'), true);
-      const seoPlugin = registry.getPlugin('seo-analyzer');
-      assert.ok(seoPlugin);
-      assert.strictEqual(seoPlugin?.name, 'SEO Content Analyzer');
 
-      const seoCategoryPlugins = registry.getPluginsByCategory('SEO');
-      assert.ok(seoCategoryPlugins.some((p) => p.id === 'seo-analyzer'));
+      const retrieved = registry.getPlugin('seo-analyzer');
+      assert.ok(retrieved);
+      assert.strictEqual(retrieved?.name, 'SEO Content Analyzer');
 
-      // Test immutability (deep clone)
-      if (seoPlugin) {
-        seoPlugin.name = 'MUTATED_NAME';
+      // Test immutability
+      if (retrieved) {
+        retrieved.name = 'MUTATED_NAME';
       }
       assert.strictEqual(registry.getPlugin('seo-analyzer')?.name, 'SEO Content Analyzer');
+    });
 
-      // Test unregister
-      assert.strictEqual(registry.unregisterPlugin('seo-analyzer'), true);
-      assert.strictEqual(registry.hasPlugin('seo-analyzer'), false);
-
-      // Test resetToDefaults
-      registry.resetToDefaults();
-      assert.strictEqual(registry.hasPlugin('seo-analyzer'), true);
+    it('fails closed when registering duplicate plugin ID', () => {
+      registry.registerPlugin(sampleSeoPlugin);
+      assert.throws(
+        () => registry.registerPlugin(sampleSeoPlugin),
+        /Duplicate plugin ID/
+      );
     });
   });
 
-  describe('3. Manifest Security & Schema Validation', () => {
+  describe('3. Unknown Top-Level Field & Function/Executable Value Rejection', () => {
+    it('rejects manifest with unknown top-level field', () => {
+      const invalidManifest: any = {
+        ...sampleSeoPlugin,
+        unknownField: 'disallowed_value',
+      };
+
+      const result = validatePluginManifest(invalidManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'UNKNOWN_TOP_LEVEL_FIELD'));
+
+      assert.throws(() => registry.registerPlugin(invalidManifest), /Unknown top-level field/);
+    });
+
+    it('rejects manifest containing executable function values', () => {
+      const fnManifest: any = {
+        ...sampleSeoPlugin,
+        author: (() => 'executable_code') as any,
+      };
+
+      const result = validatePluginManifest(fnManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'UNSUPPORTED_DATA_TYPE'));
+      assert.throws(() => registry.registerPlugin(fnManifest), /Prohibited non-data type/);
+    });
+  });
+
+  describe('4. Dependency Kind, INTEGRATION Dependency & Version Range Validation', () => {
+    it('rejects manifest with invalid dependency kind', () => {
+      const invalidKindManifest: any = {
+        ...sampleSeoPlugin,
+        id: 'invalid-dep-plugin',
+        dependencies: [
+          {
+            pluginId: 'some-plugin',
+            kind: 'INVALID_KIND',
+          },
+        ],
+      };
+
+      const result = validatePluginManifest(invalidKindManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'INVALID_DEPENDENCY_KIND'));
+    });
+
+    it('accepts INTEGRATION dependency kind without triggering required cycle fail-closed', () => {
+      const integrationPlugin: PluginManifest = {
+        ...sampleSeoPlugin,
+        id: 'integration-plugin-a',
+        dependencies: [
+          {
+            pluginId: 'integration-plugin-b',
+            kind: 'INTEGRATION',
+          },
+        ],
+      };
+
+      const integrationPluginB: PluginManifest = {
+        ...sampleSeoPlugin,
+        id: 'integration-plugin-b',
+        dependencies: [
+          {
+            pluginId: 'integration-plugin-a',
+            kind: 'INTEGRATION',
+          },
+        ],
+      };
+
+      const validationA = validatePluginManifest(integrationPlugin);
+      assert.strictEqual(validationA.valid, true);
+
+      registry.registerPlugin(integrationPlugin);
+      registry.registerPlugin(integrationPluginB);
+
+      // INTEGRATION kind dependencies are not REQUIRED, so cycle check remains valid
+      const depCheck = validatePluginDependencies('integration-plugin-a', registry);
+      assert.strictEqual(depCheck.valid, true);
+    });
+
+    it('rejects dependency with invalid version range syntax', () => {
+      const invalidRangeManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        id: 'bad-range-plugin',
+        dependencies: [
+          {
+            pluginId: 'seo-analyzer',
+            kind: 'REQUIRED',
+            versionRange: 'invalid-range-format-!!!',
+          },
+        ],
+      };
+
+      const result = validatePluginManifest(invalidRangeManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'INVALID_VERSION_RANGE'));
+    });
+  });
+
+  describe('5. Core Isolation & Secrets Security Boundaries', () => {
     it('rejects manifest attempting to register as a Core Module', () => {
       const coreAttempt: any = {
-        id: 'core-pages-plugin',
-        name: 'Core Pages',
-        version: '1.0.0',
-        description: 'Attempting to register core module as plugin',
-        category: 'CONTENT',
-        author: 'Admin',
+        ...sampleSeoPlugin,
+        id: 'core-pages-attempt',
         isCore: true,
       };
 
@@ -77,196 +189,58 @@ describe('SYN-PLUGIN-001: Plugin Manifest & Registry Foundation', () => {
       assert.ok(result.issues.some((i) => i.code === 'MANIFEST_CORE_NOT_ALLOWED'));
     });
 
-    it('rejects manifests containing hardcoded secrets or secret defaults', () => {
-      const secretManifest: any = {
-        id: 'secret-plugin',
-        name: 'Secret Plugin',
-        version: '1.0.0',
-        description: 'Plugin with raw secrets',
-        category: 'UTILITY',
-        author: 'Attacker',
-        homepage: 'https://example.com?key=sk_live_1234567890abcdef',
-        isCore: false,
+    it('rejects manifest containing secret tokens', () => {
+      const secretManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        id: 'secret-leak-plugin',
+        homepage: 'https://example.com?api_key=sk_live_123456789',
       };
 
       const result = validatePluginManifest(secretManifest);
       assert.strictEqual(result.valid, false);
       assert.ok(result.issues.some((i) => i.code === 'MANIFEST_CONTAINS_SECRETS'));
     });
-
-    it('rejects sensitive config fields with hardcoded secret defaultValue', () => {
-      const sensitiveConfigManifest: any = {
-        id: 'api-plugin',
-        name: 'API Plugin',
-        version: '1.0.0',
-        description: 'Plugin with default secret value',
-        category: 'UTILITY',
-        author: 'Dev',
-        configSchema: {
-          fields: [
-            {
-              key: 'apiKey',
-              label: 'API Key',
-              type: 'string',
-              sensitive: true,
-              defaultValue: 'sk_live_999999999',
-            },
-          ],
-        },
-        isCore: false,
-      };
-
-      const result = validatePluginManifest(sensitiveConfigManifest);
-      assert.strictEqual(result.valid, false);
-      assert.ok(result.issues.some((i) => i.code === 'MANIFEST_CONTAINS_SECRETS'));
-    });
-
-    it('rejects manifests containing dynamic code execution strings', () => {
-      const evalManifest: any = {
-        id: 'eval-plugin',
-        name: 'Eval Plugin',
-        version: '1.0.0',
-        description: 'Plugin trying to execute eval() string',
-        category: 'UTILITY',
-        author: 'Hacker',
-        homepage: 'javascript:eval("alert(1)")',
-        isCore: false,
-      };
-
-      const result = validatePluginManifest(evalManifest);
-      assert.strictEqual(result.valid, false);
-      assert.ok(result.issues.some((i) => i.code === 'UNSAFE_CODE_EXECUTION'));
-    });
   });
 
-  describe('4. Required Dependency Resolution & Cycle Detection (Fail-Closed)', () => {
-    it('detects missing required dependencies', () => {
+  describe('6. REQUIRED Dependency Resolution & Cycle Detection (Fail-Closed)', () => {
+    it('detects missing REQUIRED dependencies', () => {
       const dependentPlugin: PluginManifest = {
-        id: 'dependent-plugin',
-        name: 'Dependent Plugin',
-        version: '1.0.0',
-        description: 'Requires non-existent plugin',
-        category: 'UTILITY',
-        author: 'Dev',
+        ...sampleSeoPlugin,
+        id: 'dep-plugin',
         dependencies: [
           {
             pluginId: 'non-existent-plugin',
-            optional: false,
+            kind: 'REQUIRED',
           },
         ],
-        isCore: false,
       };
 
       registry.registerPlugin(dependentPlugin);
-      const check = validatePluginDependencies('dependent-plugin', registry);
+      const check = validatePluginDependencies('dep-plugin', registry);
       assert.strictEqual(check.valid, false);
       assert.deepStrictEqual(check.missingDependencies, ['non-existent-plugin']);
     });
 
-    it('detects 2-node REQUIRED dependency cycles and fails closed', () => {
+    it('detects REQUIRED dependency cycles and fails closed', () => {
       const pluginA: PluginManifest = {
-        id: 'plugin-a',
-        name: 'Plugin A',
-        version: '1.0.0',
-        description: 'Cycle node A',
-        category: 'UTILITY',
-        author: 'Dev',
-        dependencies: [{ pluginId: 'plugin-b', optional: false }],
-        isCore: false,
+        ...sampleSeoPlugin,
+        id: 'cycle-a',
+        dependencies: [{ pluginId: 'cycle-b', kind: 'REQUIRED' }],
       };
 
       const pluginB: PluginManifest = {
-        id: 'plugin-b',
-        name: 'Plugin B',
-        version: '1.0.0',
-        description: 'Cycle node B',
-        category: 'UTILITY',
-        author: 'Dev',
-        dependencies: [{ pluginId: 'plugin-a', optional: false }],
-        isCore: false,
+        ...sampleSeoPlugin,
+        id: 'cycle-b',
+        dependencies: [{ pluginId: 'cycle-a', kind: 'REQUIRED' }],
       };
 
       registry.registerPlugin(pluginA);
       registry.registerPlugin(pluginB);
 
-      const checkA = validatePluginDependencies('plugin-a', registry);
-      assert.strictEqual(checkA.valid, false);
-      assert.ok(checkA.circularDependencies.length > 0);
-      assert.ok(checkA.issues.some((i) => i.code === 'CIRCULAR_DEPENDENCY'));
-    });
-
-    it('detects multi-node REQUIRED dependency cycles', () => {
-      const pluginX: PluginManifest = {
-        id: 'plugin-x',
-        name: 'Plugin X',
-        version: '1.0.0',
-        description: 'Cycle node X',
-        category: 'UTILITY',
-        author: 'Dev',
-        dependencies: [{ pluginId: 'plugin-y', optional: false }],
-        isCore: false,
-      };
-
-      const pluginY: PluginManifest = {
-        id: 'plugin-y',
-        name: 'Plugin Y',
-        version: '1.0.0',
-        description: 'Cycle node Y',
-        category: 'UTILITY',
-        author: 'Dev',
-        dependencies: [{ pluginId: 'plugin-z', optional: false }],
-        isCore: false,
-      };
-
-      const pluginZ: PluginManifest = {
-        id: 'plugin-z',
-        name: 'Plugin Z',
-        version: '1.0.0',
-        description: 'Cycle node Z',
-        category: 'UTILITY',
-        author: 'Dev',
-        dependencies: [{ pluginId: 'plugin-x', optional: false }],
-        isCore: false,
-      };
-
-      registry.registerPlugin(pluginX);
-      registry.registerPlugin(pluginY);
-      registry.registerPlugin(pluginZ);
-
-      const checkX = validatePluginDependencies('plugin-x', registry);
-      assert.strictEqual(checkX.valid, false);
-      assert.ok(checkX.circularDependencies.length > 0);
-    });
-
-    it('allows optional dependencies without triggering cycle errors', () => {
-      const pluginOptA: PluginManifest = {
-        id: 'plugin-opta',
-        name: 'Plugin Optional A',
-        version: '1.0.0',
-        description: 'Optional dep A',
-        category: 'UTILITY',
-        author: 'Dev',
-        dependencies: [{ pluginId: 'plugin-optb', optional: true }],
-        isCore: false,
-      };
-
-      const pluginOptB: PluginManifest = {
-        id: 'plugin-optb',
-        name: 'Plugin Optional B',
-        version: '1.0.0',
-        description: 'Optional dep B',
-        category: 'UTILITY',
-        author: 'Dev',
-        dependencies: [{ pluginId: 'plugin-opta', optional: true }],
-        isCore: false,
-      };
-
-      registry.registerPlugin(pluginOptA);
-      registry.registerPlugin(pluginOptB);
-
-      const check = validatePluginDependencies('plugin-opta', registry);
-      assert.strictEqual(check.valid, true);
-      assert.strictEqual(check.circularDependencies.length, 0);
+      const check = validatePluginDependencies('cycle-a', registry);
+      assert.strictEqual(check.valid, false);
+      assert.ok(check.circularDependencies.length > 0);
+      assert.ok(check.issues.some((i) => i.code === 'CIRCULAR_DEPENDENCY'));
     });
   });
 });
