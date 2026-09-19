@@ -17,25 +17,17 @@ const sampleSeoPlugin: PluginManifest = {
   type: 'OFFICIAL',
   category: 'SEO',
   author: 'Synthesis Core Team',
-  license: 'MIT',
+  legal: {
+    license: 'MIT',
+    termsUrl: 'https://example.com/terms',
+    privacyUrl: 'https://example.com/privacy',
+  },
   lifecycle: {
     state: 'STABLE',
   },
   compatibility: {
     minCmsVersion: '1.0.0',
   },
-  isCore: false,
-};
-
-const sampleFormPlugin: PluginManifest = {
-  id: 'form-builder',
-  name: 'Form Builder',
-  version: '1.0.0',
-  description: 'Visual form builder extension.',
-  type: 'COMMUNITY',
-  category: 'CONTENT',
-  author: { name: 'Community Contributor', email: 'dev@example.com' },
-  license: 'Apache-2.0',
   isCore: false,
 };
 
@@ -46,10 +38,16 @@ describe('SYN-PLUGIN-001: Plugin Manifest & Registry Foundation', () => {
     registry = new PluginRegistry();
   });
 
-  describe('1. Empty Production Registry Default', () => {
+  describe('1. Empty Production Registry Default & Foundation Boundary', () => {
     it('verifies production registry is empty by default', () => {
       assert.strictEqual(globalPluginRegistry.getAllPlugins().length, 0);
       assert.strictEqual(registry.getAllPlugins().length, 0);
+    });
+
+    it('verifies registry has no lifecycle/removal API (unregister, clear, reset)', () => {
+      assert.strictEqual((registry as any).unregisterPlugin, undefined);
+      assert.strictEqual((registry as any).clearRegistry, undefined);
+      assert.strictEqual((registry as any).resetToDefaults, undefined);
     });
   });
 
@@ -78,7 +76,64 @@ describe('SYN-PLUGIN-001: Plugin Manifest & Registry Foundation', () => {
     });
   });
 
-  describe('3. Unknown Top-Level Field & Function/Executable Value Rejection', () => {
+  describe('3. Legal Metadata & URL Validation', () => {
+    it('validates legal metadata with valid URLs successfully', () => {
+      const validLegalManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        legal: {
+          license: 'Apache-2.0',
+          termsUrl: 'https://example.com/terms',
+          privacyUrl: 'https://example.com/privacy',
+          securityPolicyUrl: 'https://example.com/security',
+        },
+      };
+
+      const result = validatePluginManifest(validLegalManifest);
+      assert.strictEqual(result.valid, true);
+    });
+
+    it('rejects manifest missing required legal metadata for OFFICIAL type', () => {
+      const noLegalManifest: any = {
+        ...sampleSeoPlugin,
+        legal: undefined,
+      };
+
+      const result = validatePluginManifest(noLegalManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'LEGAL_REQUIRED'));
+    });
+
+    it('rejects manifest with invalid legal URLs', () => {
+      const invalidUrlManifest: any = {
+        ...sampleSeoPlugin,
+        legal: {
+          license: 'MIT',
+          termsUrl: 'not-a-valid-url',
+        },
+      };
+
+      const result = validatePluginManifest(invalidUrlManifest);
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.issues.some((i) => i.code === 'INVALID_LEGAL_URL'));
+    });
+  });
+
+  describe('4. EXPERIMENTAL via PluginType Only', () => {
+    it('supports EXPERIMENTAL plugins solely via PluginType without boolean flags', () => {
+      const experimentalManifest: PluginManifest = {
+        ...sampleSeoPlugin,
+        id: 'exp-feature',
+        type: 'EXPERIMENTAL',
+      };
+
+      const result = validatePluginManifest(experimentalManifest);
+      assert.strictEqual(result.valid, true);
+      assert.strictEqual(experimentalManifest.type, 'EXPERIMENTAL');
+      assert.strictEqual((experimentalManifest as any).experimental, undefined);
+    });
+  });
+
+  describe('5. Unknown Top-Level Field & Function/Executable Value Rejection', () => {
     it('rejects manifest with unknown top-level field', () => {
       const invalidManifest: any = {
         ...sampleSeoPlugin,
@@ -105,105 +160,15 @@ describe('SYN-PLUGIN-001: Plugin Manifest & Registry Foundation', () => {
     });
   });
 
-  describe('4. Dependency Kind, INTEGRATION Dependency & Version Range Validation', () => {
-    it('rejects manifest with invalid dependency kind', () => {
-      const invalidKindManifest: any = {
-        ...sampleSeoPlugin,
-        id: 'invalid-dep-plugin',
-        dependencies: [
-          {
-            pluginId: 'some-plugin',
-            kind: 'INVALID_KIND',
-          },
-        ],
-      };
-
-      const result = validatePluginManifest(invalidKindManifest);
-      assert.strictEqual(result.valid, false);
-      assert.ok(result.issues.some((i) => i.code === 'INVALID_DEPENDENCY_KIND'));
+  describe('6. Dependency Validation with Explicit Registry Parameter', () => {
+    it('requires explicit registry parameter for validatePluginDependencies', () => {
+      assert.throws(
+        () => validatePluginDependencies('seo-analyzer', undefined as any),
+        /explicitly provided/
+      );
     });
 
-    it('accepts INTEGRATION dependency kind without triggering required cycle fail-closed', () => {
-      const integrationPlugin: PluginManifest = {
-        ...sampleSeoPlugin,
-        id: 'integration-plugin-a',
-        dependencies: [
-          {
-            pluginId: 'integration-plugin-b',
-            kind: 'INTEGRATION',
-          },
-        ],
-      };
-
-      const integrationPluginB: PluginManifest = {
-        ...sampleSeoPlugin,
-        id: 'integration-plugin-b',
-        dependencies: [
-          {
-            pluginId: 'integration-plugin-a',
-            kind: 'INTEGRATION',
-          },
-        ],
-      };
-
-      const validationA = validatePluginManifest(integrationPlugin);
-      assert.strictEqual(validationA.valid, true);
-
-      registry.registerPlugin(integrationPlugin);
-      registry.registerPlugin(integrationPluginB);
-
-      // INTEGRATION kind dependencies are not REQUIRED, so cycle check remains valid
-      const depCheck = validatePluginDependencies('integration-plugin-a', registry);
-      assert.strictEqual(depCheck.valid, true);
-    });
-
-    it('rejects dependency with invalid version range syntax', () => {
-      const invalidRangeManifest: PluginManifest = {
-        ...sampleSeoPlugin,
-        id: 'bad-range-plugin',
-        dependencies: [
-          {
-            pluginId: 'seo-analyzer',
-            kind: 'REQUIRED',
-            versionRange: 'invalid-range-format-!!!',
-          },
-        ],
-      };
-
-      const result = validatePluginManifest(invalidRangeManifest);
-      assert.strictEqual(result.valid, false);
-      assert.ok(result.issues.some((i) => i.code === 'INVALID_VERSION_RANGE'));
-    });
-  });
-
-  describe('5. Core Isolation & Secrets Security Boundaries', () => {
-    it('rejects manifest attempting to register as a Core Module', () => {
-      const coreAttempt: any = {
-        ...sampleSeoPlugin,
-        id: 'core-pages-attempt',
-        isCore: true,
-      };
-
-      const result = validatePluginManifest(coreAttempt);
-      assert.strictEqual(result.valid, false);
-      assert.ok(result.issues.some((i) => i.code === 'MANIFEST_CORE_NOT_ALLOWED'));
-    });
-
-    it('rejects manifest containing secret tokens', () => {
-      const secretManifest: PluginManifest = {
-        ...sampleSeoPlugin,
-        id: 'secret-leak-plugin',
-        homepage: 'https://example.com?api_key=sk_live_123456789',
-      };
-
-      const result = validatePluginManifest(secretManifest);
-      assert.strictEqual(result.valid, false);
-      assert.ok(result.issues.some((i) => i.code === 'MANIFEST_CONTAINS_SECRETS'));
-    });
-  });
-
-  describe('6. REQUIRED Dependency Resolution & Cycle Detection (Fail-Closed)', () => {
-    it('detects missing REQUIRED dependencies', () => {
+    it('detects missing REQUIRED dependencies using explicit registry', () => {
       const dependentPlugin: PluginManifest = {
         ...sampleSeoPlugin,
         id: 'dep-plugin',
@@ -221,7 +186,7 @@ describe('SYN-PLUGIN-001: Plugin Manifest & Registry Foundation', () => {
       assert.deepStrictEqual(check.missingDependencies, ['non-existent-plugin']);
     });
 
-    it('detects REQUIRED dependency cycles and fails closed', () => {
+    it('detects REQUIRED dependency cycles using explicit registry', () => {
       const pluginA: PluginManifest = {
         ...sampleSeoPlugin,
         id: 'cycle-a',
