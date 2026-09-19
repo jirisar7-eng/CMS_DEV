@@ -412,6 +412,15 @@ class HelpRegistryService {
 
     // 7. SYSTÉM (System)
     this.register({
+      helpKey: 'system.map.view',
+      title: 'Mapa systému',
+      shortSummary: 'Přehled systémových funkcí, závislostí a architektury.',
+      extendedBody:
+        'Mapa systému nabízí přehled systémových funkcí a jejich závislostí. V závislosti na úrovni oprávnění zobrazuje základní veřejný pohled nebo podrobný interní pohled s technickými detaily architektury a historií implementace.',
+      tags: ['systém', 'mapa', 'architektura', 'závislosti'],
+    });
+
+    this.register({
       helpKey: 'system.settings.view',
       title: 'Globální systémové nastavení',
       shortSummary: 'Základní parametry projektu, lokalizace, časové pásmo a režim údržby.',
