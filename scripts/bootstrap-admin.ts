@@ -45,7 +45,8 @@ async function bootstrap() {
     'navigation.view', 'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.publish',
     'seo.read', 'seo.update', 'seo.manage_defaults',
     'redirects.read', 'redirects.create', 'redirects.update', 'redirects.delete',
-    'search.read_admin', 'search.manage', 'search.reindex'
+    'search.read_admin', 'search.manage', 'search.reindex',
+    'system_map.read_basic'
   ];
 
   for (const permKey of initialPermissions) {
@@ -80,6 +81,20 @@ async function bootstrap() {
         },
       });
     }
+  }
+
+  // 2b. Ensure system_map.read_internal exists, but is NOT granted to SUPER_ADMIN role
+  let internalPerm = await prisma.permission.findUnique({
+    where: { key: 'system_map.read_internal' },
+  });
+  if (!internalPerm) {
+    console.log('Creating sensitive permission: system_map.read_internal');
+    internalPerm = await prisma.permission.create({
+      data: {
+        key: 'system_map.read_internal',
+        description: 'Sensitive permission: full authoritative lineage and capability map access',
+      },
+    });
   }
 
   // 3. Create or update the admin user
@@ -125,6 +140,27 @@ async function bootstrap() {
         userId: adminUser.id,
         roleId: superAdminRole.id,
         projectId: null, // Global scope
+      },
+    });
+  }
+
+  // 4b. Grant bootstrap owner explicit individual global ALLOW override for system_map.read_internal
+  const internalOverride = await prisma.userPermissionOverride.findFirst({
+    where: {
+      userId: adminUser.id,
+      permissionId: internalPerm.id,
+      projectId: null,
+    },
+  });
+
+  if (!internalOverride) {
+    console.log(`Granting explicit individual global ALLOW override for system_map.read_internal to bootstrap owner (${email})`);
+    await prisma.userPermissionOverride.create({
+      data: {
+        userId: adminUser.id,
+        permissionId: internalPerm.id,
+        projectId: null,
+        isGranted: true,
       },
     });
   }
