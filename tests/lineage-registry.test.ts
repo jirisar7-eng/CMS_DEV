@@ -20,7 +20,7 @@ describe('SYN-GOV-LINEAGE-001: Authoritative Implementation Lineage & Capability
     assert.strictEqual(res.valid, true, `Expected valid lineage, got errors: ${res.errors.join(', ')}`);
     assert.strictEqual(res.errors.length, 0);
     assert.strictEqual(res.summary.tasksCount, 34);
-    assert.strictEqual(res.summary.capabilitiesCount, 13);
+    assert.strictEqual(res.summary.capabilitiesCount, 14);
   });
 
   it('2. PR #1 bootstrap record without capsule is valid and explicitly recorded', () => {

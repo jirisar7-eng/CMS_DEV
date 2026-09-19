@@ -192,7 +192,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const caps = loadCapabilitiesRegistry(rootDir);
       assert.strictEqual(typeof caps.registry_version, 'string');
       assert.ok(Array.isArray(caps.capabilities));
-      assert.strictEqual(caps.capabilities.length, 13);
+      assert.strictEqual(caps.capabilities.length, 14);
     });
 
     it('successfully loads authoritative tasks registry', () => {
@@ -229,8 +229,8 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const basicMap = resolveBasicSystemMap(rootDir);
 
       assert.strictEqual(basicMap.view, 'basic');
-      assert.strictEqual(basicMap.total_capabilities, 13);
-      assert.strictEqual(basicMap.capabilities.length, 13);
+      assert.strictEqual(basicMap.total_capabilities, 14);
+      assert.strictEqual(basicMap.capabilities.length, 14);
       assert.strictEqual((basicMap as any).tasks, undefined, 'Tasks must be completely omitted from basic view');
 
       for (const cap of basicMap.capabilities) {
@@ -288,8 +288,8 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const internalMap = resolveInternalSystemMap(rootDir);
 
       assert.strictEqual(internalMap.view, 'internal');
-      assert.strictEqual(internalMap.total_capabilities, 13);
-      assert.strictEqual(internalMap.capabilities.length, 13);
+      assert.strictEqual(internalMap.total_capabilities, 14);
+      assert.strictEqual(internalMap.capabilities.length, 14);
       assert.strictEqual(internalMap.total_tasks, 34);
       assert.strictEqual(internalMap.tasks.length, 34);
 
@@ -440,7 +440,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const data = await res.json();
       assert.strictEqual(data.view, 'basic');
-      assert.strictEqual(data.total_capabilities, 13);
+      assert.strictEqual(data.total_capabilities, 14);
       assert.strictEqual(data.tasks, undefined);
     });
 
@@ -485,7 +485,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const data = await res.json();
       assert.strictEqual(data.view, 'internal');
-      assert.strictEqual(data.total_capabilities, 13);
+      assert.strictEqual(data.total_capabilities, 14);
       assert.strictEqual(data.total_tasks, 34);
       assert.strictEqual(data.tasks.length, 34);
     });

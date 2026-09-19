@@ -369,6 +369,23 @@
       ],
       "last_merge_sha": "52415206dcd51612f6f51ead7fc839e53487dc5b",
       "ssot_role": "Canonical brand token and visual identity SSOT supporting SYSTEM and PROJECT scopes"
+    },
+    {
+      "capability_id": "plugin_registry",
+      "canonical_owner_paths": [
+        "lib/domain/plugin/**"
+      ],
+      "data_models": [],
+      "api_boundaries": [],
+      "depends_on_capabilities": [],
+      "project_scoped": false,
+      "security_boundary": "SYSTEM_GOVERNANCE",
+      "visibility": "OWNER_INTERNAL",
+      "source_tasks": [
+        "SYN-PLUGIN-001"
+      ],
+      "last_merge_sha": "1cfdf81b29be8f93f03710590c71a72705ac8038",
+      "ssot_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
     }
   ],
   "ssot_rules": {
@@ -379,6 +396,7 @@
     "capability_map_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT",
     "redirect_runtime_role": "Redirect runtime = consumes published content + RedirectRule",
     "media_replace_role": "Media Replace = SAFELY_DISABLED / deferred",
-    "sitemap_runtime_role": "Sitemap runtime = planned / not falsely complete"
+    "sitemap_runtime_role": "Sitemap runtime = planned / not falsely complete",
+    "plugin_registry_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
   }
 }
