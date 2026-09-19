@@ -20,7 +20,8 @@ const REQUIRED_CAPABILITIES = [
   'public_routing',
   'search',
   'media',
-  'brand'
+  'brand',
+  'plugin_registry'
 ];
 
 export function resolveRepoRoot(customRoot) {
