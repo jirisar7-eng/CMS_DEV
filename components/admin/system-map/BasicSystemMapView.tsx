@@ -9,7 +9,7 @@ import {
   Globe,
   Info,
 } from 'lucide-react';
-import { BasicSystemMap, BasicCapabilityRecord } from './types';
+import { BasicSystemMap } from './types';
 import { DependencyFlow } from './DependencyFlow';
 
 export interface BasicSystemMapViewProps {
