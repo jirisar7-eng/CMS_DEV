@@ -166,6 +166,7 @@ export function LineageHistoryTab({
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
+                            timeZone: 'Europe/Prague',
                           })}
                         </span>
                       </div>
