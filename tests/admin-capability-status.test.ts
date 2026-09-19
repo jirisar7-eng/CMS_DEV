@@ -115,6 +115,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('pages'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('themes'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('brands'), 'FUNKČNÍ');
+      assert.strictEqual(getCapabilityStatus('redirects'), 'FUNKČNÍ');
     });
 
     it('verified ZÁKLAD capabilities are correctly marked', () => {
@@ -123,6 +124,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('publishing'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('revisions'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('search'), 'ZÁKLAD');
+      assert.strictEqual(getCapabilityStatus('seo'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('svg-editor'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('users'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('roles'), 'ZÁKLAD');
@@ -138,8 +140,6 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
     });
 
     it('verified POUZE UI capabilities are correctly marked', () => {
-      assert.strictEqual(getCapabilityStatus('seo'), 'POUZE UI');
-      assert.strictEqual(getCapabilityStatus('redirects'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('pwa'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('modules'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('notifications'), 'POUZE UI');
@@ -164,9 +164,9 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['DOKONČENO'] + 
         stats['VYPNUTO'];
       assert.strictEqual(sum, 31);
-      assert.strictEqual(stats['FUNKČNÍ'], 3);
-      assert.strictEqual(stats['ZÁKLAD'], 11);
-      assert.strictEqual(stats['POUZE UI'], 14);
+      assert.strictEqual(stats['FUNKČNÍ'], 4);
+      assert.strictEqual(stats['ZÁKLAD'], 12);
+      assert.strictEqual(stats['POUZE UI'], 12);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
       assert.strictEqual(stats['VYPNUTO'], 0);
