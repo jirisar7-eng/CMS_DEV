@@ -1,12 +1,49 @@
 // @ts-nocheck
-import { describe, it } from 'node:test';
+import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import Module from 'node:module';
 import {
   resolveBasicSystemMap,
   resolveInternalSystemMap,
 } from '../lib/domain/system-map/resolver';
+
+let mockSessionUser: { id: string; email: string; displayName: string | null; status: string } | null = null;
+let mockPermissions: Record<string, boolean> = {};
+
+const originalRequire = Module.prototype.require;
+Module.prototype.require = function (id: string) {
+  if (id === 'next/headers') {
+    return {
+      cookies: async () => ({
+        get: () => undefined,
+        set: () => {},
+        delete: () => {},
+      }),
+    };
+  }
+  if (id.includes('lib/auth/session')) {
+    return {
+      getSession: async () => ({
+        session: mockSessionUser ? { id: 'sess-123', userId: mockSessionUser.id, expiresAt: new Date(Date.now() + 86400000) } : null,
+        user: mockSessionUser,
+      }),
+    };
+  }
+  if (id.includes('lib/auth/rbac')) {
+    return {
+      hasPermission: async (userId: string, permissionKey: string) => !!mockPermissions[permissionKey],
+    };
+  }
+  if (id.startsWith('@/')) {
+    const relativePath = id.slice(2);
+    return originalRequire.call(this, path.resolve(__dirname, '..', relativePath));
+  }
+  return originalRequire.apply(this, arguments as any);
+};
+
+const SystemMapPage = require('../app/admin/system-map/page').default;
 
 describe('SYN-SYSTEM-MAP-002: System Map UI & Security Boundary Coverage', () => {
   const rootDir = path.resolve(__dirname, '..');
@@ -31,6 +68,11 @@ describe('SYN-SYSTEM-MAP-002: System Map UI & Security Boundary Coverage', () =>
     path.join(rootDir, 'app/admin/system-map/page.tsx'),
     'utf8'
   );
+
+  beforeEach(() => {
+    mockSessionUser = null;
+    mockPermissions = {};
+  });
 
   describe('1. Basic View Structural Isolation & Redaction', () => {
     it('resolveBasicSystemMap returns only safe BasicSystemMap schema', () => {
@@ -95,17 +137,72 @@ describe('SYN-SYSTEM-MAP-002: System Map UI & Security Boundary Coverage', () =>
     });
   });
 
-  describe('4. Server Page Authorization & Sanitization', () => {
+  describe('4. Server Page Authorization & Security Boundary (Behavioral Test)', () => {
     it('app/admin/system-map/page.tsx enforces dynamic server-side evaluation', () => {
       assert.match(pageCode, /export const dynamic = ['"]force-dynamic['"]/);
       assert.match(pageCode, /export const revalidate = 0/);
     });
 
-    it('page.tsx selects internal or basic dataset server-side', () => {
-      assert.match(pageCode, /canReadInternal\s*=\s*await\s+hasPermission/);
-      assert.match(pageCode, /canReadBasic\s*=\s*canReadInternal\s*\|\|/);
-      assert.match(pageCode, /resolveInternalSystemMap\(\)/);
-      assert.match(pageCode, /resolveBasicSystemMap\(\)/);
+    it('denied user (unauthenticated, inactive, or lacking permissions) → denied output', async () => {
+      // 1. Unauthenticated user
+      mockSessionUser = null;
+      mockPermissions = {};
+      const unauthResult = await SystemMapPage();
+      assert.strictEqual(unauthResult.type, 'div');
+
+      // 2. Inactive user
+      mockSessionUser = { id: 'usr-1', email: 'test@example.com', displayName: 'Test', status: 'INACTIVE' };
+      const inactiveResult = await SystemMapPage();
+      assert.strictEqual(inactiveResult.type, 'div');
+
+      // 3. Active user lacking system_map permissions
+      mockSessionUser = { id: 'usr-1', email: 'test@example.com', displayName: 'Test', status: 'ACTIVE' };
+      mockPermissions = { 'system_map.read_basic': false, 'system_map.read_internal': false };
+      const noPermResult = await SystemMapPage();
+      assert.strictEqual(noPermResult.type, 'div');
+    });
+
+    it('basic permission user → pouze basic dataset', async () => {
+      mockSessionUser = { id: 'usr-2', email: 'basic@example.com', displayName: 'Basic User', status: 'ACTIVE' };
+      mockPermissions = { 'system_map.read_basic': true, 'system_map.read_internal': false };
+
+      const pageResult = await SystemMapPage();
+      assert.strictEqual(pageResult.props.accessLevel, 'basic');
+
+      const data = pageResult.props.data;
+      assert.strictEqual(data.view, 'basic');
+      assert.strictEqual(data.tasks, undefined);
+      assert.ok(Array.isArray(data.capabilities));
+
+      for (const cap of data.capabilities) {
+        assert.strictEqual(cap.canonical_owner_paths, undefined);
+        assert.strictEqual(cap.data_models, undefined);
+        assert.strictEqual(cap.api_boundaries, undefined);
+        assert.strictEqual(cap.security_boundary, undefined);
+        assert.strictEqual(cap.source_tasks, undefined);
+        assert.strictEqual(cap.last_merge_sha, undefined);
+      }
+    });
+
+    it('internal permission user → internal dataset', async () => {
+      mockSessionUser = { id: 'usr-3', email: 'internal@example.com', displayName: 'Internal Admin', status: 'ACTIVE' };
+      mockPermissions = { 'system_map.read_internal': true, 'system_map.read_basic': true };
+
+      const pageResult = await SystemMapPage();
+      assert.strictEqual(pageResult.props.accessLevel, 'internal');
+
+      const data = pageResult.props.data;
+      assert.strictEqual(data.view, 'internal');
+      assert.ok(Array.isArray(data.tasks));
+      assert.ok(typeof data.total_tasks === 'number');
+      assert.ok(Array.isArray(data.capabilities));
+
+      for (const cap of data.capabilities) {
+        assert.ok(Array.isArray(cap.canonical_owner_paths));
+        assert.ok(Array.isArray(cap.data_models));
+        assert.ok(Array.isArray(cap.api_boundaries));
+        assert.strictEqual(typeof cap.security_boundary, 'string');
+      }
     });
 
     it('denial text in page.tsx does not leak internal permission keys', () => {
