@@ -22,15 +22,14 @@
         "SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
         "SYN-ADMIN-STATUS-001-CAPABILITY-MAP"
       ],
-      "last_merge_sha": "2cf4fcb9d7efad603889baf7b12d5964923e20e3",
+      "last_merge_sha": "2cf4fcb9a4353bc2c48883fd1e4061631358d41c",
       "ssot_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT"
     },
     {
       "capability_id": "identity_rbac",
       "canonical_owner_paths": [
         "lib/auth/**",
-        "app/admin/login/**",
-        "app/api/auth/**"
+        "app/(auth)/admin/login/**"
       ],
       "data_models": [
         "User",
@@ -64,7 +63,8 @@
         "lib/domain/pages-client/project-context.ts",
         "lib/domain/pages-client/server-context.ts",
         "lib/domain/pages-client/useProject.ts",
-        "app/api/admin/projects/**",
+        "app/api/admin/projects/route.ts",
+        "app/admin/projects/**",
         "components/admin/ProjectSelector.tsx"
       ],
       "data_models": [
@@ -347,7 +347,8 @@
       "capability_id": "brand",
       "canonical_owner_paths": [
         "lib/domain/brand/**",
-        "app/admin/brand/**",
+        "app/admin/brands/**",
+        "app/admin/themes/**",
         "components/admin/brand/**"
       ],
       "data_models": [

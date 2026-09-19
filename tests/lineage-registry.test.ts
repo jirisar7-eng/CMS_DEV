@@ -4,7 +4,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { validateLineage, resolveRepoRoot } from '../scripts/lineage/validate.mjs';
+import { validateLineage, resolveRepoRoot, matchesOwnerPath } from '../scripts/lineage/validate.mjs';
 
 const repoRoot = resolveRepoRoot();
 const tasksPath = path.join(repoRoot, '.synthesis/lineage/tasks.json');
@@ -141,5 +141,60 @@ describe('SYN-GOV-LINEAGE-001: Authoritative Implementation Lineage & Capability
     assert.ok(ssot.redirect_runtime_role.includes('consumes published content + RedirectRule'));
     assert.ok(ssot.media_replace_role.includes('SAFELY_DISABLED / deferred'));
     assert.ok(ssot.sitemap_runtime_role.includes('planned / not falsely complete'));
+  });
+
+  it('14. Fails closed when unknown syntactically-valid last_merge_sha is referenced', () => {
+    const mutated = JSON.parse(JSON.stringify(rawCapabilities));
+    mutated.capabilities[0].last_merge_sha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const res = validateLineage({ repoRoot, capabilitiesData: mutated });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes('references unknown last_merge_sha')));
+  });
+
+  it('15. Fails closed when unknown source_task is referenced', () => {
+    const mutated = JSON.parse(JSON.stringify(rawCapabilities));
+    mutated.capabilities[1].source_tasks.push('SYN-UNKNOWN-TASK-999');
+    const res = validateLineage({ repoRoot, capabilitiesData: mutated });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes('references unknown source_task')));
+  });
+
+  it('16. Fails closed when canonical owner path matches zero tracked repository files', () => {
+    const mutated = JSON.parse(JSON.stringify(rawCapabilities));
+    mutated.capabilities[1].canonical_owner_paths.push('app/admin/nonexistent_fake_path/**');
+    const res = validateLineage({ repoRoot, capabilitiesData: mutated });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes('matches 0 tracked repository files')));
+  });
+
+  it('17. Accurately treats route-group (auth) as literal path and not regex group', () => {
+    const pattern = 'app/(auth)/admin/login/**';
+    assert.strictEqual(matchesOwnerPath('app/(auth)/admin/login/page.tsx', pattern), true);
+    assert.strictEqual(matchesOwnerPath('app/(auth)/admin/login/actions.ts', pattern), true);
+    assert.strictEqual(matchesOwnerPath('app/admin/login/page.tsx', pattern), false);
+    assert.strictEqual(matchesOwnerPath('app/auth/admin/login/page.tsx', pattern), false);
+  });
+
+  it('18. Accurately treats dynamic segment [projectId] as literal path and not regex character class', () => {
+    const pattern = 'app/api/admin/projects/[projectId]/seo/**';
+    assert.strictEqual(matchesOwnerPath('app/api/admin/projects/[projectId]/seo/route.ts', pattern), true);
+    assert.strictEqual(matchesOwnerPath('app/api/admin/projects/seo/route.ts', pattern), false);
+    assert.strictEqual(matchesOwnerPath('app/api/admin/projects/p/seo/route.ts', pattern), false);
+  });
+
+  it('19. Fails closed when PR baseline 1..34 range is incomplete or out of range', () => {
+    // Test missing PR
+    const mutatedMissing = JSON.parse(JSON.stringify(rawTasks));
+    mutatedMissing.tasks = mutatedMissing.tasks.filter((t: any) => t.pr_number !== 5);
+    const resMissing = validateLineage({ repoRoot, tasksData: mutatedMissing });
+    assert.strictEqual(resMissing.valid, false);
+    assert.ok(resMissing.errors.some((e: string) => e.includes('Missing required PR #5')));
+
+    // Test out of range PR
+    const mutatedOutOfRange = JSON.parse(JSON.stringify(rawTasks));
+    mutatedOutOfRange.tasks[33].pr_number = 35;
+    const resOutOfRange = validateLineage({ repoRoot, tasksData: mutatedOutOfRange });
+    assert.strictEqual(resOutOfRange.valid, false);
+    assert.ok(resOutOfRange.errors.some((e: string) => e.includes('outside expected baseline range 1..34')));
   });
 });
