@@ -440,7 +440,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const data = await res.json();
       assert.strictEqual(data.view, 'basic');
-      assert.strictEqual(data.total_capabilities, 13);
+      assert.strictEqual(data.total_capabilities, 14);
       assert.strictEqual(data.tasks, undefined);
     });
 
@@ -485,7 +485,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const data = await res.json();
       assert.strictEqual(data.view, 'internal');
-      assert.strictEqual(data.total_capabilities, 13);
+      assert.strictEqual(data.total_capabilities, 14);
       assert.strictEqual(data.total_tasks, 34);
       assert.strictEqual(data.tasks.length, 34);
     });
