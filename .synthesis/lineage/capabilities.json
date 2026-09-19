@@ -382,10 +382,10 @@
       "security_boundary": "SYSTEM_GOVERNANCE",
       "visibility": "OWNER_INTERNAL",
       "source_tasks": [
-        "SYN-INTEGRATE-001-PREPRISMA-CHECKPOINT"
+        "SYN-PLUGIN-001-PLUGIN-MANIFEST-REGISTRY-FOUNDATION"
       ],
-      "last_merge_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
-      "ssot_role": "In-memory plugin manifest registry SSOT; no runtime execution, persistence, API, or UI"
+      "last_merge_sha": "1cfdf81b29be8f93f03710590c71a72705ac8038",
+      "ssot_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
     }
   ],
   "ssot_rules": {
@@ -397,6 +397,6 @@
     "redirect_runtime_role": "Redirect runtime = consumes published content + RedirectRule",
     "media_replace_role": "Media Replace = SAFELY_DISABLED / deferred",
     "sitemap_runtime_role": "Sitemap runtime = planned / not falsely complete",
-    "plugin_registry_role": "In-memory plugin manifest registry SSOT; no runtime execution, persistence, API, or UI"
+    "plugin_registry_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
   }
 }
