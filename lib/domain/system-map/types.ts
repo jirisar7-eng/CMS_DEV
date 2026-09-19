@@ -60,7 +60,6 @@ export interface BasicCapabilityRecord {
   visibility: CapabilityVisibility;
   project_scoped: boolean;
   depends_on_capabilities: string[];
-  ssot_role: string;
 }
 
 export interface BasicSystemMap {

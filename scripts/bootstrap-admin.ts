@@ -83,7 +83,7 @@ async function bootstrap() {
     }
   }
 
-  // 2b. Ensure system_map.read_internal exists, but is NOT granted to SUPER_ADMIN role
+  // 2b. Ensure system_map.read_internal exists, but is NOT granted to SUPER_ADMIN role (remove if present)
   let internalPerm = await prisma.permission.findUnique({
     where: { key: 'system_map.read_internal' },
   });
@@ -93,6 +93,27 @@ async function bootstrap() {
       data: {
         key: 'system_map.read_internal',
         description: 'Sensitive permission: full authoritative lineage and capability map access',
+      },
+    });
+  }
+
+  // Idempotently ensure system_map.read_internal is NOT attached to SUPER_ADMIN role
+  const existingRolePerm = await prisma.rolePermission.findUnique({
+    where: {
+      roleId_permissionId: {
+        roleId: superAdminRole.id,
+        permissionId: internalPerm.id,
+      },
+    },
+  });
+  if (existingRolePerm) {
+    console.log('Removing system_map.read_internal from SUPER_ADMIN role (must not be role-granted)...');
+    await prisma.rolePermission.delete({
+      where: {
+        roleId_permissionId: {
+          roleId: superAdminRole.id,
+          permissionId: internalPerm.id,
+        },
       },
     });
   }
@@ -160,6 +181,14 @@ async function bootstrap() {
         userId: adminUser.id,
         permissionId: internalPerm.id,
         projectId: null,
+        isGranted: true,
+      },
+    });
+  } else if (!internalOverride.isGranted) {
+    console.log(`Switching existing DENY override to ALLOW for bootstrap owner (${email}) on system_map.read_internal`);
+    await prisma.userPermissionOverride.update({
+      where: { id: internalOverride.id },
+      data: {
         isGranted: true,
       },
     });

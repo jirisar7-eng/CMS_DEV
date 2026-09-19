@@ -128,7 +128,6 @@ export function redactToBasicCapability(raw: InternalCapabilityRecord): BasicCap
     depends_on_capabilities: Array.isArray(raw.depends_on_capabilities)
       ? [...raw.depends_on_capabilities]
       : [],
-    ssot_role: raw.ssot_role || '',
   };
 }
 

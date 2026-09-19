@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     console.error('Error resolving system map:', error);
     if (error instanceof SystemMapRegistryError) {
       return NextResponse.json(
-        { error: 'SYSTEM_MAP_REGISTRY_ERROR', message: error.message },
+        { error: 'SYSTEM_MAP_REGISTRY_ERROR', message: 'Failed to load or verify lineage registry' },
         { status: 500, headers: NO_STORE_HEADERS }
       );
     }
