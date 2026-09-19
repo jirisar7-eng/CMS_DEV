@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
+  "environment": "CMS_DEV",
+  "base_sha": "7244d1676baa868a0c7c061c0950f6dd05f16210",
+  "expected_branch": "task/SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE",
+    "DB_SCHEMA"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "prisma/migrations/**",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "lib/domain/seo/*",
+    "lib/domain/redirects/*",
+    "app/api/admin/projects/[projectId]/seo/*",
+    "app/api/admin/projects/[projectId]/redirects/*",
+    "tests/seo-domain.test.ts",
+    "tests/redirects-domain.test.ts"
+  ]
+}

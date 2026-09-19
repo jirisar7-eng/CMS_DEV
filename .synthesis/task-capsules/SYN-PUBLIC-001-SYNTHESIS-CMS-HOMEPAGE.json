@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-PUBLIC-001-SYNTHESIS-CMS-HOMEPAGE",
+  "environment": "CMS_DEV",
+  "base_sha": "b9952fec44e245bac3de5aff6ad53fce28f0c579",
+  "expected_branch": "task/SYN-PUBLIC-001-SYNTHESIS-CMS-HOMEPAGE",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/page.tsx",
+    "components/public/Documentation.tsx",
+    "components/public/Features.tsx",
+    "components/public/Hero.tsx",
+    "components/public/Pricing.tsx",
+    "components/public/PublicFooter.tsx",
+    "components/public/PublicHeader.tsx",
+    "components/public/Security.tsx",
+    "components/public/TechRequirements.tsx",
+    "components/public/WhySynthesis.tsx"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "deploy/*",
+    "infra/*",
+    "package.json",
+    "bun.lock"
+  ]
+}

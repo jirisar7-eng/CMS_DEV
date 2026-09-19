@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "task_id": "SYN-DATA-002-PROVISIONING",
+  "environment": "CMS_DEV",
+  "base_sha": "fbe30b9cb81e2e5cebd569ebf405bce558698770",
+  "expected_branch": "task/SYN-DATA-002-PROVISIONING",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "CONFIG",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "deploy/cms-dev/compose.yml",
+    "deploy/cms-dev/Dockerfile",
+    "prisma/migrations/*"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "docs/environment/ENV-LEGACY-*",
+    "infra/*"
+  ]
+}

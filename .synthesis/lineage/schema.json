@@ -1,0 +1,250 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Synthesis CMS Lineage & Capability Registry Schema",
+  "description": "Authoritative schema definition for historical task lineage, active capsules, and current capability ownership.",
+  "version": "1.0.0",
+  "definitions": {
+    "Sha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "Visibility": {
+      "type": "string",
+      "enum": [
+        "OWNER_INTERNAL",
+        "SAFE_PUBLIC_METADATA"
+      ]
+    },
+    "DerivedStatus": {
+      "type": "string",
+      "enum": [
+        "MERGED"
+      ]
+    },
+    "TaskRecord": {
+      "type": "object",
+      "required": [
+        "record_version",
+        "pr_number",
+        "pr_title",
+        "task_id",
+        "branch",
+        "base_sha",
+        "source_head_sha",
+        "merge_sha",
+        "merged_at",
+        "capsule_present",
+        "capsule_declared_status",
+        "derived_status",
+        "allowed_paths",
+        "actual_changed_files",
+        "capsule_sha256",
+        "touches_capabilities",
+        "depends_on_tasks",
+        "evidence_source"
+      ],
+      "properties": {
+        "record_version": {
+          "type": "string",
+          "const": "1.0.0"
+        },
+        "pr_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pr_title": {
+          "type": "string"
+        },
+        "task_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "base_sha": {
+          "$ref": "#/definitions/Sha1"
+        },
+        "source_head_sha": {
+          "$ref": "#/definitions/Sha1"
+        },
+        "merge_sha": {
+          "$ref": "#/definitions/Sha1"
+        },
+        "merged_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "capsule_present": {
+          "type": "boolean"
+        },
+        "capsule_declared_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "derived_status": {
+          "$ref": "#/definitions/DerivedStatus"
+        },
+        "allowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "actual_changed_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "capsule_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/Sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "touches_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "depends_on_tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_source": {
+          "type": "string"
+        }
+      }
+    },
+    "CapabilityRecord": {
+      "type": "object",
+      "required": [
+        "capability_id",
+        "canonical_owner_paths",
+        "data_models",
+        "api_boundaries",
+        "depends_on_capabilities",
+        "project_scoped",
+        "security_boundary",
+        "visibility",
+        "source_tasks",
+        "last_merge_sha"
+      ],
+      "properties": {
+        "capability_id": {
+          "type": "string"
+        },
+        "canonical_owner_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "data_models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "api_boundaries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "depends_on_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "project_scoped": {
+          "type": "boolean"
+        },
+        "security_boundary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "visibility": {
+          "$ref": "#/definitions/Visibility"
+        },
+        "source_tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_merge_sha": {
+          "$ref": "#/definitions/Sha1"
+        },
+        "ssot_role": {
+          "type": "string"
+        }
+      }
+    },
+    "TasksRegistry": {
+      "type": "object",
+      "required": [
+        "registry_version",
+        "tasks"
+      ],
+      "properties": {
+        "registry_version": {
+          "type": "string",
+          "const": "1.0.0"
+        },
+        "total_tasks": {
+          "type": "integer"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TaskRecord"
+          }
+        }
+      }
+    },
+    "CapabilitiesRegistry": {
+      "type": "object",
+      "required": [
+        "registry_version",
+        "capabilities"
+      ],
+      "properties": {
+        "registry_version": {
+          "type": "string",
+          "const": "1.0.0"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CapabilityRecord"
+          }
+        },
+        "ssot_rules": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

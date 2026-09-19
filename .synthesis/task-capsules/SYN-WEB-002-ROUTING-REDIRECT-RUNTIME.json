@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-WEB-002-ROUTING-REDIRECT-RUNTIME",
+  "environment": "CMS_DEV",
+  "base_sha": "c9e30e9cea7453222613d481ddcf10446bd50016",
+  "expected_branch": "task/SYN-WEB-002-ROUTING-REDIRECT-RUNTIME",
+  "owner": "CHATGPT",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "lib/domain/routing/*",
+    "lib/domain/routing/**",
+    "lib/domain/redirects/service.ts",
+    "app/api/public/route/*",
+    "app/api/public/route/**",
+    "app/api/admin/projects/[projectId]/routing/*",
+    "app/api/admin/projects/[projectId]/routing/**",
+    "tests/routing-domain.test.ts",
+    "tests/broken-links.test.ts"
+  ]
+}

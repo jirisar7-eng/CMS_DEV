@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "task_id": "SYN-DATA-005-GARAGE-INIT-IMAGE",
+  "environment": "CMS_DEV",
+  "base_sha": "a8b860b32ce427b819a2b4b7114a653b992a4740",
+  "expected_branch": "task/SYN-DATA-005-GARAGE-INIT-IMAGE",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "CONFIG",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "deploy/cms-dev/compose.yml",
+    "deploy/cms-dev/Dockerfile.garage-init"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "docs/environment/ENV-LEGACY-*",
+    "infra/*"
+  ]
+}

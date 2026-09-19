@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-BRAND-002-BRAND-STUDIO",
+  "environment": "CMS_DEV",
+  "base_sha": "81d89522fe5ac0bd5a5521750a8d5c08df641048",
+  "expected_branch": "task/SYN-BRAND-002-BRAND-STUDIO",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "allowed_mutation_types": [
+    "CODE",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "lib/domain/brand/*",
+    "app/admin/brands/*",
+    "app/admin/themes/*",
+    "components/admin/brand/*",
+    "components/theme/theme-provider.tsx",
+    "app/layout.tsx",
+    "lib/auth/rbac.ts",
+    "lib/auth/audit.ts",
+    "docs/architecture/SYN-BRAND-002.md",
+    "tests/brand-studio.test.ts",
+    "tests/brand-authorization.test.ts",
+    "tests/brand-lifecycle.test.ts",
+    "package.json",
+    "package-lock.json",
+    "lib/domain/brand/runtime.ts",
+    "tests/brand-runtime.test.ts",
+    "tests/brand-repository.test.ts",
+    "lib/domain/brand/repository.ts"
+  ],
+  "forbidden_paths": [
+    ".env",
+    ".env.local",
+    "deploy/*",
+    "infra/*",
+    "bun.lock"
+  ]
+}
