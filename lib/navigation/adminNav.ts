@@ -342,8 +342,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/system-map',
         icon: Map,
         group: 'SYSTÉM',
-        status: 'POUZE UI',
-        helpKey: 'system.status_model',
+        status: 'ZÁKLAD',
+        helpKey: 'system.map.view',
         description: 'Interaktivní mapa systému, architektury a přehled modulů.',
       },
       {
