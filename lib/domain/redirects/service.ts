@@ -67,7 +67,8 @@ export class RedirectService {
   static async validateRedirect(
     sourcePathOrProjectId: string,
     targetPathOrSourcePath: string,
-    maybeTargetPath?: string
+    maybeTargetPath?: string,
+    excludeRuleId?: string
   ): Promise<{ src: string; tgt: string }> {
     let projectId = '';
     let sourcePath = '';
@@ -94,7 +95,7 @@ export class RedirectService {
     }
 
     if (projectId) {
-      const isCycle = await this.detectCycle(projectId, src, tgt);
+      const isCycle = await this.detectCycle(projectId, src, tgt, excludeRuleId);
       if (isCycle) {
         throw new Error('CYCLE_DETECTED');
       }
@@ -103,7 +104,12 @@ export class RedirectService {
     return { src, tgt };
   }
 
-  static async detectCycle(projectId: string, sourcePath: string, targetPath: string): Promise<boolean> {
+  static async detectCycle(
+    projectId: string,
+    sourcePath: string,
+    targetPath: string,
+    excludeRuleId?: string
+  ): Promise<boolean> {
     let current: string | null = targetPath;
     const visited = new Set<string>();
     visited.add(sourcePath);
@@ -119,7 +125,8 @@ export class RedirectService {
         where: {
           projectId,
           sourcePath: current,
-          active: true
+          active: true,
+          ...(excludeRuleId ? { id: { not: excludeRuleId } } : {})
         },
         orderBy: { priority: 'desc' },
         select: { targetPath: true }
@@ -161,6 +168,96 @@ export class RedirectService {
         createdById
       }
     });
+  }
+
+  static async updateRedirect(
+    projectId: string,
+    ruleId: string,
+    data: {
+      sourcePath?: string;
+      targetPath?: string;
+      type?: RedirectType;
+      active?: boolean;
+      priority?: number;
+    }
+  ) {
+    if (!ruleId || typeof ruleId !== 'string') {
+      throw new Error('INVALID_INPUT');
+    }
+
+    const existing = await prisma.redirectRule.findFirst({
+      where: { id: ruleId, projectId }
+    });
+
+    if (!existing) {
+      throw new Error('NOT_FOUND');
+    }
+
+    if (data.type !== undefined && data.type !== 'MOVED_PERMANENTLY' && data.type !== 'FOUND') {
+      throw new Error('INVALID_REDIRECT_TYPE');
+    }
+
+    if (data.active !== undefined && typeof data.active !== 'boolean') {
+      throw new Error('INVALID_INPUT');
+    }
+
+    if (data.priority !== undefined && (typeof data.priority !== 'number' || !Number.isInteger(data.priority))) {
+      throw new Error('INVALID_PRIORITY');
+    }
+
+    const newSource = data.sourcePath !== undefined ? data.sourcePath : existing.sourcePath;
+    const newTarget = data.targetPath !== undefined ? data.targetPath : existing.targetPath;
+
+    const { src, tgt } = await this.validateRedirect(
+      projectId,
+      newSource,
+      newTarget,
+      ruleId
+    );
+
+    if (src !== existing.sourcePath) {
+      const duplicate = await prisma.redirectRule.findFirst({
+        where: {
+          projectId,
+          sourcePath: src,
+          id: { not: ruleId }
+        }
+      });
+      if (duplicate) {
+        throw new Error('DUPLICATE_SOURCE_PATH');
+      }
+    }
+
+    return prisma.redirectRule.update({
+      where: { id: ruleId },
+      data: {
+        sourcePath: src,
+        targetPath: tgt,
+        ...(data.type !== undefined ? { type: data.type } : {}),
+        ...(data.active !== undefined ? { active: data.active } : {}),
+        ...(data.priority !== undefined ? { priority: data.priority } : {}),
+      }
+    });
+  }
+
+  static async deleteRedirect(projectId: string, ruleId: string) {
+    if (!ruleId || typeof ruleId !== 'string') {
+      throw new Error('INVALID_INPUT');
+    }
+
+    const existing = await prisma.redirectRule.findFirst({
+      where: { id: ruleId, projectId }
+    });
+
+    if (!existing) {
+      throw new Error('NOT_FOUND');
+    }
+
+    await prisma.redirectRule.delete({
+      where: { id: ruleId }
+    });
+
+    return { success: true, id: ruleId };
   }
 
   static async resolveRedirect(projectId: string, path: string): Promise<RedirectResolution> {

@@ -60,6 +60,17 @@ export async function PUT(
       return NextResponse.json({ error: 'INVALID_INPUT' }, { status: 400 });
     }
 
+    const validateStringOrNull = (val: any) => val === undefined || val === null || typeof val === 'string';
+    if (
+      !validateStringOrNull(data.defaultTitle) ||
+      !validateStringOrNull(data.titleTemplate) ||
+      !validateStringOrNull(data.defaultDescription) ||
+      !validateStringOrNull(data.defaultOgImage) ||
+      !validateStringOrNull(data.robotsTxt)
+    ) {
+      return NextResponse.json({ error: 'INVALID_INPUT' }, { status: 400 });
+    }
+
     if (data.canonicalUrl) {
       try {
         SeoService.validateCanonicalUrl(data.canonicalUrl);
@@ -71,19 +82,19 @@ export async function PUT(
     const seoSettings = await prisma.projectSeoSettings.upsert({
       where: { projectId: projectContext.projectId },
       update: {
-        defaultTitle: data.defaultTitle,
-        titleTemplate: data.titleTemplate,
-        defaultDescription: data.defaultDescription,
-        defaultOgImage: data.defaultOgImage,
-        robotsTxt: data.robotsTxt,
+        ...(data.defaultTitle !== undefined ? { defaultTitle: data.defaultTitle } : {}),
+        ...(data.titleTemplate !== undefined ? { titleTemplate: data.titleTemplate } : {}),
+        ...(data.defaultDescription !== undefined ? { defaultDescription: data.defaultDescription } : {}),
+        ...(data.defaultOgImage !== undefined ? { defaultOgImage: data.defaultOgImage } : {}),
+        ...(data.robotsTxt !== undefined ? { robotsTxt: data.robotsTxt } : {}),
       },
       create: {
         projectId: projectContext.projectId,
-        defaultTitle: data.defaultTitle,
-        titleTemplate: data.titleTemplate,
-        defaultDescription: data.defaultDescription,
-        defaultOgImage: data.defaultOgImage,
-        robotsTxt: data.robotsTxt,
+        defaultTitle: data.defaultTitle ?? null,
+        titleTemplate: data.titleTemplate ?? null,
+        defaultDescription: data.defaultDescription ?? null,
+        defaultOgImage: data.defaultOgImage ?? null,
+        robotsTxt: data.robotsTxt ?? null,
       },
     });
 
