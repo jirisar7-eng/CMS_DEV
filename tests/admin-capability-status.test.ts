@@ -111,6 +111,15 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.doesNotMatch(navFile, /"ROZPRACOVÁNO"/);
     });
 
+    it('System Map capability is correctly registered in SYSTÉM with status ZÁKLAD and helpKey system.map.view', () => {
+      const item = getCapabilityById('system-map');
+      assert.ok(item, 'system-map capability must exist');
+      assert.strictEqual(item.group, 'SYSTÉM');
+      assert.strictEqual(item.href, '/admin/system-map');
+      assert.strictEqual(item.status, 'ZÁKLAD');
+      assert.strictEqual(item.helpKey, 'system.map.view');
+    });
+
     it('verified FUNKČNÍ capabilities are correctly marked', () => {
       assert.strictEqual(getCapabilityStatus('pages'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('themes'), 'FUNKČNÍ');
