@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ArrowRight, Layers, Lock, Globe, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Layers, Lock, Globe } from 'lucide-react';
 import { BasicCapabilityRecord, InternalCapabilityRecord } from './types';
 
 export interface DependencyFlowProps {
