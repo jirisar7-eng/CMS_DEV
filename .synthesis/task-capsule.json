@@ -1,23 +1,24 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
+  "task_id": "SYN-SYSTEM-MAP-001",
   "environment": "CMS_DEV",
-  "base_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
-  "expected_branch": "task/SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
+  "base_sha": "15fbff2ea0311d8551881cbe9e7a0d13ebb7aed9",
+  "expected_branch": "task/SYN-SYSTEM-MAP-001-SECURE-RESOLVER",
   "owner": "AI_STUDIO",
   "status": "COMPLETED",
   "allowed_mutation_types": [
-    "GOVERNANCE",
-    "EVIDENCE"
+    "CODE",
+    "TEST",
+    "GOVERNANCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    ".synthesis/task-capsules/*",
-    ".synthesis/task-capsules/**",
-    ".synthesis/lineage/*",
-    ".synthesis/lineage/**",
-    "scripts/lineage/*",
-    "scripts/lineage/**",
-    "tests/lineage-registry.test.ts"
+    "lib/domain/system-map/*",
+    "lib/domain/system-map/**",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "app/api/admin/system-map/*",
+    "app/api/admin/system-map/**",
+    "tests/system-map-resolver.test.ts"
   ]
 }
