@@ -1,11 +1,11 @@
 {
   "version": "1.0.0",
-  "task_id": "SYN-SYSTEM-MAP-002",
+  "task_id": "SYN-PLUGIN-001",
   "environment": "CMS_DEV",
-  "base_sha": "59aab75699b39b8081e0655091cf908e7e470346",
-  "expected_branch": "task/SYN-SYSTEM-MAP-002-ADMIN-UI",
+  "base_sha": "b1919ef082a38a5b9d8e07d09d58737ef288f602",
+  "expected_branch": "task/SYN-PLUGIN-001-PLUGIN-MANIFEST-REGISTRY-FOUNDATION",
   "owner": "AI_STUDIO",
-  "status": "COMPLETED",
+  "status": "IN_PROGRESS",
   "allowed_mutation_types": [
     "CODE",
     "TEST",
@@ -13,14 +13,10 @@
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "lib/help/types.ts",
-    "lib/help/registry.ts",
-    "lib/navigation/adminNav.ts",
-    "components/admin/system-map/*",
-    "components/admin/system-map/**",
-    "app/admin/system-map/*",
-    "app/admin/system-map/**",
-    "tests/admin-capability-status.test.ts",
-    "tests/system-map-ui.test.ts"
+    "lib/domain/plugin/contracts.ts",
+    "lib/domain/plugin/registry.ts",
+    "lib/domain/plugin/validator.ts",
+    "lib/domain/plugin/index.ts",
+    "tests/plugin-registry.test.ts"
   ]
 }
