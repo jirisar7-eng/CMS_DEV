@@ -3,13 +3,10 @@
 import React, { useState } from 'react';
 import {
   Layers,
-  Shield,
   Search,
   Filter,
-  CheckCircle2,
   Lock,
   Globe,
-  Link as LinkIcon,
   Info,
 } from 'lucide-react';
 import { BasicSystemMap, BasicCapabilityRecord } from './types';
