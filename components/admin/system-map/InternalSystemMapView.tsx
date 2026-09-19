@@ -11,10 +11,9 @@ import {
   Database,
   Network,
   Shield,
-  GitCommit,
   Info,
 } from 'lucide-react';
-import { InternalSystemMap, InternalCapabilityRecord } from './types';
+import { InternalSystemMap } from './types';
 import { DependencyFlow } from './DependencyFlow';
 
 export interface InternalSystemMapViewProps {
@@ -35,8 +34,8 @@ export function InternalSystemMapView({
     const query = search.toLowerCase();
     const matchesSearch =
       cap.capability_id.toLowerCase().includes(query) ||
-      cap.source_paths.some((p) => p.toLowerCase().includes(query)) ||
-      cap.db_models.some((m) => m.toLowerCase().includes(query)) ||
+      cap.canonical_owner_paths.some((p) => p.toLowerCase().includes(query)) ||
+      cap.data_models.some((m) => m.toLowerCase().includes(query)) ||
       cap.api_boundaries.some((a) => a.toLowerCase().includes(query));
 
     const matchesVisibility =
@@ -171,30 +170,30 @@ export function InternalSystemMapView({
               </div>
             </div>
 
-            {/* Source Paths */}
+            {/* Canonical Owner Paths */}
             <div>
               <span className="text-stone-400 text-[10px] uppercase font-sans font-semibold tracking-wider flex items-center gap-1 mb-1">
                 <Code className="w-3 h-3 text-sky-400" />
-                Zdrojové kódové cesty ({activeCapability.source_paths.length}):
+                Zdrojové kódové cesty ({activeCapability.canonical_owner_paths.length}):
               </span>
               <div className="bg-stone-950 p-2 rounded border border-stone-800 text-stone-300 max-h-24 overflow-y-auto space-y-0.5">
-                {activeCapability.source_paths.length > 0 ? (
-                  activeCapability.source_paths.map((p, idx) => <div key={idx}>{p}</div>)
+                {activeCapability.canonical_owner_paths.length > 0 ? (
+                  activeCapability.canonical_owner_paths.map((p, idx) => <div key={idx}>{p}</div>)
                 ) : (
                   <span className="text-stone-500 italic">Žádné explicitní cesty</span>
                 )}
               </div>
             </div>
 
-            {/* DB Models */}
+            {/* Data Models */}
             <div>
               <span className="text-stone-400 text-[10px] uppercase font-sans font-semibold tracking-wider flex items-center gap-1 mb-1">
                 <Database className="w-3 h-3 text-indigo-400" />
-                Databázové modely ({activeCapability.db_models.length}):
+                Databázové modely ({activeCapability.data_models.length}):
               </span>
               <div className="bg-stone-950 p-2 rounded border border-stone-800 text-stone-300 max-h-24 overflow-y-auto space-y-0.5">
-                {activeCapability.db_models.length > 0 ? (
-                  activeCapability.db_models.map((m, idx) => <div key={idx}>{m}</div>)
+                {activeCapability.data_models.length > 0 ? (
+                  activeCapability.data_models.map((m, idx) => <div key={idx}>{m}</div>)
                 ) : (
                   <span className="text-stone-500 italic">Žádné DB modely</span>
                 )}
@@ -269,12 +268,12 @@ export function InternalSystemMapView({
                   <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
                     <div className="flex items-center gap-1 text-[11px] text-stone-500 dark:text-stone-400 mb-1">
                       <Code className="w-3 h-3 text-sky-500" />
-                      <span>Cesty ({cap.source_paths.length}):</span>
+                      <span>Cesty ({cap.canonical_owner_paths.length}):</span>
                     </div>
-                    {cap.source_paths.length > 0 ? (
+                    {cap.canonical_owner_paths.length > 0 ? (
                       <div className="text-[10px] text-stone-600 dark:text-stone-300 truncate">
-                        {cap.source_paths[0]}
-                        {cap.source_paths.length > 1 && ` +${cap.source_paths.length - 1} dalších`}
+                        {cap.canonical_owner_paths[0]}
+                        {cap.canonical_owner_paths.length > 1 && ` +${cap.canonical_owner_paths.length - 1} dalších`}
                       </div>
                     ) : (
                       <span className="text-[10px] text-stone-400 italic">Žádné cesty</span>
