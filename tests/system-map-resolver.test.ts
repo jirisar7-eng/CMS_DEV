@@ -411,14 +411,17 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
     });
 
-    it('returns 403 when authenticated user lacks system_map.read_basic', async () => {
+    it('returns 403 when authenticated user lacks system_map.read_basic without disclosing internal permission keys', async () => {
       currentMockSession = { user: { id: 'regular-user', status: 'ACTIVE' } };
       const req = new MockNextRequest('http://localhost:3000/api/admin/system-map');
       const res = await systemMapApiHandler(req as any);
 
       assert.strictEqual(res.status, 403);
       const data = await res.json();
-      assert.strictEqual(data.error, 'UNAUTHORIZED_BASIC_VIEW');
+      assert.strictEqual(data.error, 'FORBIDDEN');
+      assert.strictEqual(data.message, undefined);
+      assert.doesNotMatch(JSON.stringify(data), /system_map/);
+      assert.doesNotMatch(JSON.stringify(data), /read_basic/);
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
     });
 
@@ -441,7 +444,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(data.tasks, undefined);
     });
 
-    it('returns 403 when user with only system_map.read_basic requests ?view=internal', async () => {
+    it('returns 403 when user with only system_map.read_basic requests ?view=internal without disclosing internal permission keys', async () => {
       currentMockSession = { user: { id: 'admin-user', status: 'ACTIVE' } };
       mockPrismaData.userRoles.push({
         userId: 'admin-user',
@@ -454,7 +457,10 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
 
       assert.strictEqual(res.status, 403);
       const data = await res.json();
-      assert.strictEqual(data.error, 'UNAUTHORIZED_INTERNAL_VIEW');
+      assert.strictEqual(data.error, 'FORBIDDEN');
+      assert.strictEqual(data.message, undefined);
+      assert.doesNotMatch(JSON.stringify(data), /system_map/);
+      assert.doesNotMatch(JSON.stringify(data), /read_internal/);
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
     });
 
@@ -501,7 +507,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
     });
 
-    it('returns 500 with sanitized generic error and NO filesystem paths or raw error details when SystemMapRegistryError occurs', async () => {
+    it('returns 500 with sanitized generic error and NO filesystem paths or raw error details when SystemMapRegistryError occurs via real API handler', async () => {
       currentMockSession = { user: { id: 'admin-user', status: 'ACTIVE' } };
       mockPrismaData.userRoles.push({
         userId: 'admin-user',
@@ -509,42 +515,36 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
         projectId: null,
       });
 
-      // Pass request that triggers failure if custom root is missing
       const req = new MockNextRequest('http://localhost:3000/api/admin/system-map');
 
-      // Temporarily mock loadCapabilitiesRegistry to throw SystemMapRegistryError with raw internal path
-      const originalLoad = require('../lib/domain/system-map/resolver').loadCapabilitiesRegistry;
-      const resolverModule = require('../lib/domain/system-map/resolver');
-
-      // Mock to throw an internal error with deep container file paths
-      const internalPathError = new SystemMapRegistryError(
-        'Capabilities registry file missing at: /app/applet/cms_web002/.synthesis/lineage/capabilities.json (errno -2)'
-      );
-
-      // We test error response directly through route error handler
-      const res = await (async () => {
-        try {
-          throw internalPathError;
-        } catch (error) {
-          if (error instanceof SystemMapRegistryError) {
-            return MockNextResponse.json(
-              { error: 'SYSTEM_MAP_REGISTRY_ERROR', message: 'Failed to load or verify lineage registry' },
-              { status: 500, headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' } }
-            );
+      const originalReadFileSync = fs.readFileSync;
+      try {
+        // Force fs.readFileSync to throw on capabilities.json, causing loadCapabilitiesRegistry to throw SystemMapRegistryError
+        (fs as any).readFileSync = (p: any, ...args: any[]) => {
+          if (typeof p === 'string' && p.includes('capabilities.json')) {
+            throw new Error('Simulated read failure: /secret/app/path/.synthesis/lineage/capabilities.json');
           }
-          return MockNextResponse.json({ error: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
-        }
-      })();
+          return originalReadFileSync(p, ...args);
+        };
 
-      assert.strictEqual(res.status, 500);
-      const data = await res.json();
-      assert.strictEqual(data.error, 'SYSTEM_MAP_REGISTRY_ERROR');
-      assert.strictEqual(data.message, 'Failed to load or verify lineage registry');
+        // Call the REAL API route handler
+        const res = await systemMapApiHandler(req as any);
 
-      const serialized = JSON.stringify(data);
-      assert.doesNotMatch(serialized, /\/app\/applet/);
-      assert.doesNotMatch(serialized, /\.synthesis/);
-      assert.doesNotMatch(serialized, /capabilities\.json/);
+        assert.strictEqual(res.status, 500);
+        assert.strictEqual(res.headers.get('Cache-Control'), 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+        const data = await res.json();
+        assert.strictEqual(data.error, 'SYSTEM_MAP_REGISTRY_ERROR');
+        assert.strictEqual(data.message, 'Failed to load or verify lineage registry');
+
+        const serialized = JSON.stringify(data);
+        assert.doesNotMatch(serialized, /\/secret\/app\/path/);
+        assert.doesNotMatch(serialized, /\.synthesis/);
+        assert.doesNotMatch(serialized, /capabilities\.json/);
+        assert.doesNotMatch(serialized, /Simulated read failure/);
+      } finally {
+        fs.readFileSync = originalReadFileSync;
+      }
     });
   });
 

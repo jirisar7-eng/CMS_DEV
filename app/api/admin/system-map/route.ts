@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       const canReadInternal = await hasPermission(user.id, 'system_map.read_internal');
       if (!canReadInternal) {
         return NextResponse.json(
-          { error: 'UNAUTHORIZED_INTERNAL_VIEW', message: 'Permission system_map.read_internal required' },
+          { error: 'FORBIDDEN' },
           { status: 403, headers: NO_STORE_HEADERS }
         );
       }
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       const canReadBasic = await hasPermission(user.id, 'system_map.read_basic');
       if (!canReadBasic) {
         return NextResponse.json(
-          { error: 'UNAUTHORIZED_BASIC_VIEW', message: 'Permission system_map.read_basic required' },
+          { error: 'FORBIDDEN' },
           { status: 403, headers: NO_STORE_HEADERS }
         );
       }
