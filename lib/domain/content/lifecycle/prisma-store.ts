@@ -447,6 +447,78 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
     return { updated: true, page: page ?? undefined };
   }
 
+    async listProjectReleases(projectId: string): Promise<Array<{
+    release: LifecycleContentRelease;
+    items: Array<LifecycleContentReleaseItem & { pageTitle?: string; pageSlug?: string }>;
+  }>> {
+    const releases = await (this.db as any).contentRelease.findMany({
+      where: { projectId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: {
+            page: {
+              select: {
+                key: true,
+                draftRevision: { select: { title: true, slug: true } },
+                publishedRevision: { select: { title: true, slug: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return releases.map((rel: any) => ({
+      release: this.mapRelease(rel),
+      items: (rel.items || []).map((item: any) => {
+        const title = item.page?.publishedRevision?.title || item.page?.draftRevision?.title || item.page?.key || item.pageId;
+        const slug = item.page?.publishedRevision?.slug || item.page?.draftRevision?.slug || "";
+        return {
+          ...this.mapReleaseItem(item),
+          pageTitle: title,
+          pageSlug: slug,
+        };
+      }),
+    }));
+  }
+
+  async listProjectRevisions(projectId: string, pageId?: string): Promise<Array<LifecyclePageRevision & { pageTitle?: string; pageSlug?: string }>> {
+    const whereClause: any = {
+      page: {
+        projectId,
+      },
+    };
+    if (pageId) {
+      whereClause.pageId = pageId;
+    }
+
+    const revisions = await (this.db as any).pageRevision.findMany({
+      where: whereClause,
+      orderBy: { createdAt: "desc" },
+      include: {
+        page: {
+          select: {
+            key: true,
+            draftRevision: { select: { title: true, slug: true } },
+            publishedRevision: { select: { title: true, slug: true } },
+          },
+        },
+      },
+    });
+
+    return revisions.map((rev: any) => {
+      const mapped = this.mapRevision(rev);
+      const title = rev.title || rev.page?.publishedRevision?.title || rev.page?.draftRevision?.title || rev.page?.key || rev.pageId;
+      const slug = rev.slug || rev.page?.publishedRevision?.slug || rev.page?.draftRevision?.slug || "";
+      return {
+        ...mapped,
+        pageTitle: title,
+        pageSlug: slug,
+      };
+    });
+  }
+
   async recordAudit(params: RecordLifecycleAuditParams): Promise<void> {
     await logAudit({
       action: params.action,

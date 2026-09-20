@@ -155,5 +155,10 @@ export interface ContentLifecycleStore {
   createRollbackRelease?(params: CreateRollbackReleaseParams): Promise<LifecycleContentRelease>;
   setRollbackPublishedPointerAtomic?(params: SetRollbackPublishedPointerAtomicParams): Promise<{ updated: boolean; page?: LifecyclePage }>;
   setDraftFromPublishedPointerAtomic?(params: SetDraftFromPublishedPointerAtomicParams): Promise<{ updated: boolean; page?: LifecyclePage }>;
+  listProjectReleases?(projectId: string): Promise<Array<{
+    release: LifecycleContentRelease;
+    items: Array<LifecycleContentReleaseItem & { pageTitle?: string; pageSlug?: string }>;
+  }>>;
+  listProjectRevisions?(projectId: string, pageId?: string): Promise<Array<LifecyclePageRevision & { pageTitle?: string; pageSlug?: string }>>;
   recordAudit(params: RecordLifecycleAuditParams): Promise<void>;
 }

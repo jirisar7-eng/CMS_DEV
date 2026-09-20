@@ -1134,4 +1134,47 @@ export class ContentLifecycleService {
       };
     });
   }
+
+  async listReleases(params: { actorId: string; projectId: string }) {
+    if (!params.actorId || !params.actorId.trim()) {
+      throw new ContentLifecycleError("INVALID_INPUT", "actorId is required");
+    }
+    if (!params.projectId || !params.projectId.trim()) {
+      throw new ContentLifecycleError("INVALID_INPUT", "projectId is required");
+    }
+    const actorId = params.actorId.trim();
+    const projectId = params.projectId.trim();
+
+    const allowed = await this.hasPermission(actorId, "content.view", projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError("FORBIDDEN", "Permission content.view required");
+    }
+
+    if (!this.store.listProjectReleases) {
+      throw new ContentLifecycleError("INVALID_INPUT", "Store implementation for listProjectReleases is missing");
+    }
+    return this.store.listProjectReleases(projectId);
+  }
+
+  async listRevisions(params: { actorId: string; projectId: string; pageId?: string }) {
+    if (!params.actorId || !params.actorId.trim()) {
+      throw new ContentLifecycleError("INVALID_INPUT", "actorId is required");
+    }
+    if (!params.projectId || !params.projectId.trim()) {
+      throw new ContentLifecycleError("INVALID_INPUT", "projectId is required");
+    }
+    const actorId = params.actorId.trim();
+    const projectId = params.projectId.trim();
+    const pageId = params.pageId?.trim();
+
+    const allowed = await this.hasPermission(actorId, "content.view", projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError("FORBIDDEN", "Permission content.view required");
+    }
+
+    if (!this.store.listProjectRevisions) {
+      throw new ContentLifecycleError("INVALID_INPUT", "Store implementation for listProjectRevisions is missing");
+    }
+    return this.store.listProjectRevisions(projectId, pageId);
+  }
 }
