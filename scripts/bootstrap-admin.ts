@@ -46,7 +46,8 @@ async function bootstrap() {
     'seo.read', 'seo.update', 'seo.manage_defaults',
     'redirects.read', 'redirects.create', 'redirects.update', 'redirects.delete',
     'search.read_admin', 'search.manage', 'search.reindex',
-    'system_map.read_basic'
+    'system_map.read_basic',
+    'plugin.read', 'plugin.manage'
   ];
 
   for (const permKey of initialPermissions) {

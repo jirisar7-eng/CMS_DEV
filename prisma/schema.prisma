@@ -34,6 +34,7 @@ model Project {
   seoSettings             ProjectSeoSettings?
   redirectRules           RedirectRule[]
   searchDocuments         SearchDocument[]
+  pluginStates            ProjectPluginState[]
 }
 
 // -----------------------------------------------------------------------------
@@ -56,6 +57,7 @@ model User {
   createdPageRevisions PageRevision[]           @relation("PageRevisionCreatedBy")
   createdReleases      ContentRelease[]         @relation("ContentReleaseCreatedBy")
   createdRedirects     RedirectRule[]
+  enabledPluginStates  ProjectPluginState[]
 
   @@index([status])
   @@index([email])
@@ -532,4 +534,26 @@ model SearchDocument {
   @@unique([projectId, path])
   @@index([projectId, locale])
   @@index([revisionId])
+}
+
+// -----------------------------------------------------------------------------
+// PLUGIN LIFECYCLE & PERSISTENCE
+// -----------------------------------------------------------------------------
+
+model ProjectPluginState {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pluginId    String
+  enabled     Boolean   @default(false)
+  config      Json?
+  enabledAt   DateTime?
+  enabledById String?
+  enabledBy   User?     @relation(fields: [enabledById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([projectId, pluginId])
+  @@index([projectId, enabled])
+  @@index([pluginId])
 }

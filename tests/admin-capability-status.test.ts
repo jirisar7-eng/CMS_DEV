@@ -150,7 +150,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
 
     it('verified POUZE UI capabilities are correctly marked', () => {
       assert.strictEqual(getCapabilityStatus('pwa'), 'POUZE UI');
-      assert.strictEqual(getCapabilityStatus('modules'), 'POUZE UI');
+      assert.strictEqual(getCapabilityStatus('modules'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('notifications'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('analytics'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('import-export'), 'POUZE UI');
@@ -174,8 +174,8 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['VYPNUTO'];
       assert.strictEqual(sum, 32);
       assert.strictEqual(stats['FUNKČNÍ'], 4);
-      assert.strictEqual(stats['ZÁKLAD'], 13);
-      assert.strictEqual(stats['POUZE UI'], 12);
+      assert.strictEqual(stats['ZÁKLAD'], 14);
+      assert.strictEqual(stats['POUZE UI'], 11);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
       assert.strictEqual(stats['VYPNUTO'], 0);

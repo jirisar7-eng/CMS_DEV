@@ -208,7 +208,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/modules',
         icon: Blocks,
         group: 'SPRÁVA',
-        status: 'POUZE UI',
+        status: 'ZÁKLAD',
         helpKey: 'management.modules.view',
         description: 'Správa a aktivace funkčních modulů a rozšíření.',
       },
