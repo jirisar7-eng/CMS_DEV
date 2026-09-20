@@ -9,9 +9,8 @@ import {
 import { PageContent } from '../lib/domain/content/contracts';
 
 describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () => {
-  const dbUrl = process.env.DATABASE_URL;
-  let prisma: PrismaClient | null = null;
-  let store: PrismaContentLifecycleStore | null = null;
+  let prisma: PrismaClient;
+  let store: PrismaContentLifecycleStore;
 
   const testProjectIdA = `test-proj-a-${Date.now()}`;
   const testProjectIdB = `test-proj-b-${Date.now()}`;
@@ -22,10 +21,20 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
   let revA2Id = '';
   let releaseA1Id = '';
 
+  // Fixtures for dedicated rollback test
+  let pageRollbackId = '';
+  let revRollback1Id = '';
+  let revRollback2Id = '';
+  let releaseRollback1Id = '';
+  let releaseRollback2Id = '';
+
+  // Fixtures for dedicated reopen draft test
+  let pageReopenId = '';
+  let revReopen1Id = '';
+
   before(async () => {
-    if (!dbUrl) {
-      console.log('Skipping real PostgreSQL tests: DATABASE_URL is not set in this environment.');
-      return;
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is required for PostgreSQL integration tests.');
     }
 
     prisma = new PrismaClient();
@@ -59,7 +68,6 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
       },
     });
 
-    // 2. Seed Page and Revisions in Project A
     const canonicalContent: PageContent = {
       version: 1,
       schemaVersion: '1.0',
@@ -68,6 +76,7 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
       ],
     };
 
+    // 2. Seed Page A with published revision revA1 and draft revA2
     const pageA = await prisma.page.create({
       data: {
         projectId: testProjectIdA,
@@ -143,12 +152,147 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
         previousRevisionId: null,
       },
     });
+
+    // 3. Seed Page for rollback test (has 2 published releases)
+    const pageRollback = await prisma.page.create({
+      data: {
+        projectId: testProjectIdA,
+        key: 'rollback-page',
+        sortOrder: 1,
+      },
+    });
+    pageRollbackId = pageRollback.id;
+
+    const revRollback1 = await prisma.pageRevision.create({
+      data: {
+        pageId: pageRollback.id,
+        revisionNumber: 1,
+        status: 'PUBLISHED',
+        title: 'Rollback Page v1',
+        slug: 'rollback-page',
+        locale: 'cs',
+        visibility: 'PUBLIC',
+        content: canonicalContent as any,
+        seo: {},
+        navigation: {},
+        schemaVersion: '1.0',
+        lockVersion: 1,
+        createdById: testUserId,
+        publishedAt: new Date(Date.now() - 10000),
+      },
+    });
+    revRollback1Id = revRollback1.id;
+
+    const revRollback2 = await prisma.pageRevision.create({
+      data: {
+        pageId: pageRollback.id,
+        revisionNumber: 2,
+        status: 'PUBLISHED',
+        title: 'Rollback Page v2',
+        slug: 'rollback-page',
+        locale: 'cs',
+        visibility: 'PUBLIC',
+        content: canonicalContent as any,
+        seo: {},
+        navigation: {},
+        schemaVersion: '1.0',
+        lockVersion: 1,
+        createdById: testUserId,
+        derivedFromRevisionId: revRollback1.id,
+        publishedAt: new Date(),
+      },
+    });
+    revRollback2Id = revRollback2.id;
+
+    await prisma.page.update({
+      where: { id: pageRollback.id },
+      data: {
+        publishedRevisionId: revRollback2.id,
+        draftRevisionId: null,
+      },
+    });
+
+    const releaseRollback1 = await prisma.contentRelease.create({
+      data: {
+        projectId: testProjectIdA,
+        status: 'PUBLISHED',
+        createdById: testUserId,
+        publishedAt: new Date(Date.now() - 10000),
+      },
+    });
+    releaseRollback1Id = releaseRollback1.id;
+
+    await prisma.contentReleaseItem.create({
+      data: {
+        releaseId: releaseRollback1.id,
+        pageId: pageRollback.id,
+        revisionId: revRollback1.id,
+        previousRevisionId: null,
+      },
+    });
+
+    const releaseRollback2 = await prisma.contentRelease.create({
+      data: {
+        projectId: testProjectIdA,
+        status: 'PUBLISHED',
+        createdById: testUserId,
+        publishedAt: new Date(),
+      },
+    });
+    releaseRollback2Id = releaseRollback2.id;
+
+    await prisma.contentReleaseItem.create({
+      data: {
+        releaseId: releaseRollback2.id,
+        pageId: pageRollback.id,
+        revisionId: revRollback2.id,
+        previousRevisionId: revRollback1.id,
+      },
+    });
+
+    // 4. Seed Page for reopen draft test
+    const pageReopen = await prisma.page.create({
+      data: {
+        projectId: testProjectIdA,
+        key: 'reopen-page',
+        sortOrder: 2,
+      },
+    });
+    pageReopenId = pageReopen.id;
+
+    const revReopen1 = await prisma.pageRevision.create({
+      data: {
+        pageId: pageReopen.id,
+        revisionNumber: 1,
+        status: 'PUBLISHED',
+        title: 'Reopen Page v1',
+        slug: 'reopen-page',
+        locale: 'cs',
+        visibility: 'PUBLIC',
+        content: canonicalContent as any,
+        seo: {},
+        navigation: {},
+        schemaVersion: '1.0',
+        lockVersion: 1,
+        createdById: testUserId,
+        publishedAt: new Date(),
+      },
+    });
+    revReopen1Id = revReopen1.id;
+
+    await prisma.page.update({
+      where: { id: pageReopen.id },
+      data: {
+        publishedRevisionId: revReopen1.id,
+        draftRevisionId: null,
+      },
+    });
   });
 
   after(async () => {
     if (!prisma) return;
     try {
-      // Disposable fixture cleanup
+      // Clean up audit logs and fixtures
       await prisma.auditLog.deleteMany({
         where: {
           OR: [
@@ -175,28 +319,26 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
       await prisma.user.deleteMany({
         where: { id: testUserId },
       });
+    } finally {
       await prisma.$disconnect();
-    } catch {
-      // Ignore teardown cleanup errors
     }
   });
 
   it('verifies real PostgreSQL queries return persisted releases and revisions', async () => {
-    if (!store) return;
     const service = new ContentLifecycleService({
       store,
       hasPermission: async () => true,
     });
 
     const releases = await service.listReleases({ actorId: testUserId, projectId: testProjectIdA });
-    assert.strictEqual(releases.length, 1);
-    assert.strictEqual(releases[0].release.id, releaseA1Id);
-    assert.strictEqual(releases[0].release.status, 'PUBLISHED');
-    assert.strictEqual(releases[0].items.length, 1);
-    assert.strictEqual(releases[0].items[0].revisionId, revA1Id);
+    assert.ok(releases.length >= 1);
+    const releaseA1 = releases.find((r) => r.release.id === releaseA1Id);
+    assert.ok(releaseA1);
+    assert.strictEqual(releaseA1.release.status, 'PUBLISHED');
+    assert.strictEqual(releaseA1.items[0].revisionId, revA1Id);
 
     const revisions = await service.listRevisions({ actorId: testUserId, projectId: testProjectIdA });
-    assert.strictEqual(revisions.length, 2);
+    assert.ok(revisions.length >= 2);
     const rev1 = revisions.find((r) => r.id === revA1Id);
     const rev2 = revisions.find((r) => r.id === revA2Id);
     assert.ok(rev1);
@@ -206,7 +348,6 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
   });
 
   it('handles empty projects with real database returning clean empty lists', async () => {
-    if (!store) return;
     const service = new ContentLifecycleService({
       store,
       hasPermission: async () => true,
@@ -220,7 +361,6 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
   });
 
   it('guarantees tenant isolation preventing cross-project data leakage in PostgreSQL', async () => {
-    if (!store) return;
     const service = new ContentLifecycleService({
       store,
       hasPermission: async () => true,
@@ -228,13 +368,157 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
 
     const releasesB = await service.listReleases({ actorId: testUserId, projectId: testProjectIdB });
     const revisionsB = await service.listRevisions({ actorId: testUserId, projectId: testProjectIdB });
-
     assert.ok(!releasesB.some((r) => r.release.projectId === testProjectIdA));
     assert.ok(!revisionsB.some((r) => r.pageTitle?.includes('Projekt A')));
   });
 
+  it('executes successful rollback with persisted pointer and release assertions in PostgreSQL', async () => {
+    const service = new ContentLifecycleService({
+      store,
+      hasPermission: async () => true,
+    });
+
+    const result = await service.rollbackRelease({
+      actorId: testUserId,
+      projectId: testProjectIdA,
+      releaseId: releaseRollback2Id,
+    });
+
+    assert.strictEqual(result.rollbackRelease.status, 'ROLLED_BACK');
+    assert.strictEqual(result.restoredRevision.id, revRollback1Id);
+    assert.strictEqual(result.fromRevision.id, revRollback2Id);
+
+    // Direct database assertions
+    const updatedPage = await prisma.page.findUnique({
+      where: { id: pageRollbackId },
+    });
+    assert.ok(updatedPage);
+    assert.strictEqual(updatedPage.publishedRevisionId, revRollback1Id);
+
+    const persistedRollbackRelease = await prisma.contentRelease.findUnique({
+      where: { id: result.rollbackRelease.id },
+    });
+    assert.ok(persistedRollbackRelease);
+    assert.strictEqual(persistedRollbackRelease.status, 'ROLLED_BACK');
+    assert.ok(persistedRollbackRelease.rolledBackAt instanceof Date);
+
+    const persistedRollbackItem = await prisma.contentReleaseItem.findFirst({
+      where: { releaseId: result.rollbackRelease.id },
+    });
+    assert.ok(persistedRollbackItem);
+    assert.strictEqual(persistedRollbackItem.revisionId, revRollback1Id);
+    assert.strictEqual(persistedRollbackItem.previousRevisionId, revRollback2Id);
+
+    const auditEntry = await prisma.auditLog.findFirst({
+      where: {
+        resourceId: result.rollbackRelease.id,
+        action: 'CONTENT_RELEASE_ROLLED_BACK',
+      },
+    });
+    assert.ok(auditEntry);
+    assert.strictEqual(auditEntry.scopeId, testProjectIdA);
+  });
+
+  it('executes successful reopen-draft with persisted revision and pointer assertions in PostgreSQL', async () => {
+    const service = new ContentLifecycleService({
+      store,
+      hasPermission: async () => true,
+    });
+
+    const result = await service.createDraftFromPublished({
+      actorId: testUserId,
+      projectId: testProjectIdA,
+      pageId: pageReopenId,
+      expectedPublishedRevisionId: revReopen1Id,
+    });
+
+    assert.strictEqual(result.draftRevision.status, 'DRAFT');
+    assert.strictEqual(result.draftRevision.revisionNumber, 2);
+    assert.strictEqual(result.draftRevision.derivedFromRevisionId, revReopen1Id);
+
+    // Direct database assertions
+    const updatedPage = await prisma.page.findUnique({
+      where: { id: pageReopenId },
+    });
+    assert.ok(updatedPage);
+    assert.strictEqual(updatedPage.draftRevisionId, result.draftRevision.id);
+    assert.strictEqual(updatedPage.publishedRevisionId, revReopen1Id);
+
+    const persistedNewDraft = await prisma.pageRevision.findUnique({
+      where: { id: result.draftRevision.id },
+    });
+    assert.ok(persistedNewDraft);
+    assert.strictEqual(persistedNewDraft.status, 'DRAFT');
+    assert.strictEqual(persistedNewDraft.revisionNumber, 2);
+    assert.strictEqual(persistedNewDraft.derivedFromRevisionId, revReopen1Id);
+    assert.strictEqual(persistedNewDraft.lockVersion, 1);
+
+    // Source published revision in DB must remain unmodified
+    const sourceRevInDb = await prisma.pageRevision.findUnique({
+      where: { id: revReopen1Id },
+    });
+    assert.ok(sourceRevInDb);
+    assert.strictEqual(sourceRevInDb.status, 'PUBLISHED');
+
+    const auditEntry = await prisma.auditLog.findFirst({
+      where: {
+        resourceId: result.draftRevision.id,
+        action: 'CONTENT_DRAFT_REOPENED',
+      },
+    });
+    assert.ok(auditEntry);
+    assert.strictEqual(auditEntry.scopeId, testProjectIdA);
+  });
+
+  it('rejects cross-project mutations and leaves database state strictly unchanged', async () => {
+    const service = new ContentLifecycleService({
+      store,
+      hasPermission: async () => true,
+    });
+
+    // Attempting to reopen draft for Project A page using Project B context
+    await assert.rejects(
+      async () => {
+        await service.createDraftFromPublished({
+          actorId: testUserId,
+          projectId: testProjectIdB,
+          pageId: pageAId,
+          expectedPublishedRevisionId: revA1Id,
+        });
+      },
+      (err: unknown) => err instanceof ContentLifecycleError && err.code === 'PAGE_NOT_FOUND'
+    );
+
+    // Attempting to rollback Project A release using Project B context
+    await assert.rejects(
+      async () => {
+        await service.rollbackRelease({
+          actorId: testUserId,
+          projectId: testProjectIdB,
+          releaseId: releaseA1Id,
+        });
+      },
+      (err: unknown) => err instanceof ContentLifecycleError && err.code === 'RELEASE_NOT_FOUND'
+    );
+
+    // Database assertions: Page A and Project A state remains completely unchanged
+    const pageAInDb = await prisma.page.findUnique({ where: { id: pageAId } });
+    assert.ok(pageAInDb);
+    assert.strictEqual(pageAInDb.publishedRevisionId, revA1Id);
+    assert.strictEqual(pageAInDb.draftRevisionId, revA2Id);
+
+    const projectBReleases = await prisma.contentRelease.findMany({
+      where: { projectId: testProjectIdB },
+    });
+    assert.strictEqual(projectBReleases.length, 0);
+
+    const projectBPages = await prisma.page.findMany({
+      where: { projectId: testProjectIdB },
+    });
+    assert.strictEqual(projectBPages.length, 0);
+  });
+
   it('rejects access when permission is missing (fail closed)', async () => {
-    if (!store) return;
     const service = new ContentLifecycleService({
       store,
       hasPermission: async () => false,
@@ -256,7 +540,6 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
   });
 
   it('fails safely with ACTIVE_DRAFT_EXISTS during createDraftFromPublished', async () => {
-    if (!store) return;
     const service = new ContentLifecycleService({
       store,
       hasPermission: async () => true,
@@ -277,7 +560,6 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
   });
 
   it('fails safely with LOCK_CONFLICT when expectedPublishedRevisionId is stale', async () => {
-    if (!store) return;
     const service = new ContentLifecycleService({
       store,
       hasPermission: async () => true,
@@ -296,23 +578,43 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
     );
   });
 
-  it('fails closed and rejects operations on database or store failure', async () => {
-    const brokenStore = new PrismaContentLifecycleStore({} as any);
-    const service = new ContentLifecycleService({
-      store: brokenStore,
+  it('propagates real PostgreSQL connection and query failures as errors rather than empty success', async () => {
+    const unreachablePrisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: 'postgresql://invalid_user:invalid_password@127.0.0.1:5433/nonexistent?connect_timeout=1',
+        },
+      },
+    });
+
+    const brokenDbStore = new PrismaContentLifecycleStore(unreachablePrisma);
+    const brokenDbService = new ContentLifecycleService({
+      store: brokenDbStore,
       hasPermission: async () => true,
     });
 
-    await assert.rejects(
-      async () => {
-        await service.listReleases({ actorId: testUserId, projectId: testProjectIdA });
-      }
-    );
+    try {
+      await assert.rejects(
+        async () => {
+          await brokenDbService.listReleases({ actorId: testUserId, projectId: testProjectIdA });
+        },
+        (err: unknown) => {
+          assert.ok(err !== null && err !== undefined);
+          return true;
+        }
+      );
 
-    await assert.rejects(
-      async () => {
-        await service.listRevisions({ actorId: testUserId, projectId: testProjectIdA });
-      }
-    );
+      await assert.rejects(
+        async () => {
+          await brokenDbService.listRevisions({ actorId: testUserId, projectId: testProjectIdA });
+        },
+        (err: unknown) => {
+          assert.ok(err !== null && err !== undefined);
+          return true;
+        }
+      );
+    } finally {
+      await unreachablePrisma.$disconnect().catch(() => {});
+    }
   });
 });

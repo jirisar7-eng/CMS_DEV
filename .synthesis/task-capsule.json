@@ -28,10 +28,8 @@
     "app/admin/revisions/page.tsx",
     "components/admin/publishing/PublishingWorkspace.tsx",
     "components/admin/revisions/RevisionsWorkspace.tsx",
-    "lib/navigation/adminNav.ts",
     "tests/publishing-revisions-admin-cutover.test.ts",
     "tests/publishing-revisions-postgres.test.ts",
-    "prisma/migrations/*",
-    "prisma/migrations/**/*"
+    "prisma/migrations/20260917130000_navigation_foundation/migration.sql"
   ]
 }
