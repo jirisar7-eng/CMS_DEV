@@ -72,6 +72,7 @@ export interface AuditStore {
 
 export interface AuditServiceDependencies {
   store?: AuditStore;
+  db?: AuditStore;
   hasPermissionFn?: (
     userId: string,
     permissionKey: PermissionKey,
@@ -88,7 +89,7 @@ export class AuditService {
   ) => Promise<boolean>;
 
   constructor(deps?: AuditServiceDependencies) {
-    this.store = deps?.store ?? null;
+    this.store = deps?.store ?? deps?.db ?? null;
     this.hasPermissionFn = deps?.hasPermissionFn;
   }
 

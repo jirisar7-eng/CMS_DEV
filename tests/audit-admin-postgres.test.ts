@@ -63,14 +63,16 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
     });
 
     // 6. Seed audit records in Project A, Project B, and SYSTEM scope
-    await logAudit({
-      action: "CONTENT_PAGE_CREATED",
-      scopeType: "PROJECT",
-      scopeId: projectAId,
-      resourceType: "PAGE",
-      resourceId: "page-a-1",
-      actorId: testUserId,
-      metadata: { pageTitle: "Page A1", secret: "do_not_leak" },
+    await prisma.auditLog.create({
+      data: {
+        action: "CONTENT_PAGE_CREATED",
+        scopeType: "PROJECT",
+        scopeId: projectAId,
+        resourceType: "PAGE",
+        resourceId: "page-a-1",
+        actorId: testUserId,
+        metadata: { pageTitle: "Page A1", secret: "do_not_leak", token: "secret_token_123" },
+      },
     });
 
     await logAudit({
