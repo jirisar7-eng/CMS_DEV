@@ -34,6 +34,7 @@ interface PluginStateView {
         type: string;
         required?: boolean;
         sensitive?: boolean;
+        description?: string;
         defaultValue?: any;
         options?: { label: string; value: string }[];
       }[];
@@ -43,10 +44,30 @@ interface PluginStateView {
 }
 
 export default function ModulesPage() {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(() => {
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/syn_project_id=([^;]+)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  });
   const [plugins, setPlugins] = useState<PluginStateView[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/syn_project_id=([^;]+)/);
+      return !!(match && match[1]);
+    }
+    return false;
+  });
+  const [error, setError] = useState<string | null>(() => {
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/syn_project_id=([^;]+)/);
+      if (!match || !match[1]) {
+        return "Projekt nevybrán nebo aktivní projekt chybí. Vyberte platný projekt v administraci.";
+      }
+    }
+    return null;
+  });
 
   // Cascade confirm modal
   const [cascadePluginId, setCascadePluginId] = useState<string | null>(null);
@@ -76,12 +97,36 @@ export default function ModulesPage() {
   }, []);
 
   useEffect(() => {
-    // Read project ID from cookie or current project context
-    const match = document.cookie.match(/syn_project_id=([^;]+)/);
-    const pId = match ? match[1] : 'default-project';
-    setProjectId(pId);
-    fetchPlugins(pId);
-  }, [fetchPlugins]);
+    if (!projectId) return;
+
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/projects/${projectId}/plugins`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.message || data.error || "Failed to fetch project plugins.");
+        }
+        const data = await res.json();
+        if (isMounted) {
+          setPlugins(data.plugins || []);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || "Error loading modules.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
 
   const handleToggle = async (pluginId: string, currentEnabled: boolean, cascade = false) => {
     if (!projectId) return;
