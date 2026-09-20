@@ -12,7 +12,8 @@
     "ADMIN_UI",
     "TEST",
     "GOVERNANCE",
-    "CI_WORKFLOW"
+    "CI_WORKFLOW",
+    "PERSISTENCE"
   ],
   "allowed_paths": [
     ".github/workflows/technical-ci.yml",
@@ -29,6 +30,8 @@
     "components/admin/revisions/RevisionsWorkspace.tsx",
     "lib/navigation/adminNav.ts",
     "tests/publishing-revisions-admin-cutover.test.ts",
-    "tests/publishing-revisions-postgres.test.ts"
+    "tests/publishing-revisions-postgres.test.ts",
+    "prisma/migrations/*",
+    "prisma/migrations/**/*"
   ]
 }
