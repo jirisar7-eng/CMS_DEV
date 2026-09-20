@@ -17,8 +17,8 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
     // 1. Create test projects
     await prisma.project.createMany({
       data: [
-        { id: projectAId, name: "Project Audit A", slug: `audit-a-${timestamp}`, status: "ACTIVE" },
-        { id: projectBId, name: "Project Audit B", slug: `audit-b-${timestamp}`, status: "ACTIVE" },
+        { id: projectAId, name: "Project Audit A", key: `audit-a-${timestamp}`, status: "ACTIVE" },
+        { id: projectBId, name: "Project Audit B", key: `audit-b-${timestamp}`, status: "ACTIVE" },
       ],
     });
 

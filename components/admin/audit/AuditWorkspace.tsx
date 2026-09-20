@@ -58,18 +58,21 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
   const [viewScope, setViewScope] = useState<"PROJECT" | "SYSTEM">(
     projectId ? "PROJECT" : "SYSTEM"
   );
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   // Detail Modal
   const [selectedRecord, setSelectedRecord] = useState<SafeAuditRecord | null>(null);
 
-  const fetchAuditLogs = useCallback(
-    async (currentPage: number = 1) => {
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadData() {
       setLoading(true);
       setError(null);
 
       try {
         const params = new URLSearchParams();
-        params.set("page", String(currentPage));
+        params.set("page", String(page));
         params.set("limit", String(limit));
 
         if (actionFilter !== "ALL") {
@@ -79,7 +82,6 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
           params.set("from", new Date(fromFilter).toISOString());
         }
         if (toFilter) {
-          // Set to end of the selected day
           const toDate = new Date(toFilter);
           toDate.setHours(23, 59, 59, 999);
           params.set("to", toDate.toISOString());
@@ -88,8 +90,10 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
         let url = "";
         if (viewScope === "PROJECT") {
           if (!projectId) {
-            setRecords([]);
-            setLoading(false);
+            if (!ignore) {
+              setRecords([]);
+              setLoading(false);
+            }
             return;
           }
           url = `/api/admin/projects/${projectId}/audit?${params.toString()}`;
@@ -109,32 +113,38 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
           throw new Error(errMsg);
         }
 
-        const result = data.data;
-        setRecords(result.items || []);
-        setTotal(result.total || 0);
-        setPage(result.page || 1);
-        setTotalPages(result.totalPages || 1);
+        if (!ignore) {
+          const result = data.data;
+          setRecords(result.items || []);
+          setTotal(result.total || 0);
+          setTotalPages(result.totalPages || 1);
+        }
       } catch (err: unknown) {
-        console.error("Error fetching audit logs:", err);
-        setError(
-          err instanceof Error ? err.message : "Chyba při načítání auditního protokolu"
-        );
-        setRecords([]);
+        if (!ignore) {
+          console.error("Error fetching audit logs:", err);
+          setError(
+            err instanceof Error ? err.message : "Chyba při načítání auditního protokolu"
+          );
+          setRecords([]);
+        }
       } finally {
-        setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
-    },
-    [projectId, viewScope, actionFilter, fromFilter, toFilter]
-  );
+    }
 
-  useEffect(() => {
-    fetchAuditLogs(page);
-  }, [fetchAuditLogs, page]);
+    loadData();
+
+    return () => {
+      ignore = true;
+    };
+  }, [projectId, viewScope, actionFilter, fromFilter, toFilter, page, refreshTrigger]);
 
   const handleApplyFilter = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchAuditLogs(1);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   const handleResetFilters = () => {
@@ -142,12 +152,12 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
     setFromFilter("");
     setToFilter("");
     setPage(1);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setPage(newPage);
-      fetchAuditLogs(newPage);
     }
   };
 
@@ -190,7 +200,7 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
       emptyTitle="Auditní protokol je prázdný"
       emptyDescription="V systému zatím nebyly zaznamenány žádné auditované události odpovídající zadaným filtrům."
       emptyActionLabel="Obnovit protokol"
-      onEmptyAction={() => fetchAuditLogs(1)}
+      onEmptyAction={() => setRefreshTrigger((prev) => prev + 1)}
     >
       {() => (
         <div className="space-y-6">
@@ -200,7 +210,10 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
               <span className="text-xs font-semibold text-muted-foreground">Pohled:</span>
               <button
                 type="button"
-                onClick={() => { setViewScope("PROJECT"); setPage(1); }}
+                onClick={() => {
+                  setViewScope("PROJECT");
+                  setPage(1);
+                }}
                 disabled={!projectId}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                   viewScope === "PROJECT"
@@ -212,7 +225,10 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
               </button>
               <button
                 type="button"
-                onClick={() => { setViewScope("SYSTEM"); setPage(1); }}
+                onClick={() => {
+                  setViewScope("SYSTEM");
+                  setPage(1);
+                }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                   viewScope === "SYSTEM"
                     ? "bg-primary text-primary-foreground shadow-xs"
@@ -226,7 +242,7 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 type="button"
-                onClick={() => fetchAuditLogs(page)}
+                onClick={() => setRefreshTrigger((prev) => prev + 1)}
                 disabled={loading}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border bg-card hover:bg-muted text-foreground transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
@@ -329,7 +345,7 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
               </div>
               <button
                 type="button"
-                onClick={() => fetchAuditLogs(page)}
+                onClick={() => setRefreshTrigger((prev) => prev + 1)}
                 className="text-xs font-semibold text-rose-700 dark:text-rose-300 underline hover:no-underline cursor-pointer"
               >
                 Zkusit znovu
