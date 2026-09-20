@@ -106,7 +106,7 @@ function runGroup(groupName, testList) {
   classifyTests();
   console.log(`=== RUNNING ${groupName} TESTS (${testList.length} files) ===`);
 
-  const result = spawnSync('npx', ['tsx', '--test', ...testList], {
+  const result = spawnSync('npx', ['tsx', '-r', './scripts/ci/mock_server_only.cjs', '--test', ...testList], {
     stdio: 'inherit',
     env: process.env,
   });

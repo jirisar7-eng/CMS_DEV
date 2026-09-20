@@ -15,8 +15,11 @@
     ".github/workflows/technical-ci.yml",
     ".synthesis/task-capsule.json",
     ".synthesis/task-capsules/SYN-CI-002-TECHNICAL-GATE-HARDENING.json",
+    "package-lock.json",
     "package.json",
+    "scripts/ci/mock_server_only.cjs",
     "scripts/ci/run_classified_tests.mjs",
-    "scripts/ci/test_manifest.mjs"
+    "scripts/ci/test_manifest.mjs",
+    "tests/admin-pages-client.test.ts"
   ]
 }

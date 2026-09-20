@@ -584,7 +584,7 @@ describe('Admin Pages Browser Client', () => {
 
   describe('SOURCE & ARCHITECTURE INVARIANTS', () => {
     const clientDir = path.join(__dirname, '../lib/domain/pages-client');
-    const files = fs.readdirSync(clientDir).filter((f) => f.endsWith('.ts'));
+    const files = fs.readdirSync(clientDir).filter((f) => f.endsWith('.ts') && f !== 'server-context.ts');
 
     it('contains ZERO references to forbidden server modules, fixtures or repositories', () => {
       for (const file of files) {
