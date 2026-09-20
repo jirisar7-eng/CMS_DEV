@@ -2,13 +2,17 @@ import "server-only";
 import { NextRequest } from "next/server";
 import {
   ApiError,
-  handleApiError,
   jsonSuccess,
   requireAuthenticatedUser,
   validateProjectId,
 } from "@/lib/domain/pages-api";
 import { getActiveProjectContext } from "@/lib/domain/pages-client/server-context";
-import { getAuditService } from "@/lib/domain/audit";
+import {
+  getAuditService,
+  handleAuditApiError,
+  parseStrictPositiveInt,
+  validateDateRange,
+} from "@/lib/domain/audit";
 
 export async function GET(
   request: NextRequest,
@@ -18,8 +22,8 @@ export async function GET(
     const { projectId: rawProjectId } = await context.params;
     const projectId = validateProjectId(rawProjectId);
     const user = await requireAuthenticatedUser();
-    const projectContext = await getActiveProjectContext(projectId);
 
+    const projectContext = await getActiveProjectContext(projectId);
     if (
       projectContext.status !== "PROJECT_VALID" ||
       !projectContext.projectId ||
@@ -38,12 +42,16 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url);
+
+    const page = parseStrictPositiveInt(searchParams.get("page"), 1, "page");
+    const limit = parseStrictPositiveInt(searchParams.get("limit"), 20, "limit");
+
     const action = searchParams.get("action") || undefined;
     const resourceType = searchParams.get("resourceType") || undefined;
-    const from = searchParams.get("from") || undefined;
-    const to = searchParams.get("to") || undefined;
-    const page = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
-    const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 20;
+    const rawFrom = searchParams.get("from") || undefined;
+    const rawTo = searchParams.get("to") || undefined;
+
+    const { fromDate, toDate } = validateDateRange(rawFrom, rawTo);
 
     const service = getAuditService();
     const result = await service.listAuditLogs(
@@ -51,8 +59,8 @@ export async function GET(
         projectId: projectContext.projectId,
         action,
         resourceType,
-        from,
-        to,
+        from: fromDate,
+        to: toDate,
         page,
         limit,
       },
@@ -61,6 +69,6 @@ export async function GET(
 
     return jsonSuccess(result, 200);
   } catch (err: unknown) {
-    return handleApiError(err);
+    return handleAuditApiError(err);
   }
 }

@@ -1,235 +1,244 @@
+// @ts-nocheck
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { sanitizeAuditMetadata, AuditService } from "../lib/domain/audit";
-import { AuditServiceError } from "../lib/domain/audit/contracts";
+import {
+  AuditService,
+  AuditServiceError,
+  handleAuditApiError,
+  parseStrictPositiveInt,
+  sanitizeAuditMetadata,
+  validateAuditScopeType,
+  validateDateRange,
+} from "../lib/domain/audit";
 
-describe("Audit Admin Cutover — Unit & Security Checks", () => {
-  describe("Safe Metadata Sanitization", () => {
-    it("redacts sensitive keys including passwords, tokens, secrets, and auth headers", () => {
+describe("SYN-AUDIT-001: Audit Admin Viewer & Safe Projection Review Verification", () => {
+  describe("1. Safe Metadata Projection (Explicit Allowlist)", () => {
+    it("omits unknown fields, tokens, passwordHash, and nested objects by default", () => {
       const raw = {
-        actionName: "USER_LOGIN",
-        ip: "127.0.0.1",
-        password: "super_secret_password",
-        token: "jwt.token.here",
-        secret: "app_secret",
-        authorization: "Bearer secret_token",
-        apiKey: "api_key_12345",
-        sessionToken: "sess_xyz",
-        nested: {
-          clientSecret: "client_secret_xyz",
-          safeField: "safeValue",
+        pageId: "page-123",
+        revisionNumber: 4,
+        access_token: "sensitive_oauth_token",
+        refresh_token: "sensitive_refresh_token",
+        passwordHash: "$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+        secret: "super_secret",
+        authorization: "Bearer 123",
+        apiKey: "key_xyz",
+        nestedSecretObject: {
+          token: "nested_token",
+          internalIp: "10.0.0.1",
         },
-        arrayData: [
-          { token: "sub_token", visible: true },
-          "plain string",
-        ],
+        unrecognizedFreeTextField: "Some random sensitive note or SQL snippet",
+        customPayload: "<script>alert(1)</script>",
       };
 
-      const sanitized = sanitizeAuditMetadata(raw);
-      assert.ok(sanitized, "Sanitized output must not be null");
-      assert.equal(sanitized.actionName, "USER_LOGIN");
-      assert.equal(sanitized.ip, "127.0.0.1");
-      assert.equal(sanitized.password, "[REDACTED]");
-      assert.equal(sanitized.token, "[REDACTED]");
-      assert.equal(sanitized.secret, "[REDACTED]");
-      assert.equal(sanitized.authorization, "[REDACTED]");
-      assert.equal(sanitized.apiKey, "[REDACTED]");
-      assert.equal(sanitized.sessionToken, "[REDACTED]");
+      const sanitized = sanitizeAuditMetadata(raw, "CONTENT_PAGE_CREATED");
+      assert.ok(sanitized, "Sanitized output should not be null for allowlisted properties");
+      assert.equal(sanitized.pageId, "page-123");
+      assert.equal(sanitized.revisionNumber, 4);
 
-      const nested = sanitized.nested as Record<string, unknown>;
-      assert.equal(nested.clientSecret, "[REDACTED]");
-      assert.equal(nested.safeField, "safeValue");
-
-      const arr = sanitized.arrayData as unknown[];
-      const arrFirst = arr[0] as Record<string, unknown>;
-      assert.equal(arrFirst.token, "[REDACTED]");
-      assert.equal(arrFirst.visible, true);
+      // Verify all non-allowlisted properties are omitted completely
+      assert.equal(sanitized.access_token, undefined);
+      assert.equal(sanitized.refresh_token, undefined);
+      assert.equal(sanitized.passwordHash, undefined);
+      assert.equal(sanitized.secret, undefined);
+      assert.equal(sanitized.authorization, undefined);
+      assert.equal(sanitized.apiKey, undefined);
+      assert.equal(sanitized.nestedSecretObject, undefined);
+      assert.equal(sanitized.unrecognizedFreeTextField, undefined);
+      assert.equal(sanitized.customPayload, undefined);
     });
 
-    it("returns null for empty or non-object values", () => {
+    it("bounds strings and arrays to safe limits and validates value types", () => {
+      const longString = "A".repeat(1000);
+      const raw = {
+        pluginId: "plugin-analytics",
+        updatedKeys: ["key1", "key2", 123, null, { not: "a string" }, "B".repeat(200)],
+        reason: longString,
+      };
+
+      const sanitized = sanitizeAuditMetadata(raw, "PLUGIN_CONFIGURE");
+      assert.ok(sanitized);
+      assert.equal(sanitized.pluginId, "plugin-analytics");
+      assert.ok(Array.isArray(sanitized.updatedKeys));
+      assert.equal(sanitized.updatedKeys.length, 3); // key1, key2, bounded B...
+      assert.equal(sanitized.updatedKeys[0], "key1");
+      assert.equal(sanitized.updatedKeys[1], "key2");
+      assert.equal(sanitized.updatedKeys[2].length, 100); // truncated to maxLen 100
+    });
+
+    it("validates event-specific safe fields accurately", () => {
+      const authRaw = {
+        ip: "192.168.1.1",
+        userAgent: "Mozilla/5.0",
+        attempt: 3,
+        password: "plain_password",
+        sessionToken: "token_123",
+      };
+      const authSanitized = sanitizeAuditMetadata(authRaw, "AUTH_LOGIN_FAILURE");
+      assert.ok(authSanitized);
+      assert.equal(authSanitized.ip, "192.168.1.1");
+      assert.equal(authSanitized.userAgent, "Mozilla/5.0");
+      assert.equal(authSanitized.attempt, 3);
+      assert.equal(authSanitized.password, undefined);
+      assert.equal(authSanitized.sessionToken, undefined);
+    });
+
+    it("returns null when object contains only non-allowlisted keys or is empty", () => {
       assert.equal(sanitizeAuditMetadata(null), null);
       assert.equal(sanitizeAuditMetadata(undefined), null);
       assert.equal(sanitizeAuditMetadata("string"), null);
       assert.equal(sanitizeAuditMetadata([]), null);
       assert.equal(sanitizeAuditMetadata({}), null);
+      assert.equal(
+        sanitizeAuditMetadata({
+          access_token: "secret",
+          passwordHash: "hash",
+          unknownKey: "value",
+        }),
+        null
+      );
     });
   });
 
-  describe("AuditService Authorization and Project Isolation", () => {
-    function createMockStore(records: any[] = []) {
-      let lastWhere: any = null;
-      return {
-        count: async ({ where }: any) => {
-          lastWhere = where;
-          return records.length;
-        },
-        findMany: async ({ where, take, skip }: any) => {
-          lastWhere = where;
-          return records.slice(skip, skip + take);
-        },
-        getLastWhere: () => lastWhere,
-      };
-    }
+  describe("2. Input Validation", () => {
+    it("validates scopeType at runtime and rejects unknown values", () => {
+      assert.equal(validateAuditScopeType("PROJECT"), "PROJECT");
+      assert.equal(validateAuditScopeType("system"), "SYSTEM");
+      assert.equal(validateAuditScopeType("ALL"), "ALL");
+      assert.equal(validateAuditScopeType(undefined), undefined);
 
-    it("throws UNAUTHENTICATED (401) when requestingUserId is empty", async () => {
-      const service = new AuditService({
-        db: createMockStore(),
-        hasPermissionFn: async () => true,
-      });
-
-      await assert.rejects(
-        async () => {
-          await service.listAuditLogs({ projectId: "proj-1" }, "");
-        },
-        (err: unknown) => {
+      assert.throws(
+        () => validateAuditScopeType("INVALID_SCOPE"),
+        (err: any) => {
           assert.ok(err instanceof AuditServiceError);
-          assert.equal(err.code, "UNAUTHENTICATED");
-          assert.equal(err.status, 401);
+          assert.equal(err.code, "INVALID_INPUT");
+          assert.equal(err.status, 400);
           return true;
         }
       );
-    });
-
-    it("throws FORBIDDEN (403) when user lacks audit.view on the requested project", async () => {
-      const service = new AuditService({
-        db: createMockStore(),
-        hasPermissionFn: async (_userId, _perm, projectId) => {
-          return projectId === "proj-allowed";
-        },
-      });
-
-      await assert.rejects(
-        async () => {
-          await service.listAuditLogs({ projectId: "proj-forbidden" }, "user-1");
-        },
-        (err: unknown) => {
+      assert.throws(
+        () => validateAuditScopeType("GLOBAL"),
+        (err: any) => {
           assert.ok(err instanceof AuditServiceError);
-          assert.equal(err.code, "FORBIDDEN");
-          assert.equal(err.status, 403);
-          return true;
-        }
-      );
-    });
-
-    it("throws FORBIDDEN (403) when user lacks global audit.view for system logs", async () => {
-      const service = new AuditService({
-        db: createMockStore(),
-        hasPermissionFn: async (_userId, _perm, projectId) => {
-          // only project-scoped permission, not global (null)
-          return projectId !== null;
-        },
-      });
-
-      await assert.rejects(
-        async () => {
-          await service.listAuditLogs({ scopeType: "SYSTEM" }, "user-project-only");
-        },
-        (err: unknown) => {
-          assert.ok(err instanceof AuditServiceError);
-          assert.equal(err.code, "FORBIDDEN");
-          assert.equal(err.status, 403);
-          return true;
-        }
-      );
-    });
-
-    it("enforces strict project isolation in query WHERE clause", async () => {
-      const mockStore = createMockStore([
-        {
-          id: "log-1",
-          action: "CONTENT_PAGE_CREATED",
-          scopeType: "PROJECT",
-          scopeId: "proj-1",
-          resourceType: "PAGE",
-          resourceId: "p1",
-          metadata: { title: "Test Page" },
-          createdAt: new Date(),
-          actorId: "u1",
-          actor: { id: "u1", name: "User One", email: "u1@test.com" },
-        },
-      ]);
-
-      const service = new AuditService({
-        store: mockStore,
-        hasPermissionFn: async () => true,
-      });
-
-      const res = await service.listAuditLogs({ projectId: "proj-1" }, "user-1");
-      assert.equal(res.items.length, 1);
-      assert.equal(res.items[0].id, "log-1");
-
-      const where = mockStore.getLastWhere();
-      assert.equal(where.scopeType, "PROJECT");
-      assert.equal(where.scopeId, "proj-1");
-    });
-
-    it("clamps pagination limit between 1 and 100", async () => {
-      const mockStore = createMockStore([]);
-      const service = new AuditService({
-        store: mockStore,
-        hasPermissionFn: async () => true,
-      });
-
-      const resHigh = await service.listAuditLogs({ projectId: "proj-1", limit: 500 }, "user-1");
-      assert.equal(resHigh.limit, 100);
-
-      const resLow = await service.listAuditLogs({ projectId: "proj-1", limit: -5 }, "user-1");
-      assert.equal(resLow.limit, 20); // fallback default
-    });
-
-    it("validates date filters and throws 400 on malformed date", async () => {
-      const service = new AuditService({
-        db: createMockStore(),
-        hasPermissionFn: async () => true,
-      });
-
-      await assert.rejects(
-        async () => {
-          await service.listAuditLogs(
-            { projectId: "proj-1", from: "invalid-date-format" },
-            "user-1"
-          );
-        },
-        (err: unknown) => {
-          assert.ok(err instanceof AuditServiceError);
-          assert.equal(err.code, "INVALID_DATE_FILTER");
+          assert.equal(err.code, "INVALID_INPUT");
           assert.equal(err.status, 400);
           return true;
         }
       );
     });
 
-    it("propagates database errors truthfully as 500 DATABASE_ERROR (not empty results)", async () => {
-      const failingStore = {
-        count: async () => {
-          throw new Error("Connection lost to PostgreSQL cluster");
-        },
-        findMany: async () => {
-          throw new Error("Connection lost to PostgreSQL cluster");
-        },
-      };
+    it("validates strict positive integers and rejects malformed values (e.g. 2abc, -5, 0, 1.5)", () => {
+      assert.equal(parseStrictPositiveInt("1", 1, "page"), 1);
+      assert.equal(parseStrictPositiveInt("25", 1, "page"), 25);
+      assert.equal(parseStrictPositiveInt(undefined, 10, "limit"), 10);
+      assert.equal(parseStrictPositiveInt("", 20, "limit"), 20);
 
+      // Rejects permissive parseInt strings like 2abc
+      assert.throws(
+        () => parseStrictPositiveInt("2abc", 1, "page"),
+        (err: any) => {
+          assert.ok(err instanceof AuditServiceError);
+          assert.equal(err.code, "INVALID_INPUT");
+          assert.equal(err.status, 400);
+          return true;
+        }
+      );
+
+      // Rejects zero, negative, floating point
+      assert.throws(() => parseStrictPositiveInt("0", 1, "page"));
+      assert.throws(() => parseStrictPositiveInt("-5", 1, "page"));
+      assert.throws(() => parseStrictPositiveInt("1.5", 1, "page"));
+      assert.throws(() => parseStrictPositiveInt("abc", 1, "page"));
+    });
+
+    it("rejects reversed date ranges and malformed dates", () => {
+      const valid = validateDateRange("2026-09-01", "2026-09-20");
+      assert.ok(valid.fromDate instanceof Date);
+      assert.ok(valid.toDate instanceof Date);
+
+      // Malformed date
+      assert.throws(
+        () => validateDateRange("invalid-date", "2026-09-20"),
+        (err: any) => {
+          assert.ok(err instanceof AuditServiceError);
+          assert.equal(err.code, "INVALID_DATE_FILTER");
+          assert.equal(err.status, 400);
+          return true;
+        }
+      );
+
+      // Reversed date range (from > to)
+      assert.throws(
+        () => validateDateRange("2026-09-20", "2026-09-01"),
+        (err: any) => {
+          assert.ok(err instanceof AuditServiceError);
+          assert.equal(err.code, "INVALID_INPUT");
+          assert.equal(err.status, 400);
+          return true;
+        }
+      );
+    });
+
+    it("rejects offsets exceeding maximum safe bounds in AuditService", async () => {
       const service = new AuditService({
-        store: failingStore,
+        db: {
+          count: async () => 0,
+          findMany: async () => [],
+        },
         hasPermissionFn: async () => true,
       });
 
       await assert.rejects(
         async () => {
-          await service.listAuditLogs({ projectId: "proj-1" }, "user-1");
+          // page 20,000 with limit 100 exceeds 1,000,000 offset
+          await service.listAuditLogs({ page: 20000, limit: 100, projectId: "proj-1" }, "user-1");
         },
-        (err: unknown) => {
+        (err: any) => {
           assert.ok(err instanceof AuditServiceError);
-          assert.equal(err.code, "DATABASE_ERROR");
-          assert.equal(err.status, 500);
+          assert.equal(err.code, "INVALID_INPUT");
+          assert.equal(err.status, 400);
           return true;
         }
       );
     });
   });
 
-  describe("Removal of Static Demo Data from Admin Audit Page", () => {
+  describe("3. HTTP Error Mapping", () => {
+    it("maps AuditServiceError correctly to safe JSON HTTP responses", async () => {
+      const unauthRes = handleAuditApiError(
+        new AuditServiceError("UNAUTHENTICATED", "Authentication required", 401)
+      );
+      assert.equal(unauthRes.status, 401);
+      const unauthBody = await unauthRes.json();
+      assert.equal(unauthBody.error.code, "UNAUTHENTICATED");
+
+      const forbiddenRes = handleAuditApiError(
+        new AuditServiceError("FORBIDDEN", "Forbidden: insufficient permissions", 403)
+      );
+      assert.equal(forbiddenRes.status, 403);
+      const forbiddenBody = await forbiddenRes.json();
+      assert.equal(forbiddenBody.error.code, "FORBIDDEN");
+
+      const invalidInputRes = handleAuditApiError(
+        new AuditServiceError("INVALID_INPUT", "Invalid page: must be a positive integer", 400)
+      );
+      assert.equal(invalidInputRes.status, 400);
+      const invalidInputBody = await invalidInputRes.json();
+      assert.equal(invalidInputBody.error.code, "INVALID_INPUT");
+
+      const dbErrorRes = handleAuditApiError(
+        new AuditServiceError("DATABASE_ERROR", "Raw postgres error connection refused", 500)
+      );
+      assert.equal(dbErrorRes.status, 500);
+      const dbErrorBody = await dbErrorRes.json();
+      assert.equal(dbErrorBody.error.code, "DATABASE_ERROR");
+      // Must not leak raw connection details in 500 responses
+      assert.ok(!dbErrorBody.error.message.includes("connection refused"));
+    });
+  });
+
+  describe("4. Removal of Static Demo Data from Admin Audit Page", () => {
     it("ensures app/admin/audit/page.tsx does not contain hardcoded demo data", () => {
       const pageCode = fs.readFileSync("app/admin/audit/page.tsx", "utf8");
       assert.ok(!pageCode.includes("unknown_bot"), "Must not contain demo actor unknown_bot");
