@@ -49,7 +49,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres_password@localhost:5432/cms_dev_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres_password@127.0.0.1:5432/cms_dev_test?schema=public
     steps:
       - name: Checkout repository
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
