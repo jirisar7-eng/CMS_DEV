@@ -1,0 +1,37 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-PLUGIN-002",
+  "environment": "CMS_DEV",
+  "base_sha": "9624c59bcb86bf8252efe6e116077fc7d39ce016",
+  "expected_branch": "task/SYN-PLUGIN-002-PROJECT-PLUGIN-LIFECYCLE-PERSISTENCE",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "SCHEMA",
+    "DOMAIN_LOGIC",
+    "API_ROUTE",
+    "ADMIN_UI",
+    "TEST",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    ".synthesis/task-capsules/SYN-PLUGIN-002-PROJECT-PLUGIN-LIFECYCLE-PERSISTENCE.json",
+    ".synthesis/lineage/capabilities.json",
+    "scripts/lineage/validate.mjs",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260919170000_project_plugin_lifecycle_persistence/migration.sql",
+    "lib/auth/audit.ts",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "lib/domain/plugin/contracts.ts",
+    "lib/domain/plugin/service.ts",
+    "app/api/admin/projects/[projectId]/plugins/route.ts",
+    "app/api/admin/projects/[projectId]/plugins/[pluginId]/route.ts",
+    "app/admin/modules/page.tsx",
+    "tests/plugin-lifecycle-persistence.test.ts",
+    "tests/admin-capability-status.test.ts",
+    "lib/domain/plugin/index.ts",
+    "lib/navigation/adminNav.ts"
+  ]
+}
