@@ -1151,7 +1151,7 @@ export class ContentLifecycleService {
     }
 
     if (!this.store.listProjectReleases) {
-      return [];
+      throw new ContentLifecycleError("INVALID_INPUT", "Store implementation for listProjectReleases is missing");
     }
     return this.store.listProjectReleases(projectId);
   }
@@ -1173,7 +1173,7 @@ export class ContentLifecycleService {
     }
 
     if (!this.store.listProjectRevisions) {
-      return [];
+      throw new ContentLifecycleError("INVALID_INPUT", "Store implementation for listProjectRevisions is missing");
     }
     return this.store.listProjectRevisions(projectId, pageId);
   }

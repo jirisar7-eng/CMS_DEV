@@ -1,18 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { CapabilityShell } from "@/components/admin/CapabilityShell";
+import React, { useState, useEffect, useCallback } from "react";
+import { CapabilityShell } from "../CapabilityShell";
 import {
-  Send,
   RotateCcw,
   Clock,
-  ShieldCheck,
   FolderKanban,
   Loader2,
   RefreshCw,
-  FileText,
-  CheckCircle2,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 interface ReleaseItem {
@@ -39,37 +35,53 @@ interface ReleaseData {
 
 export function PublishingWorkspace({ projectId }: { projectId: string | null }) {
   const [releases, setReleases] = useState<ReleaseData[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(Boolean(projectId));
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState<number>(0);
 
-  const fetchReleases = async () => {
-    if (!projectId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/projects/${projectId}/releases`);
-      if (!res.ok) {
-        if (res.status === 403) throw new Error("Nemáte oprávnění k zobrazení publikační historie (content.view).");
-        if (res.status === 401) throw new Error("Relace vypršela. Přihlaste se prosím znovu.");
-        throw new Error("Nepodařilo se načíst publikační data.");
-      }
-      const data = await res.json();
-      setReleases(data.releases || []);
-    } catch (err: any) {
-      setError(err.message || "Chyba při načítání releases.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleRefresh = useCallback(() => {
+    setReloadToken((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
-    fetchReleases();
-  }, [projectId]);
+    if (!projectId) return;
+
+    let isMounted = true;
+
+    async function loadReleases() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/admin/projects/${projectId}/releases`);
+        if (!res.ok) {
+          if (res.status === 403) throw new Error("Nemáte oprávnění k zobrazení publikační historie (content.view).");
+          if (res.status === 401) throw new Error("Relace vypršela. Přihlaste se prosím znovu.");
+          throw new Error("Nepodařilo se načíst publikační data.");
+        }
+        const body = await res.json();
+        if (isMounted) {
+          setReleases(body.data?.releases || body.releases || []);
+        }
+      } catch (err: unknown) {
+        if (isMounted) {
+          const msg = err instanceof Error ? err.message : "Chyba při načítání releases.";
+          setError(msg);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadReleases();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId, reloadToken]);
 
   const handleRollbackPage = async (pageId: string, expectedPublishedRevisionId: string) => {
     if (!projectId) return;
@@ -86,12 +98,13 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || "Rollback selhal.");
+        throw new Error(errData.error?.message || errData.message || "Rollback selhal.");
       }
       setActionMessage("Rollback stránky úspěšně proveden přes canonical Content Lifecycle.");
-      await fetchReleases();
-    } catch (err: any) {
-      setActionMessage(`Chyba při rollbacku: ${err.message}`);
+      handleRefresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Chyba při rollbacku";
+      setActionMessage(`Chyba při rollbacku: ${msg}`);
     } finally {
       setProcessingId(null);
     }
@@ -103,7 +116,7 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
         group="OBSAH"
         title="Publikování a verze"
         description="Publikační pipeline pro vytváření neměnných verzí (releases) obsahu webu a okamžitý rollback."
-        status="FUNKČNÍ"
+        status="ZÁKLAD"
         helpKey="content.publishing.view"
         emptyTitle="Vyberte aktivní projekt"
         emptyDescription="Pro zobrazení publikační historie a správu neměnných vydání prosím zvolte projekt v přepínači projektů."
@@ -127,7 +140,7 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
       group="OBSAH"
       title="Publikování a verze"
       description="Publikační pipeline pro vytváření neměnných verzí (releases) obsahu webu a okamžitý rollback."
-      status="FUNKČNÍ"
+      status="ZÁKLAD"
       helpKey="content.publishing.view"
       emptyTitle="Zatím nebyla provedena žádná publikace obsahu"
       emptyDescription="Vytvořené a schválené revize stránek můžete publikovat z editoru stránek."
@@ -155,7 +168,7 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
             </div>
             <button
               type="button"
-              onClick={fetchReleases}
+              onClick={handleRefresh}
               disabled={loading}
               className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
