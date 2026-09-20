@@ -1,4 +1,3 @@
-import { computeRevisionDiff } from "@/lib/domain/content/diff";
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -57,6 +56,103 @@ interface BlockDiff {
 
 
 
+export function computeRevisionDiff(
+  current: {
+    title: string;
+    slug: string;
+    description?: string | null;
+    visibility?: string;
+    content?: { blocks?: Array<{ id?: string; type: string; data?: Record<string, unknown> }> };
+    revisionNumber?: number;
+  },
+  previous?: {
+    title: string;
+    slug: string;
+    description?: string | null;
+    visibility?: string;
+    content?: { blocks?: Array<{ id?: string; type: string; data?: Record<string, unknown> }> };
+    revisionNumber?: number;
+  } | null
+) {
+  const titleChanged = previous ? current.title !== previous.title : false;
+  const slugChanged = previous ? current.slug !== previous.slug : false;
+  const descriptionChanged = previous ? current.description !== previous.description : false;
+  const visibilityChanged = previous ? current.visibility !== previous.visibility : false;
+
+  const currentBlocks = current.content?.blocks || [];
+  const previousBlocks = previous?.content?.blocks || [];
+
+  const prevBlockMap = new Map<string, { type: string; data?: Record<string, unknown> }>();
+  previousBlocks.forEach((b, idx) => {
+    const key = b.id || `block-${idx}`;
+    prevBlockMap.set(key, b);
+  });
+
+  const blockDiffs: BlockDiff[] = [];
+  const visitedPrevKeys = new Set<string>();
+
+  currentBlocks.forEach((currBlock, idx) => {
+    const key = currBlock.id || `block-${idx}`;
+    const prevBlock = prevBlockMap.get(key);
+    visitedPrevKeys.add(key);
+
+    if (!prevBlock) {
+      blockDiffs.push({
+        id: key,
+        type: currBlock.type,
+        status: "ADDED",
+        summary: `Přidán nový blok (${currBlock.type})`,
+      });
+    } else if (
+      JSON.stringify(currBlock.data || {}) !== JSON.stringify(prevBlock.data || {}) ||
+      currBlock.type !== prevBlock.type
+    ) {
+      blockDiffs.push({
+        id: key,
+        type: currBlock.type,
+        status: "MODIFIED",
+        summary: `Změna obsahu/typu bloku (${prevBlock.type} -> ${currBlock.type})`,
+      });
+    } else {
+      blockDiffs.push({
+        id: key,
+        type: currBlock.type,
+        status: "UNCHANGED",
+        summary: `Bez beze změny (${currBlock.type})`,
+      });
+    }
+  });
+
+  previousBlocks.forEach((prevBlock, idx) => {
+    const key = prevBlock.id || `block-${idx}`;
+    if (!visitedPrevKeys.has(key)) {
+      blockDiffs.push({
+        id: key,
+        type: prevBlock.type,
+        status: "REMOVED",
+        summary: `Odebrán blok (${prevBlock.type})`,
+      });
+    }
+  });
+
+  const hasChanges =
+    titleChanged ||
+    slugChanged ||
+    descriptionChanged ||
+    visibilityChanged ||
+    blockDiffs.some((b) => b.status !== "UNCHANGED");
+
+  return {
+    titleChanged,
+    slugChanged,
+    descriptionChanged,
+    visibilityChanged,
+    blockDiffs,
+    hasChanges,
+    previousRevisionNumber: previous?.revisionNumber ?? null,
+  };
+}
+
 export function RevisionsWorkspace({ projectId }: { projectId: string | null }) {
   const [revisions, setRevisions] = useState<PageRevision[]>([]);
   const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
@@ -67,6 +163,7 @@ export function RevisionsWorkspace({ projectId }: { projectId: string | null }) 
   const [reloadToken, setReloadToken] = useState<number>(0);
 
   const handleRefresh = useCallback(() => {
+    setLoading(true);
     setReloadToken((prev) => prev + 1);
   }, []);
 
@@ -76,8 +173,6 @@ export function RevisionsWorkspace({ projectId }: { projectId: string | null }) 
     let isMounted = true;
 
     async function loadRevisions() {
-      setLoading(true);
-      setError(null);
       try {
         const res = await fetch(`/api/admin/projects/${projectId}/revisions`);
         if (!res.ok) {
@@ -89,6 +184,7 @@ export function RevisionsWorkspace({ projectId }: { projectId: string | null }) 
         if (isMounted) {
           const list: PageRevision[] = body.data?.revisions || body.revisions || [];
           setRevisions(list);
+          setError(null);
           setSelectedRevisionId((curr) => {
             if (curr && list.some((r) => r.id === curr)) return curr;
             return list.length > 0 ? list[0].id : null;

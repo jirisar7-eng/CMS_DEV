@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { CapabilityShell } from "../CapabilityShell";
+import { CapabilityShell } from "@/components/admin/CapabilityShell";
 import {
   RotateCcw,
   Clock,
@@ -42,6 +42,7 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
   const [reloadToken, setReloadToken] = useState<number>(0);
 
   const handleRefresh = useCallback(() => {
+    setLoading(true);
     setReloadToken((prev) => prev + 1);
   }, []);
 
@@ -51,8 +52,6 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
     let isMounted = true;
 
     async function loadReleases() {
-      setLoading(true);
-      setError(null);
       try {
         const res = await fetch(`/api/admin/projects/${projectId}/releases`);
         if (!res.ok) {
@@ -63,6 +62,7 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
         const body = await res.json();
         if (isMounted) {
           setReleases(body.data?.releases || body.releases || []);
+          setError(null);
         }
       } catch (err: unknown) {
         if (isMounted) {
