@@ -8,9 +8,11 @@ import {
 } from "@/lib/domain/pages-api";
 import { getActiveProjectContext } from "@/lib/domain/pages-client/server-context";
 import {
+  AuditServiceError,
   getAuditService,
   handleAuditApiError,
   parseStrictPositiveInt,
+  validateAuditScopeType,
   validateDateRange,
 } from "@/lib/domain/audit";
 
@@ -43,6 +45,16 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
 
+    const rawScopeType = searchParams.get("scopeType");
+    const scopeType = validateAuditScopeType(rawScopeType);
+    if (scopeType && scopeType !== "PROJECT") {
+      throw new AuditServiceError(
+        "INVALID_INPUT",
+        "Project audit endpoint only supports PROJECT scopeType",
+        400
+      );
+    }
+
     const page = parseStrictPositiveInt(searchParams.get("page"), 1, "page");
     const limit = parseStrictPositiveInt(searchParams.get("limit"), 20, "limit");
 
@@ -57,6 +69,7 @@ export async function GET(
     const result = await service.listAuditLogs(
       {
         projectId: projectContext.projectId,
+        scopeType: "PROJECT",
         action,
         resourceType,
         from: fromDate,

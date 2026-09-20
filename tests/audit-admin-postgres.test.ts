@@ -124,6 +124,35 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
       actorId: testUserId,
       metadata: { ip: "127.0.0.1", token: "jwt_token_to_redact" },
     });
+
+    await logAudit({
+      action: "CONTENT_DRAFT_UPDATED",
+      scopeType: "PROJECT",
+      scopeId: projectAId,
+      resourceType: "PAGE",
+      resourceId: "page-a-1",
+      actorId: testUserId,
+      metadata: {
+        pageId: "page-a-1",
+        revisionNumber: 2,
+        lockVersion: 1,
+        note: "Sensitive unredacted draft memo",
+        changedFields: ["title", "body"],
+      },
+    });
+
+    await logAudit({
+      action: "UNKNOWN_CUSTOM_EVENT",
+      scopeType: "PROJECT",
+      scopeId: projectAId,
+      resourceType: "CUSTOM",
+      resourceId: "custom-1",
+      actorId: testUserId,
+      metadata: {
+        freeText: "some unvalidated free text",
+        note: "untracked note",
+      },
+    });
   });
 
   after(async () => {
@@ -224,6 +253,23 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
     assert.equal(item.metadata.access_token, undefined);
     assert.equal(item.metadata.passwordHash, undefined);
     assert.equal(item.metadata.nestedUnsafe, undefined);
+
+    // Omission of free-text note in CONTENT_DRAFT_UPDATED
+    const draftRes = await service.listAuditLogs({ projectId: projectAId, action: "CONTENT_DRAFT_UPDATED" }, testUserId);
+    assert.ok(draftRes.items.length >= 1);
+    const draftItem = draftRes.items[0];
+    assert.ok(draftItem.metadata);
+    assert.equal(draftItem.metadata.pageId, "page-a-1");
+    assert.equal(draftItem.metadata.revisionNumber, 2);
+    assert.equal(draftItem.metadata.lockVersion, 1);
+    assert.deepEqual(draftItem.metadata.changedFields, ["title", "body"]);
+    assert.equal(draftItem.metadata.note, undefined, "Unrestricted note must be omitted");
+
+    // Complete omission of metadata for unknown events
+    const unknownRes = await service.listAuditLogs({ projectId: projectAId, action: "UNKNOWN_CUSTOM_EVENT" }, testUserId);
+    assert.ok(unknownRes.items.length >= 1);
+    const unknownItem = unknownRes.items[0];
+    assert.equal(unknownItem.metadata, null, "Unknown event type must project metadata to null");
   });
 
   it("correctly handles deterministic pagination and filtering", async () => {

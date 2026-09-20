@@ -59,16 +59,13 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
     ip: safeString(100),
     userAgent: safeString(255),
     email: safeString(255),
-    reason: safeString(255),
     attempt: safeNumber(),
   },
   AUTH_LOGOUT: {
     userId: safeString(100),
-    reason: safeString(255),
   },
   AUTH_SESSION_REVOKED: {
     targetUserId: safeString(100),
-    reason: safeString(255),
   },
 
   // User & RBAC events
@@ -99,47 +96,61 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
     pageTitle: safeString(200),
     revisionId: safeString(100),
     revisionNumber: safeNumber(),
+    lockVersion: safeNumber(),
+    key: safeString(100),
   },
   CONTENT_DRAFT_UPDATED: {
     pageId: safeString(100),
     revisionId: safeString(100),
     revisionNumber: safeNumber(),
-    note: safeString(500),
+    lockVersion: safeNumber(),
+    changedFields: safeStringArray(50, 100),
   },
   CONTENT_REVIEW_SUBMITTED: {
     pageId: safeString(100),
     revisionId: safeString(100),
     revisionNumber: safeNumber(),
-    note: safeString(500),
+    lockVersion: safeNumber(),
+    fromStatus: safeString(50),
+    toStatus: safeString(50),
   },
   CONTENT_REVIEW_APPROVED: {
     pageId: safeString(100),
     revisionId: safeString(100),
     revisionNumber: safeNumber(),
-    note: safeString(500),
+    lockVersion: safeNumber(),
+    fromStatus: safeString(50),
+    toStatus: safeString(50),
   },
   CONTENT_CHANGES_REQUESTED: {
     pageId: safeString(100),
     revisionId: safeString(100),
     revisionNumber: safeNumber(),
-    reason: safeString(500),
+    fromStatus: safeString(50),
+    toStatus: safeString(50),
   },
   CONTENT_RELEASE_PUBLISHED: {
     pageId: safeString(100),
     releaseId: safeString(100),
     revisionId: safeString(100),
     releaseVersion: safeString(100),
+    previousRevisionId: safeString(100),
   },
   CONTENT_RELEASE_ROLLED_BACK: {
     pageId: safeString(100),
     rollbackReleaseId: safeString(100),
     sourcePublishReleaseId: safeString(100),
-    reason: safeString(500),
+    fromRevisionId: safeString(100),
+    toRevisionId: safeString(100),
+    fromRevisionNumber: safeNumber(),
+    toRevisionNumber: safeNumber(),
   },
   CONTENT_DRAFT_REOPENED: {
     pageId: safeString(100),
     sourcePublishedRevisionId: safeString(100),
     newDraftRevisionId: safeString(100),
+    newDraftRevisionNumber: safeNumber(),
+    lockVersion: safeNumber(),
   },
 
   // Brand events
@@ -259,8 +270,6 @@ export const GLOBAL_SAFE_FIELDS: Record<string, FieldValidator> = {
   userAgent: safeString(255),
   email: safeString(255),
   userId: safeString(100),
-  reason: safeString(500),
-  note: safeString(500),
   theme: safeString(100),
   attempt: safeNumber(),
 };
@@ -278,8 +287,13 @@ export function sanitizeAuditMetadata(
     return null;
   }
 
+  // Unknown events or missing action omit metadata by default
+  if (!action || !EVENT_METADATA_SCHEMAS[action]) {
+    return null;
+  }
+
   const rawObj = raw as Record<string, unknown>;
-  const schema = (action && EVENT_METADATA_SCHEMAS[action]) || GLOBAL_SAFE_FIELDS;
+  const schema = EVENT_METADATA_SCHEMAS[action];
   const result: Record<string, unknown> = {};
 
   for (const [key, validator] of Object.entries(schema)) {
@@ -711,4 +725,8 @@ export function getAuditService(): AuditService {
     auditServiceInstance = new AuditService();
   }
   return auditServiceInstance;
+}
+
+export function setAuditServiceForTesting(service: AuditService | null): void {
+  auditServiceInstance = service;
 }
