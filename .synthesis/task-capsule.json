@@ -30,6 +30,8 @@
     "app/api/admin/projects/[projectId]/plugins/[pluginId]/route.ts",
     "app/admin/modules/page.tsx",
     "tests/plugin-lifecycle-persistence.test.ts",
-    "tests/admin-capability-status.test.ts"
+    "tests/admin-capability-status.test.ts",
+    "lib/domain/plugin/index.ts",
+    "lib/navigation/adminNav.ts"
   ]
 }
