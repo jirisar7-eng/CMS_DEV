@@ -17,18 +17,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version-file: '.nvmrc'
+
       - name: Install dependencies
         run: npm ci
+
       - name: Lint
         run: npm run lint
+
       - name: Typecheck
         run: npx tsc --noEmit
+
       - name: Unit Tests
-        run: npx tsx --test tests/publishing-revisions-admin-cutover.test.ts
+        run: npx tsx --test tests/publishing-revisions-admin-cutover.test.ts tests/audit-admin-cutover.test.ts
+
       - name: Build
         run: npm run build
 
@@ -49,12 +55,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version-file: '.nvmrc'
+
       - name: Install dependencies
         run: npm ci
+
       - name: Wait for Postgres
         run: |
           for i in {1..30}; do
@@ -65,13 +74,16 @@ jobs:
             echo "Waiting for postgres..."
             sleep 1
           done
+
       - name: Generate Prisma Client
         run: npx prisma generate
+
       - name: Run Prisma Migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres_password@127.0.0.1:${{ job.services.postgres.ports[5432] }}/postgres?schema=public
         run: npx prisma migrate deploy
+
       - name: Run PostgreSQL Integration Tests
         env:
           DATABASE_URL: postgresql://postgres:postgres_password@127.0.0.1:${{ job.services.postgres.ports[5432] }}/postgres?schema=public
-        run: npx tsx --test tests/publishing-revisions-postgres.test.ts
+        run: npx tsx --test tests/publishing-revisions-postgres.test.ts tests/audit-admin-postgres.test.ts
