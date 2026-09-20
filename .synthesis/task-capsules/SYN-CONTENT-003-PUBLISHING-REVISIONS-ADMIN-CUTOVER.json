@@ -11,9 +11,11 @@
     "API_ROUTE",
     "ADMIN_UI",
     "TEST",
-    "GOVERNANCE"
+    "GOVERNANCE",
+    "CI_WORKFLOW"
   ],
   "allowed_paths": [
+    ".github/workflows/technical-ci.yml",
     ".synthesis/task-capsule.json",
     ".synthesis/task-capsules/SYN-CONTENT-003-PUBLISHING-REVISIONS-ADMIN-CUTOVER.json",
     "lib/domain/content/lifecycle/store.ts",
@@ -26,6 +28,7 @@
     "components/admin/publishing/PublishingWorkspace.tsx",
     "components/admin/revisions/RevisionsWorkspace.tsx",
     "lib/navigation/adminNav.ts",
-    "tests/publishing-revisions-admin-cutover.test.ts"
+    "tests/publishing-revisions-admin-cutover.test.ts",
+    "tests/publishing-revisions-postgres.test.ts"
   ]
 }
