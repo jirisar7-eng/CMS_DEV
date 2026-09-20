@@ -43,7 +43,9 @@ export type PermissionKey =
   | 'search.manage'
   | 'search.reindex'
   | 'system_map.read_basic'
-  | 'system_map.read_internal';
+  | 'system_map.read_internal'
+  | 'plugin.read'
+  | 'plugin.manage';
 
 export async function hasPermission(
   userId: string,

@@ -131,3 +131,14 @@ export interface DependencyCheckResult {
   circularDependencies: string[][];
   issues: ValidationIssue[];
 }
+
+export interface ProjectPluginStateView {
+  pluginId: string;
+  projectId: string;
+  enabled: boolean;
+  config: Record<string, any> | null;
+  enabledAt: string | null;
+  enabledById: string | null;
+  manifest?: PluginManifest;
+  isOrphan?: boolean;
+}
