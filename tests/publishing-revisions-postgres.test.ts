@@ -149,6 +149,14 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
     if (!prisma) return;
     try {
       // Disposable fixture cleanup
+      await prisma.auditLog.deleteMany({
+        where: {
+          OR: [
+            { actorId: testUserId },
+            { scopeId: { in: [testProjectIdA, testProjectIdB] } },
+          ],
+        },
+      });
       await prisma.contentReleaseItem.deleteMany({
         where: { release: { projectId: { in: [testProjectIdA, testProjectIdB] } } },
       });

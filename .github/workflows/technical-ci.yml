@@ -38,8 +38,8 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_password
           POSTGRES_DB: cms_dev_test
         ports:
           - 5432:5432
@@ -49,7 +49,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://test_user:test_password@localhost:5432/cms_dev_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres_password@localhost:5432/cms_dev_test?schema=public
     steps:
       - name: Checkout repository
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
@@ -59,6 +59,8 @@ jobs:
           node-version-file: '.nvmrc'
       - name: Install dependencies
         run: npm ci
+      - name: Generate Prisma Client
+        run: npx prisma generate
       - name: Run Prisma Migrations
         run: npx prisma migrate deploy
       - name: Run PostgreSQL Integration Tests
