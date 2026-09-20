@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "clean": "next clean",
     "bootstrap": "tsx scripts/bootstrap-admin.ts",
-    "test:brand": "tsx --test tests/brand-*.test.ts"
+    "test:brand": "tsx --test tests/brand-*.test.ts",
+    "test:ci:classify": "node scripts/ci/run_classified_tests.mjs classify",
+    "test:ci:unit": "node scripts/ci/run_classified_tests.mjs unit",
+    "test:ci:postgres": "node scripts/ci/run_classified_tests.mjs postgres"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1132.0",

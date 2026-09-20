@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'task/**'
+      - main
   pull_request:
     branches:
       - main
@@ -26,16 +27,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Fail-Closed Test Classification Check
+        run: npm run test:ci:classify
+
       - name: Lint
         run: npm run lint
 
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Unit Tests
-        run: npx tsx --test tests/publishing-revisions-admin-cutover.test.ts tests/audit-admin-cutover.test.ts
+      - name: Deterministic Unit and Security Tests
+        run: npm run test:ci:unit
 
-      - name: Build
+      - name: Production Build
         run: npm run build
 
   postgres_integration:
@@ -64,6 +68,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Fail-Closed Test Classification Check
+        run: npm run test:ci:classify
+
       - name: Wait for Postgres
         run: |
           for i in {1..30}; do
@@ -86,4 +93,4 @@ jobs:
       - name: Run PostgreSQL Integration Tests
         env:
           DATABASE_URL: postgresql://postgres:postgres_password@127.0.0.1:${{ job.services.postgres.ports[5432] }}/postgres?schema=public
-        run: npx tsx --test tests/publishing-revisions-postgres.test.ts tests/audit-admin-postgres.test.ts
+        run: npm run test:ci:postgres
