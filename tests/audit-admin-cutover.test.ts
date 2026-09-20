@@ -2,10 +2,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 import {
   AuditService,
   AuditServiceError,
   handleAuditApiError,
+  mapAuditErrorToResponse,
   parseStrictPositiveInt,
   sanitizeAuditMetadata,
   validateAuditScopeType,
@@ -240,7 +242,8 @@ describe("SYN-AUDIT-001: Audit Admin Viewer & Safe Projection Review Verificatio
 
   describe("4. Removal of Static Demo Data from Admin Audit Page", () => {
     it("ensures app/admin/audit/page.tsx does not contain hardcoded demo data", () => {
-      const pageCode = fs.readFileSync("app/admin/audit/page.tsx", "utf8");
+      const filePath = path.resolve(process.cwd(), "app/admin/audit/page.tsx");
+      const pageCode = fs.readFileSync(filePath, "utf8");
       assert.ok(!pageCode.includes("unknown_bot"), "Must not contain demo actor unknown_bot");
       assert.ok(!pageCode.includes("45.134.22.10"), "Must not contain demo IP 45.134.22.10");
       assert.ok(!pageCode.includes("hero-banner-main.webp"), "Must not contain demo banner filename");
@@ -248,7 +251,8 @@ describe("SYN-AUDIT-001: Audit Admin Viewer & Safe Projection Review Verificatio
     });
 
     it("ensures components/admin/audit/AuditWorkspace.tsx is connected to real API", () => {
-      const wsCode = fs.readFileSync("components/admin/audit/AuditWorkspace.tsx", "utf8");
+      const filePath = path.resolve(process.cwd(), "components/admin/audit/AuditWorkspace.tsx");
+      const wsCode = fs.readFileSync(filePath, "utf8");
       assert.ok(wsCode.includes("/api/admin/"), "Must fetch from admin audit API endpoints");
       assert.ok(wsCode.includes("SafeAuditRecord"), "Must type records with SafeAuditRecord");
       assert.ok(!wsCode.includes("45.134.22.10"), "Must not contain static demo IPs");

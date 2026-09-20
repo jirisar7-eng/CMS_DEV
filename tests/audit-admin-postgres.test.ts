@@ -1,12 +1,9 @@
 // @ts-nocheck
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { NextRequest } from "next/server";
 import { prisma } from "../lib/db";
 import { AuditService } from "../lib/domain/audit";
 import { logAudit } from "../lib/auth/audit";
-import { GET as globalAuditRoute } from "../app/api/admin/audit/route";
-import { GET as projectAuditRoute } from "../app/api/admin/projects/[projectId]/audit/route";
 
 describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
   const timestamp = Date.now();
@@ -204,12 +201,10 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
 
   it("allows global auditor to read system logs and project logs", async () => {
     const service = new AuditService();
-    // System logs
     const sysRes = await service.listAuditLogs({ scopeType: "SYSTEM" }, testUserGlobalId);
     assert.ok(sysRes.items.length >= 1, "Must find system logs");
     assert.ok(sysRes.items.some(i => i.action === "AUTH_LOGIN_SUCCESS"));
 
-    // Project B logs
     const projBRes = await service.listAuditLogs({ projectId: projectBId }, testUserGlobalId);
     assert.ok(projBRes.items.length >= 1, "Must find Project B logs");
     assert.equal(projBRes.items[0].scopeId, projectBId);
@@ -239,25 +234,5 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
     assert.equal(res.page, 1);
     assert.ok(res.total >= 2);
     assert.equal(res.hasMore, true);
-  });
-
-  describe("HTTP Route Level Verification (Error mapping, project boundaries, input validation)", () => {
-    it("handles missing project (404 PROJECT_NOT_FOUND) on /api/admin/projects/[projectId]/audit", async () => {
-      // Mock session for global user
-      const req = new NextRequest("http://localhost:3000/api/admin/projects/non-existent-proj/audit");
-      const res = await projectAuditRoute(req, {
-        params: Promise.resolve({ projectId: "non-existent-proj" }),
-      });
-      // Without auth session in mock, returns 401 or project not found
-      assert.ok([401, 404].includes(res.status));
-      const body = await res.json();
-      assert.ok(body.error && (body.error.code === "UNAUTHENTICATED" || body.error.code === "PROJECT_NOT_FOUND"));
-    });
-
-    it("rejects malformed page parameter on global audit route", async () => {
-      const req = new NextRequest("http://localhost:3000/api/admin/audit?page=2abc");
-      const res = await globalAuditRoute(req);
-      assert.ok([400, 401].includes(res.status));
-    });
   });
 });

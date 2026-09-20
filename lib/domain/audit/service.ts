@@ -1,5 +1,4 @@
 import { PermissionKey } from "@/lib/auth/rbac";
-import { NextResponse } from "next/server";
 import {
   AuditLogQueryOptions,
   AuditLogsQueryResult,
@@ -8,7 +7,6 @@ import {
   SafeAuditActor,
   SafeAuditRecord,
 } from "./contracts";
-import { isApiError, jsonError } from "@/lib/domain/pages-api";
 
 export type FieldValidator = (val: unknown) => unknown | undefined;
 
@@ -371,33 +369,96 @@ export function validateDateRange(
   return { fromDate, toDate };
 }
 
-export function handleAuditApiError(err: unknown): NextResponse {
+export interface SafeHttpErrorResponse {
+  status: number;
+  body: {
+    error: {
+      code: string;
+      message: string;
+      status: number;
+    };
+  };
+}
+
+export function mapAuditErrorToResponse(err: unknown): SafeHttpErrorResponse {
   if (err instanceof AuditServiceError) {
     const status = err.status || 500;
     const message =
       status >= 500
         ? "An unexpected error occurred while retrieving audit logs"
         : err.message;
-    return jsonError(err.code, message, status);
+    return {
+      status,
+      body: {
+        error: {
+          code: err.code,
+          message,
+          status,
+        },
+      },
+    };
   }
-  if (isApiError(err)) {
-    return jsonError(err.code, err.message, err.status);
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    "message" in err &&
+    "status" in err &&
+    typeof (err as { status: unknown }).status === "number"
+  ) {
+    const apiErr = err as { code: string; message: string; status: number };
+    return {
+      status: apiErr.status,
+      body: {
+        error: {
+          code: apiErr.code,
+          message: apiErr.message,
+          status: apiErr.status,
+        },
+      },
+    };
   }
   if (err instanceof Error) {
     if (err.message === "UNAUTHENTICATED") {
-      return jsonError("UNAUTHENTICATED", "Authentication required", 401);
+      return {
+        status: 401,
+        body: { error: { code: "UNAUTHENTICATED", message: "Authentication required", status: 401 } },
+      };
     }
     if (err.message === "DATABASE_UNAVAILABLE") {
-      return jsonError("DATABASE_UNAVAILABLE", "Database unavailable", 503);
+      return {
+        status: 503,
+        body: { error: { code: "DATABASE_UNAVAILABLE", message: "Database unavailable", status: 503 } },
+      };
     }
     if (err.message === "FORBIDDEN") {
-      return jsonError("FORBIDDEN", "Forbidden: insufficient permissions", 403);
+      return {
+        status: 403,
+        body: { error: { code: "FORBIDDEN", message: "Forbidden: insufficient permissions", status: 403 } },
+      };
     }
     if (err.message === "CSRF_REJECTED") {
-      return jsonError("CSRF_REJECTED", "Cross-origin request rejected", 403);
+      return {
+        status: 403,
+        body: { error: { code: "CSRF_REJECTED", message: "Cross-origin request rejected", status: 403 } },
+      };
     }
   }
-  return jsonError("INTERNAL_ERROR", "An unexpected error occurred", 500);
+  return {
+    status: 500,
+    body: { error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred", status: 500 } },
+  };
+}
+
+export function handleAuditApiError(err: unknown): Response {
+  const mapped = mapAuditErrorToResponse(err);
+  return Response.json(mapped.body, {
+    status: mapped.status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 export interface AuditStore {
