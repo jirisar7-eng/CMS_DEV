@@ -378,10 +378,11 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
       hasPermission: async () => true,
     });
 
-    const result = await service.rollbackRelease({
+    const result = await service.rollbackPublished({
       actorId: testUserId,
       projectId: testProjectIdA,
-      releaseId: releaseRollback2Id,
+      pageId: pageRollbackId,
+      expectedPublishedRevisionId: revRollback2Id,
     });
 
     assert.strictEqual(result.rollbackRelease.status, 'ROLLED_BACK');
@@ -489,16 +490,17 @@ describe('PostgreSQL Real Integration - Publishing & Revisions Lifecycle', () =>
       (err: unknown) => err instanceof ContentLifecycleError && err.code === 'PAGE_NOT_FOUND'
     );
 
-    // Attempting to rollback Project A release using Project B context
+    // Attempting to rollback Project A page using Project B context
     await assert.rejects(
       async () => {
-        await service.rollbackRelease({
+        await service.rollbackPublished({
           actorId: testUserId,
           projectId: testProjectIdB,
-          releaseId: releaseA1Id,
+          pageId: pageAId,
+          expectedPublishedRevisionId: revA1Id,
         });
       },
-      (err: unknown) => err instanceof ContentLifecycleError && err.code === 'RELEASE_NOT_FOUND'
+      (err: unknown) => err instanceof ContentLifecycleError && err.code === 'PAGE_NOT_FOUND'
     );
 
     // Database assertions: Page A and Project A state remains completely unchanged
