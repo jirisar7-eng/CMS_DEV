@@ -4,15 +4,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { CapabilityShell } from "@/components/admin/CapabilityShell";
 import {
   ShieldAlert,
-  Search,
   Filter,
   RefreshCw,
   Loader2,
   AlertCircle,
-  Clock,
   Eye,
   X,
-  UserCheck,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
@@ -131,9 +128,8 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
   );
 
   useEffect(() => {
-    setPage(1);
-    fetchAuditLogs(1);
-  }, [fetchAuditLogs]);
+    fetchAuditLogs(page);
+  }, [fetchAuditLogs, page]);
 
   const handleApplyFilter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,7 +200,7 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
               <span className="text-xs font-semibold text-muted-foreground">Pohled:</span>
               <button
                 type="button"
-                onClick={() => setViewScope("PROJECT")}
+                onClick={() => { setViewScope("PROJECT"); setPage(1); }}
                 disabled={!projectId}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                   viewScope === "PROJECT"
@@ -216,7 +212,7 @@ export function AuditWorkspace({ projectId }: AuditWorkspaceProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setViewScope("SYSTEM")}
+                onClick={() => { setViewScope("SYSTEM"); setPage(1); }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                   viewScope === "SYSTEM"
                     ? "bg-primary text-primary-foreground shadow-xs"

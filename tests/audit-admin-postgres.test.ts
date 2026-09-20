@@ -22,12 +22,12 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
       ],
     });
 
-    // 2. Create test users
+    // 2. Create test users with passwordHash and displayName
     await prisma.user.createMany({
       data: [
-        { id: testUserId, email: `audit-user-${timestamp}@example.com`, name: "Project Auditor", status: "ACTIVE" },
-        { id: testUserGlobalId, email: `global-audit-${timestamp}@example.com`, name: "Global Auditor", status: "ACTIVE" },
-        { id: testUnauthorizedUserId, email: `unauth-${timestamp}@example.com`, name: "Unauthorized User", status: "ACTIVE" },
+        { id: testUserId, email: `audit-user-${timestamp}@example.com`, displayName: "Project Auditor", passwordHash: "dummyhash", status: "ACTIVE" },
+        { id: testUserGlobalId, email: `global-audit-${timestamp}@example.com`, displayName: "Global Auditor", passwordHash: "dummyhash", status: "ACTIVE" },
+        { id: testUnauthorizedUserId, email: `unauth-${timestamp}@example.com`, displayName: "Unauthorized User", passwordHash: "dummyhash", status: "ACTIVE" },
       ],
     });
 
@@ -37,8 +37,6 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
       perm = await prisma.permission.create({
         data: {
           key: "audit.view",
-          name: "View Audit Logs",
-          module: "audit",
           description: "Read permission for audit logs",
         },
       });
@@ -149,10 +147,14 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
       async () => {
         await service.listAuditLogs({ projectId: projectBId }, testUserId);
       },
-      (err: any) => {
-        assert.equal(err.code, "FORBIDDEN");
-        assert.equal(err.status, 403);
-        return true;
+      (err: unknown) => {
+        if (typeof err === "object" && err !== null && "code" in err && "status" in err) {
+          const e = err as { code: string; status: number };
+          assert.equal(e.code, "FORBIDDEN");
+          assert.equal(e.status, 403);
+          return true;
+        }
+        return false;
       }
     );
   });
@@ -163,10 +165,14 @@ describe("PostgreSQL Integration: Audit Admin Viewer & Isolation", () => {
       async () => {
         await service.listAuditLogs({ scopeType: "SYSTEM" }, testUserId);
       },
-      (err: any) => {
-        assert.equal(err.code, "FORBIDDEN");
-        assert.equal(err.status, 403);
-        return true;
+      (err: unknown) => {
+        if (typeof err === "object" && err !== null && "code" in err && "status" in err) {
+          const e = err as { code: string; status: number };
+          assert.equal(e.code, "FORBIDDEN");
+          assert.equal(e.status, 403);
+          return true;
+        }
+        return false;
       }
     );
   });

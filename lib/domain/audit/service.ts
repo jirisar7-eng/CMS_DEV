@@ -5,6 +5,7 @@ import {
   SafeAuditRecord,
   SafeAuditActor,
 } from "./contracts";
+import type { PermissionKey } from "@/lib/auth/rbac";
 
 const SENSITIVE_KEYS = new Set([
   "password",
@@ -59,21 +60,21 @@ export function sanitizeAuditMetadata(
 }
 
 export interface AuditStore {
-  count(args: { where: any }): Promise<number>;
+  count(args: { where: Record<string, unknown> }): Promise<number>;
   findMany(args: {
-    where: any;
+    where: Record<string, unknown>;
     take: number;
     skip: number;
-    orderBy: any[];
-    include?: any;
-  }): Promise<any[]>;
+    orderBy: Array<Record<string, "asc" | "desc">>;
+    include?: Record<string, unknown>;
+  }): Promise<Array<Record<string, unknown>>>;
 }
 
 export interface AuditServiceDependencies {
   store?: AuditStore;
   hasPermissionFn?: (
     userId: string,
-    permissionKey: any,
+    permissionKey: PermissionKey,
     projectId?: string | null
   ) => Promise<boolean>;
 }
@@ -82,7 +83,7 @@ export class AuditService {
   private store: AuditStore | null;
   private hasPermissionFn?: (
     userId: string,
-    permissionKey: any,
+    permissionKey: PermissionKey,
     projectId?: string | null
   ) => Promise<boolean>;
 
@@ -99,7 +100,7 @@ export class AuditService {
 
   private async checkPermission(
     userId: string,
-    permissionKey: any,
+    permissionKey: PermissionKey,
     projectId?: string | null
   ): Promise<boolean> {
     if (this.hasPermissionFn) {
@@ -155,7 +156,7 @@ export class AuditService {
     const skip = (page - 1) * limit;
 
     // 3. Construct Prisma WHERE filter
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (projectId) {
       // Strict project isolation: only PROJECT scope with matching scopeId
@@ -181,7 +182,7 @@ export class AuditService {
 
     // Date range filters
     if (options.from || options.to) {
-      const createdAtFilter: any = {};
+      const createdAtFilter: Record<string, Date> = {};
       if (options.from) {
         const fromDate = options.from instanceof Date ? options.from : new Date(options.from);
         if (isNaN(fromDate.getTime())) {
@@ -217,22 +218,23 @@ export class AuditService {
               select: {
                 id: true,
                 email: true,
-                name: true,
+                displayName: true,
               },
             },
           },
         }),
       ]);
 
-      const items: SafeAuditRecord[] = records.map((rec: any) => {
+      const items: SafeAuditRecord[] = records.map((rec: Record<string, unknown>) => {
         let actor: SafeAuditActor | null = null;
-        if (rec.actor) {
+        const rawActor = rec.actor as { id: string; email?: string | null; displayName?: string | null; name?: string | null } | null;
+        if (rawActor) {
           actor = {
-            id: rec.actor.id,
-            email: rec.actor.email,
-            name: rec.actor.name,
+            id: rawActor.id,
+            email: rawActor.email ?? null,
+            name: rawActor.displayName || rawActor.name || null,
           };
-        } else if (rec.actorId) {
+        } else if (typeof rec.actorId === "string" && rec.actorId) {
           actor = {
             id: rec.actorId,
             email: null,
@@ -243,14 +245,14 @@ export class AuditService {
         const createdAtStr = rec.createdAt instanceof Date ? rec.createdAt.toISOString() : String(rec.createdAt);
 
         return {
-          id: rec.id,
-          action: rec.action,
-          scopeType: rec.scopeType,
-          scopeId: rec.scopeId,
-          resourceType: rec.resourceType,
-          resourceId: rec.resourceId,
+          id: String(rec.id),
+          action: String(rec.action),
+          scopeType: String(rec.scopeType),
+          scopeId: typeof rec.scopeId === "string" ? rec.scopeId : null,
+          resourceType: typeof rec.resourceType === "string" ? rec.resourceType : null,
+          resourceId: typeof rec.resourceId === "string" ? rec.resourceId : null,
           createdAt: createdAtStr,
-          actorId: rec.actorId,
+          actorId: typeof rec.actorId === "string" ? rec.actorId : null,
           actor,
           metadata: sanitizeAuditMetadata(rec.metadata),
         };
