@@ -8,6 +8,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/admin-pages-read-api.test.ts",
   "tests/admin-pages-ui-cutover.test.ts",
   "tests/admin-pages-write-api.test.ts",
+  "tests/admin-root-authorization.test.ts",
   "tests/audit-admin-cutover.test.ts",
   "tests/brand-admin-login.test.ts",
   "tests/brand-admin-shell.test.ts",
@@ -58,4 +59,3 @@ export const POSTGRES_TESTS = [
   "tests/audit-admin-postgres.test.ts",
   "tests/publishing-revisions-postgres.test.ts"
 ];
-

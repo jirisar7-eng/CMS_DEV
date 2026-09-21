@@ -1,5 +1,7 @@
+import React from 'react';
 import { LoginForm } from '@/components/admin/auth/LoginForm';
 import { getSession } from '@/lib/auth/session';
+import { hasPermission } from '@/lib/auth/rbac';
 import { redirect } from 'next/navigation';
 import { isDatabaseConfigured } from '@/lib/runtime/database';
 import { SynthesisLogo } from '@/components/brand/SynthesisLogo';
@@ -28,7 +30,10 @@ export default async function LoginPage() {
 
   const { user } = await getSession();
   if (user) {
-    redirect('/admin');
+    const isAuthorized = await hasPermission(user.id, 'admin.access').catch(() => false);
+    if (isAuthorized) {
+      redirect('/admin');
+    }
   }
 
   return (
