@@ -31,7 +31,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       await page.fill("#password", "WrongPassword999!");
       await page.click("button[type=\"submit\"]");
 
-      const alert = page.locator("[role=\"alert\"]");
+      const alert = page.locator("[role=\"alert\"]").first();
       await expect(alert).toBeVisible();
       await expect(alert).toContainText("Neplatné přihlašovací údaje.");
 
@@ -83,7 +83,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       await page.fill("#password", READER_PASSWORD);
       await page.click("button[type=\"submit\"]");
 
-      // Reader is redirected to /admin then immediately bounced to /admin/login by AdminLayout
+      // Reader is bounced to /admin/login by AdminLayout authorization check
       await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
       expect(page.url()).toContain("/admin/login");
 
@@ -98,7 +98,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       await page.fill("#password", DISABLED_PASSWORD);
       await page.click("button[type=\"submit\"]");
 
-      const alert = page.locator("[role=\"alert\"]");
+      const alert = page.locator("[role=\"alert\"]").first();
       await expect(alert).toBeVisible();
       await expect(alert).toContainText("Účet je deaktivován nebo pozastaven.");
 
@@ -109,21 +109,15 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
   });
 
   test.describe("4. Project Context & Isolation", () => {
-    test("isolates project content and API data between projects", async ({ page, request }) => {
+    test("isolates project content and API data between projects", async ({ page }) => {
       await loginAsAdmin(page);
 
-      const cookies = await page.context().cookies();
-      const sessionCookie = cookies.find((c) => c.name === "syn_admin_session");
-      expect(sessionCookie).toBeDefined();
-
-      const headers = {
-        Cookie: `syn_admin_session=${sessionCookie?.value}`,
-        "x-requested-with": "XMLHttpRequest",
-      };
-
-      const projectsRes = await request.get("/api/admin/projects", { headers });
-      expect(projectsRes.status()).toBe(200);
-      const projects = await projectsRes.json();
+      const projectsRes = await page.evaluate(async () => {
+        const res = await fetch("/api/admin/projects");
+        return { status: res.status, json: await res.json() };
+      });
+      expect(projectsRes.status).toBe(200);
+      const projects = projectsRes.json.data || projectsRes.json;
       expect(Array.isArray(projects)).toBe(true);
 
       const alphaProject = projects.find((p: any) => p.key === "alpha-smoke");
@@ -131,13 +125,21 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       expect(alphaProject).toBeDefined();
       expect(betaProject).toBeDefined();
 
-      const alphaPagesRes = await request.get(`/api/admin/projects/${alphaProject.id}/pages`, { headers });
-      expect(alphaPagesRes.status()).toBe(200);
-      const alphaPages = await alphaPagesRes.json();
+      const alphaPagesRes = await page.evaluate(async (projectId) => {
+        const res = await fetch(`/api/admin/projects/${projectId}/pages`);
+        return { status: res.status, json: await res.json() };
+      }, alphaProject.id);
+      expect(alphaPagesRes.status).toBe(200);
+      const alphaPages = alphaPagesRes.json.data || alphaPagesRes.json;
+      expect(Array.isArray(alphaPages)).toBe(true);
 
-      const betaPagesRes = await request.get(`/api/admin/projects/${betaProject.id}/pages`, { headers });
-      expect(betaPagesRes.status()).toBe(200);
-      const betaPages = await betaPagesRes.json();
+      const betaPagesRes = await page.evaluate(async (projectId) => {
+        const res = await fetch(`/api/admin/projects/${projectId}/pages`);
+        return { status: res.status, json: await res.json() };
+      }, betaProject.id);
+      expect(betaPagesRes.status).toBe(200);
+      const betaPages = betaPagesRes.json.data || betaPagesRes.json;
+      expect(Array.isArray(betaPages)).toBe(true);
 
       const alphaPageIds = new Set(alphaPages.map((p: any) => p.id));
       for (const bp of betaPages) {
@@ -147,23 +149,15 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
   });
 
   test.describe("5. Main Content Lifecycle Smoke", () => {
-    test("executes draft -> review -> approve -> publish -> public route resolution", async ({ page, request }) => {
+    test("executes draft -> review -> approve -> publish -> public route resolution", async ({ page }) => {
       await loginAsAdmin(page);
 
-      const cookies = await page.context().cookies();
-      const sessionCookie = cookies.find((c) => c.name === "syn_admin_session");
-      expect(sessionCookie).toBeDefined();
-
-      const headers = {
-        Cookie: `syn_admin_session=${sessionCookie?.value}`,
-        "Content-Type": "application/json",
-        "x-requested-with": "XMLHttpRequest",
-        origin: "http://127.0.0.1:3000",
-      };
-
-      const projectsRes = await request.get("/api/admin/projects", { headers });
-      expect(projectsRes.status()).toBe(200);
-      const projects = await projectsRes.json();
+      const projectsRes = await page.evaluate(async () => {
+        const res = await fetch("/api/admin/projects");
+        return { status: res.status, json: await res.json() };
+      });
+      expect(projectsRes.status).toBe(200);
+      const projects = projectsRes.json.data || projectsRes.json;
       const alphaProject = projects.find((p: any) => p.key === "alpha-smoke");
       expect(alphaProject).toBeDefined();
 
@@ -171,8 +165,15 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       const pageSlug = `smoke-slug-${Date.now()}`;
       const pageTitle = `Smoke Lifecycle Page ${Date.now()}`;
 
-      const createRes = await request.post(`/api/admin/projects/${alphaProject.id}/pages`, {
-        headers,
+      const createRes = await page.evaluate(async ({ projectId, data }) => {
+        const res = await fetch(`/api/admin/projects/${projectId}/pages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        return { status: res.status, json: await res.json() };
+      }, {
+        projectId: alphaProject.id,
         data: {
           key: pageKey,
           title: pageTitle,
@@ -193,43 +194,56 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
           },
         },
       });
-      expect(createRes.status()).toBe(201);
-      const createData = await createRes.json();
-      const pageId = createData.pageId;
-      let lockVersion = createData.lockVersion;
+      expect(createRes.status).toBe(201);
+      const pageId = createRes.json.data?.pageId || createRes.json.pageId;
+      let lockVersion = createRes.json.data?.lockVersion || createRes.json.lockVersion;
       expect(pageId).toBeTruthy();
 
-      const submitRes = await request.post(`/api/admin/projects/${alphaProject.id}/pages/${pageId}/actions/submit-review`, {
-        headers,
-        data: { expectedLockVersion: lockVersion },
-      });
-      expect(submitRes.status()).toBe(200);
-      const submitData = await submitRes.json();
+      const submitRes = await page.evaluate(async ({ projectId, pageId, lockVersion }) => {
+        const res = await fetch(`/api/admin/projects/${projectId}/pages/${pageId}/actions/submit-review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedLockVersion: lockVersion }),
+        });
+        return { status: res.status, json: await res.json() };
+      }, { projectId: alphaProject.id, pageId, lockVersion });
+      expect(submitRes.status).toBe(200);
+      const submitData = submitRes.json.data || submitRes.json;
       expect(submitData.status).toBe("IN_REVIEW");
       lockVersion = submitData.lockVersion;
 
-      const approveRes = await request.post(`/api/admin/projects/${alphaProject.id}/pages/${pageId}/actions/approve`, {
-        headers,
-        data: { expectedLockVersion: lockVersion },
-      });
-      expect(approveRes.status()).toBe(200);
-      const approveData = await approveRes.json();
+      const approveRes = await page.evaluate(async ({ projectId, pageId, lockVersion }) => {
+        const res = await fetch(`/api/admin/projects/${projectId}/pages/${pageId}/actions/approve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedLockVersion: lockVersion }),
+        });
+        return { status: res.status, json: await res.json() };
+      }, { projectId: alphaProject.id, pageId, lockVersion });
+      expect(approveRes.status).toBe(200);
+      const approveData = approveRes.json.data || approveRes.json;
       expect(approveData.status).toBe("APPROVED");
       lockVersion = approveData.lockVersion;
 
-      const publishRes = await request.post(`/api/admin/projects/${alphaProject.id}/pages/${pageId}/actions/publish`, {
-        headers,
-        data: { expectedLockVersion: lockVersion },
-      });
-      expect(publishRes.status()).toBe(200);
-      const publishData = await publishRes.json();
+      const publishRes = await page.evaluate(async ({ projectId, pageId, lockVersion }) => {
+        const res = await fetch(`/api/admin/projects/${projectId}/pages/${pageId}/actions/publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedLockVersion: lockVersion }),
+        });
+        return { status: res.status, json: await res.json() };
+      }, { projectId: alphaProject.id, pageId, lockVersion });
+      expect(publishRes.status).toBe(200);
+      const publishData = publishRes.json.data || publishRes.json;
       expect(publishData.status).toBe("PUBLISHED");
 
-      const publicRouteRes = await request.get(`/api/public/route?p=/${pageSlug}&projectId=${alphaProject.id}`);
-      expect(publicRouteRes.status()).toBe(200);
-      const routeData = await publicRouteRes.json();
-      expect(routeData.title).toBe(pageTitle);
-      expect(routeData.pageId).toBe(pageId);
+      const publicRes = await page.evaluate(async ({ slug, projectId }) => {
+        const res = await fetch(`/api/public/route?p=/${slug}&projectId=${projectId}`);
+        return { status: res.status, json: await res.json() };
+      }, { slug: pageSlug, projectId: alphaProject.id });
+      expect(publicRes.status).toBe(200);
+      expect(publicRes.json.title).toBe(pageTitle);
+      expect(publicRes.json.pageId).toBe(pageId);
     });
   });
 });
