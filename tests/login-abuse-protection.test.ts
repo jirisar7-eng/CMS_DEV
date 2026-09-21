@@ -130,7 +130,7 @@ describe("SYN-SEC-008: Login Abuse Protection & Rate Limiting", () => {
         password: "test_password_must_be_stripped",
       };
 
-      const result = sanitizeAuditMetadata(raw, "AUTH_LOGIN_FAILURE", { mode: "write" })!;
+      const result = sanitizeAuditMetadata(raw, "AUTH_LOGIN_BLOCKED", { mode: "write" })!;
       assert.equal(result.identifierHash, "account_1234567890abcdef");
       assert.equal(result.clientIpHash, "ip_abcdef1234567890");
       assert.equal(result.reason, "invalid_credentials");
