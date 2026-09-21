@@ -32,7 +32,7 @@ export interface UserContext {
 }
 
 /**
- * Safely access cookies() inside request scope or return null if outside (e.g. background/unit tests).
+ * Safely access cookies() if request context is available.
  */
 async function getSafeCookieStore() {
   try {
@@ -111,8 +111,8 @@ export async function createSession(userId: string): Promise<string> {
  * - Throttles sliding idle touch (lastSeenAt) to avoid excessive database writes
  */
 export async function getSession(): Promise<{ session: SessionData | null; user: UserContext | null }> {
-  const cookieStore = await getSafeCookieStore();
-  const rawToken = cookieStore?.get(SESSION_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const rawToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!rawToken) {
     return { session: null, user: null };
@@ -214,7 +214,12 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
  * Revokes an existing session by marking revokedAt timestamp in DB and deleting cookie if current.
  */
 export async function revokeSession(sessionId: string): Promise<void> {
-  const cookieStore = await getSafeCookieStore();
+  let cookieStore = null;
+  try {
+    cookieStore = await cookies();
+  } catch {
+    // Non-request scope
+  }
   const currentToken = cookieStore?.get(SESSION_COOKIE_NAME)?.value;
 
   if (isDatabaseConfigured()) {
@@ -260,9 +265,11 @@ export async function revokeAllUserSessions(userId: string, exceptSessionId?: st
  * Completely invalidates / deletes a session by ID and clears session cookie.
  */
 export async function invalidateSession(sessionId: string): Promise<void> {
-  const cookieStore = await getSafeCookieStore();
-  if (cookieStore) {
+  try {
+    const cookieStore = await cookies();
     cookieStore.delete(SESSION_COOKIE_NAME);
+  } catch {
+    // Non-request scope (e.g. CLI or background test)
   }
 
   if (isDatabaseConfigured()) {
