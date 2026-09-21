@@ -50,10 +50,12 @@ export const DETERMINISTIC_TESTS = [
   "tests/seo-domain.test.ts",
   "tests/seo-redirects-admin-cutover.test.ts",
   "tests/system-map-resolver.test.ts",
-  "tests/system-map-ui.test.ts"
+  "tests/system-map-ui.test.ts",
+  "tests/task-capsule-registry.test.ts"
 ];
 
 export const POSTGRES_TESTS = [
   "tests/audit-admin-postgres.test.ts",
   "tests/publishing-revisions-postgres.test.ts"
 ];
+
