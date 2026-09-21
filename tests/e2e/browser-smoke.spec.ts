@@ -100,7 +100,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
 
       const alert = page.locator("[role=\"alert\"]").first();
       await expect(alert).toBeVisible();
-      await expect(alert).toContainText("Účet je deaktivován nebo pozastaven.");
+      await expect(alert).toContainText("Neplatné přihlašovací údaje.");
 
       await page.goto("/admin");
       await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
