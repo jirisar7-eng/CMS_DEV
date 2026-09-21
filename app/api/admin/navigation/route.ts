@@ -1,3 +1,4 @@
+import { logAudit } from '@/lib/auth/audit';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
@@ -84,15 +85,13 @@ export async function POST(req: Request) {
       }
     });
 
-    await prisma.auditLog.create({
-      data: {
+    await logAudit({
         action: 'NAVIGATION_SET_CREATED',
         scopeType: 'PROJECT',
         scopeId: context.projectId,
         actorId: context.userId,
         metadata: { setId: navSet.id, key: navSet.key },
-      },
-    });
+      });
 
     return NextResponse.json(navSet);
   } catch (error) {
