@@ -1,3 +1,4 @@
+import { logAudit } from '@/lib/auth/audit';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
@@ -312,14 +313,12 @@ export async function DELETE(
 
     if (!action || action.length === 0) {
       await prisma.navigationSet.delete({ where: { id: setId } });
-      await prisma.auditLog.create({
-        data: {
-          action: 'NAVIGATION_SET_DELETED',
-          scopeType: 'PROJECT',
-          scopeId: context.projectId,
-          actorId: context.userId,
-          metadata: { setId },
-        },
+      await logAudit({
+        action: 'NAVIGATION_SET_DELETED',
+        scopeType: 'PROJECT',
+        scopeId: context.projectId,
+        actorId: context.userId,
+        metadata: { setId },
       });
       return NextResponse.json({ success: true });
     }

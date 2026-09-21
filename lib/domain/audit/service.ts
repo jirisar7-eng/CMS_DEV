@@ -219,6 +219,7 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
   NAVIGATION_SET_CREATED: {
     setId: safeString(100),
     name: safeString(100),
+    key: safeString(100),
   },
   NAVIGATION_SET_UPDATED: {
     setId: safeString(100),
@@ -274,39 +275,124 @@ export const GLOBAL_SAFE_FIELDS: Record<string, FieldValidator> = {
   attempt: safeNumber(),
 };
 
+const SAFE_EXEMPT_KEYS = new Set([
+  "updatedKeys",
+  "pageKey",
+  "key",
+]);
+
+export function isSensitiveKey(key: string): boolean {
+  if (SAFE_EXEMPT_KEYS.has(key)) return false;
+  const lower = key.toLowerCase();
+
+  if (lower.includes("password") || lower.includes("pwd") || lower === "pass") return true;
+  if (lower.includes("token") || lower.includes("jwt") || lower.includes("bearer")) return true;
+  if (lower.includes("secret")) return true;
+  if (lower.includes("credential")) return true;
+  if (lower.includes("cookie")) return true;
+  if (lower.includes("authorization") || lower.includes("authtoken") || lower.includes("authheader") || lower === "auth") return true;
+  if (lower.includes("apikey") || lower.includes("secretkey") || lower.includes("privatekey") || lower.includes("accesskey") || lower.includes("encryptionkey") || lower.includes("signingkey")) return true;
+  if (lower.includes("passwordhash") || lower.includes("hash_secret") || lower.includes("secrethash") || lower.includes("hashsecret")) return true;
+  if (lower.includes("signature") || lower === "sig") return true;
+  if (lower.includes("certificate") || lower === "cert") return true;
+  if (lower.includes("privatekey") || lower === "private") return true;
+
+  return false;
+}
+
+const SENSITIVE_VALUE_REGEX = /(^bearer\s+|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}|\b(ghp|sk_live|sk_test|secret)_[A-Za-z0-9_-]{8,})/i;
+
+export function redactSensitiveString(str: string): string {
+  if (SENSITIVE_VALUE_REGEX.test(str)) {
+    return "[REDACTED]";
+  }
+  return str;
+}
+
+export function redactSensitiveData(val: unknown): unknown {
+  if (val === null || val === undefined) {
+    return undefined;
+  }
+  if (typeof val === "string") {
+    return redactSensitiveString(val);
+  }
+  if (typeof val === "number" || typeof val === "boolean") {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    const cleaned = val
+      .map((item) => redactSensitiveData(item))
+      .filter((item) => item !== undefined);
+    return cleaned;
+  }
+  if (typeof val === "object") {
+    const rawObj = val as Record<string, unknown>;
+    const res: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rawObj)) {
+      if (isSensitiveKey(k)) {
+        continue;
+      }
+      const cleaned = redactSensitiveData(v);
+      if (cleaned !== undefined) {
+        res[k] = cleaned;
+      }
+    }
+    return Object.keys(res).length > 0 ? res : undefined;
+  }
+  return undefined;
+}
+
+export interface SanitizeAuditMetadataOptions {
+  mode?: "write" | "read";
+}
+
 /**
- * Explicit allowlist projection for audit log metadata.
- * Unknown fields (such as access_token, refresh_token, passwordHash, nested objects,
- * or arbitrary free-text) are strictly omitted by default.
+ * Shared audit metadata sanitization policy.
+ * - Enforces schema allowlisting for registered events.
+ * - Recursively redacts secrets, credentials, tokens, cookies, and nested sensitive objects.
+ * - Used on the write path before DB insertion and on the read path as defense-in-depth.
  */
 export function sanitizeAuditMetadata(
   raw: unknown,
-  action?: string
+  action?: string,
+  options?: SanitizeAuditMetadataOptions
 ): Record<string, unknown> | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return null;
   }
 
-  // Unknown events or missing action omit metadata by default
-  if (!action || !EVENT_METADATA_SCHEMAS[action]) {
-    return null;
+  const rawObj = raw as Record<string, unknown>;
+  const mode = options?.mode ?? "read";
+
+  if (action && EVENT_METADATA_SCHEMAS[action]) {
+    const schema = EVENT_METADATA_SCHEMAS[action];
+    const result: Record<string, unknown> = {};
+    for (const [key, validator] of Object.entries(schema)) {
+      if (key in rawObj) {
+        const val = rawObj[key];
+        const validated = validator(val);
+        if (validated !== undefined) {
+          const redacted = redactSensitiveData(validated);
+          if (redacted !== undefined) {
+            result[key] = redacted;
+          }
+        }
+      }
+    }
+    return Object.keys(result).length > 0 ? result : null;
   }
 
-  const rawObj = raw as Record<string, unknown>;
-  const schema = EVENT_METADATA_SCHEMAS[action];
-  const result: Record<string, unknown> = {};
-
-  for (const [key, validator] of Object.entries(schema)) {
-    if (key in rawObj) {
-      const val = rawObj[key];
-      const validated = validator(val);
-      if (validated !== undefined) {
-        result[key] = validated;
-      }
+  // Unregistered / unknown event actions
+  if (mode === "write") {
+    const redacted = redactSensitiveData(rawObj);
+    if (redacted && typeof redacted === "object" && !Array.isArray(redacted)) {
+      const keys = Object.keys(redacted as Record<string, unknown>);
+      return keys.length > 0 ? (redacted as Record<string, unknown>) : null;
     }
   }
 
-  return Object.keys(result).length > 0 ? result : null;
+  // On read path, unregistered event metadata is projected to null
+  return null;
 }
 
 export function parseStrictPositiveInt(

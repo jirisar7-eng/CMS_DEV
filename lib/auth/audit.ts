@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
 import { getSession } from './session';
+import { sanitizeAuditMetadata } from '@/lib/domain/audit';
 
 export type AuditAction =
   | 'AUTH_LOGIN_SUCCESS'
@@ -30,7 +31,10 @@ export type AuditAction =
   | 'CONTENT_DRAFT_REOPENED'
   | 'PLUGIN_ENABLE'
   | 'PLUGIN_DISABLE'
-  | 'PLUGIN_CONFIGURE';
+  | 'PLUGIN_CONFIGURE'
+  | 'NAVIGATION_SET_CREATED'
+  | 'NAVIGATION_SET_UPDATED'
+  | 'NAVIGATION_SET_DELETED';
 
 export type ScopeType = 'SYSTEM' | 'PROJECT';
 
@@ -59,14 +63,12 @@ export async function logAudit(options: AuditLogOptions): Promise<void> {
     }
   }
 
-  // Ensure no sensitive data sneaks into metadata
-  const cleanMetadata = options.metadata ? { ...options.metadata } : {};
-  if (cleanMetadata.password) delete cleanMetadata.password;
-  if (cleanMetadata.token) delete cleanMetadata.token;
-  if (cleanMetadata.secret) delete cleanMetadata.secret;
+  // Ensure metadata is sanitized before DB write using shared policy
+  const cleanMetadata = options.metadata
+    ? sanitizeAuditMetadata(options.metadata, options.action, { mode: 'write' })
+    : null;
 
   const db = options.tx ?? prisma;
-
   await db.auditLog.create({
     data: {
       action: options.action,
@@ -74,7 +76,7 @@ export async function logAudit(options: AuditLogOptions): Promise<void> {
       scopeId: options.scopeId || null,
       resourceType: options.resourceType || null,
       resourceId: options.resourceId || null,
-      metadata: Object.keys(cleanMetadata).length > 0 ? cleanMetadata : undefined,
+      metadata: cleanMetadata && Object.keys(cleanMetadata).length > 0 ? (cleanMetadata as Prisma.InputJsonObject) : undefined,
       actorId: actorId || null,
     },
   });
