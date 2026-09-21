@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 40,
+  "total_capsules": 41,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -29,6 +29,20 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-AUDIT-002-20260921-001",
+      "task_id": "SYN-AUDIT-002",
+      "title": "Audit Write-Path Metadata Policy",
+      "version": "1.0.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-AUDIT-002-AUDIT-WRITE-PATH-METADATA-POLICY.json",
+      "base_sha": "6b6276735c5db3f2f6cdaea685e147c0d687e538",
+      "expected_branch": "task/SYN-AUDIT-002-AUDIT-WRITE-PATH-METADATA-POLICY",
+      "sha256": "7054d3783c63eef3f5d9213ce4992b8f46df0565c605bd5b57c46297bffa2700",
+      "parent_capsule_id": "CAP-SYN-SEC-005B-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-LEGACY-SYN-BRAND-001-SYNTHESIS-CMS-BRAND-FOUNDATION",
