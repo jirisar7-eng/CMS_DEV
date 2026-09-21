@@ -3,8 +3,9 @@ import {
   generateTotpSecret,
   generateRecoveryCode,
   hashRecoveryCode,
+  verifyTotpToken,
 } from "@/lib/auth/mfa";
-import { encryptSecret } from "@/lib/security/encryption";
+import { encryptSecret, decryptSecret } from "@/lib/security/encryption";
 
 export async function startMfaEnrollment(userId: string) {
   const secret = generateTotpSecret();
@@ -35,4 +36,23 @@ export async function startMfaEnrollment(userId: string) {
   });
 
   return { mfaId: mfa.id, secret, recoveryCodes };
+}
+
+export async function verifyMfaEnrollment(userId: string, token: string) {
+  const mfa = await prisma.userMfa.findUnique({ where: { userId } });
+  if (!mfa?.totpSecretEncrypted || mfa.status !== "PENDING") return false;
+
+  let secret: string;
+  try { secret = decryptSecret(mfa.totpSecretEncrypted); }
+  catch { return false; }
+
+  if (!verifyTotpToken(secret, token)) return false;
+
+  const now = new Date();
+  const result = await prisma.userMfa.updateMany({
+    where: { id: mfa.id, userId, status: "PENDING" },
+    data: { status: "ENABLED", verifiedAt: now, enabledAt: now },
+  });
+
+  return result.count === 1;
 }
