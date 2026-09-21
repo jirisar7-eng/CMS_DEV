@@ -33,6 +33,15 @@ export async function startMfaEnrollment(userId: string) {
       data: recoveryHashes.map((codeHash) => ({ mfaId: record.id, codeHash })),
     });
 
+    await logAudit({
+      action: "AUTH_MFA_ENROLLMENT_STARTED",
+      scopeType: "SYSTEM",
+      actorId: userId,
+      resourceType: "UserMfa",
+      resourceId: record.id,
+      tx,
+    });
+
     return record;
   });
 
