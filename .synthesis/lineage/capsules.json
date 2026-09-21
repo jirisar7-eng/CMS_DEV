@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 42,
+  "total_capsules": 43,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -407,6 +407,20 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-QA-SEC-001-20260921-001",
+      "task_id": "SYN-QA-SEC-001",
+      "title": "Browser Smoke Test Harness & E2E Validation",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-QA-SEC-001-BROWSER-SMOKE-HARNESS.json",
+      "base_sha": "9703e4a6549bac38fc4a68a3141fdf95d4f82979",
+      "expected_branch": "task/SYN-QA-SEC-001-BROWSER-SMOKE-HARNESS",
+      "sha256": "81e86af919cce57fe935e86beed567615ce4fc178efd046f65a44ac68f0a75c2",
+      "parent_capsule_id": "CAP-SYN-SEC-006-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-LEGACY-SYN-SEARCH-001-SEARCH-FOUNDATION",
