@@ -52,74 +52,72 @@ export async function hasPermission(
   permissionKey: PermissionKey,
   projectId?: string | null
 ): Promise<boolean> {
-  // 1. Get the requested permission entity
-  const permission = await prisma.permission.findUnique({
-    where: { key: permissionKey },
-  });
+  try {
+    // 1. Get the requested permission entity
+    const permission = await prisma.permission.findUnique({
+      where: { key: permissionKey },
+    });
 
-  if (!permission) {
-    // If the permission doesn't exist in the system, fail closed.
-    return false;
-  }
+    if (!permission) {
+      // If the permission doesn't exist in the system, fail closed.
+      return false;
+    }
 
-  // 2. Check for explicit User Permission Overrides FIRST
-  const overrides = await prisma.userPermissionOverride.findMany({
-    where: {
-      userId,
-      permissionId: permission.id,
-      OR: [
-        { projectId: projectId ?? null },
-        { projectId: null }, // Global override applies to all projects
-      ],
-    },
-  });
+    // 2. Check for explicit User Permission Overrides FIRST
+    const overrides = await prisma.userPermissionOverride.findMany({
+      where: {
+        userId,
+        permissionId: permission.id,
+        OR: [
+          { projectId: projectId ?? null },
+          { projectId: null }, // Global override applies to all projects
+        ],
+      },
+    });
 
-  // Sort overrides to prioritize specific project over global if both exist
-  const specificOverride = overrides.find((o: { projectId: string | null }) => o.projectId === projectId);
-  const globalOverride = overrides.find((o: { projectId: string | null }) => o.projectId === null);
+    // Precedence: ANY applicable DENY overrides everything
+    if (overrides.some((o: { isGranted: boolean }) => !o.isGranted)) {
+      return false;
+    }
 
-  // If there's an explicit DENY (isGranted === false), it overrides everything.
-  // We check specific first, then global.
-  if (specificOverride) {
-    if (!specificOverride.isGranted) return false;
-  } else if (globalOverride) {
-    if (!globalOverride.isGranted) return false;
-  }
+    // Else ANY applicable ALLOW grants access
+    if (overrides.some((o: { isGranted: boolean }) => o.isGranted)) {
+      return true;
+    }
 
-  // If explicit ALLOW, grant access
-  if (specificOverride?.isGranted || globalOverride?.isGranted) {
-    return true;
-  }
-
-  // 3. Fallback to Role-based permissions
-  const userRoles = await prisma.userRole.findMany({
-    where: {
-      userId,
-      OR: [
-        { projectId: projectId ?? null },
-        { projectId: null }, // Global roles apply to all projects
-      ],
-    },
-    include: {
-      role: {
-        include: {
-          permissions: {
-            where: { permissionId: permission.id },
+    // 3. Fallback to Role-based permissions
+    const userRoles = await prisma.userRole.findMany({
+      where: {
+        userId,
+        OR: [
+          { projectId: projectId ?? null },
+          { projectId: null }, // Global roles apply to all projects
+        ],
+      },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              where: { permissionId: permission.id },
+            },
           },
         },
       },
-    },
-  });
+    });
 
-  // If ANY of the user's roles have the permission, allow.
-  for (const ur of userRoles) {
-    if (ur.role.permissions.length > 0) {
-      return true;
+    // If ANY of the user's roles have the permission, allow.
+    for (const ur of userRoles) {
+      if (ur.role.permissions.length > 0) {
+        return true;
+      }
     }
-  }
 
-  // 4. Default DENY
-  return false;
+    // 4. Default DENY
+    return false;
+  } catch (_error) {
+    // Evaluation/dependency failure -> DENY (fail-closed)
+    return false;
+  }
 }
 
 /**
