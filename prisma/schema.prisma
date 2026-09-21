@@ -64,14 +64,19 @@ model User {
 }
 
 model Session {
-  id        String   @id // crypto random string
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id            String    @id // session id (cuid or random hex)
+  tokenHash     String?   @unique // SHA-256 hash of the bearer session token
+  userId        String
+  expiresAt     DateTime  // Absolute session expiration
+  idleExpiresAt DateTime? // Sliding idle expiration
+  lastSeenAt    DateTime  @default(now())
+  revokedAt     DateTime? // Revocation timestamp if terminated early
+  createdAt     DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([tokenHash])
 }
 
 model Role {

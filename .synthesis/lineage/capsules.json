@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 43,
+  "total_capsules": 44,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -531,6 +531,20 @@
       "expected_branch": "task/SYN-SEC-006-SECRET-HYGIENE-SCANNING",
       "sha256": "bcc5411bc4830d41011ef8200beee155dd4ea4078ded8acf7411bf2d37bcb28f",
       "parent_capsule_id": "CAP-SYN-AUDIT-002-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-SEC-007-20260921-001",
+      "task_id": "SYN-SEC-007",
+      "title": "Session Security v2",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-SEC-007-SESSION-SECURITY-V2.json",
+      "base_sha": "6915fb25177b8e8ab168e5cfbe09115f1a93e42f",
+      "expected_branch": "task/SYN-SEC-007-SESSION-SECURITY-V2",
+      "sha256": "bd0b54c654384ccb7a772cc78d834b183da8668f754abf141c0d4ca0cc46cc98",
+      "parent_capsule_id": "CAP-SYN-QA-SEC-001-20260921-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
