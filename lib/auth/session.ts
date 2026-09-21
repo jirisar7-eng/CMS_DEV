@@ -32,6 +32,17 @@ export interface UserContext {
 }
 
 /**
+ * Safely access cookies() inside request scope or return null if outside (e.g. background/unit tests).
+ */
+async function getSafeCookieStore() {
+  try {
+    return await cookies();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Computes deterministic SHA-256 hash of a raw session token.
  * Only this hash is stored in the database.
  */
@@ -73,14 +84,16 @@ export async function createSession(userId: string): Promise<string> {
     },
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, rawToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    expires: expiresAt,
-  });
+  const cookieStore = await getSafeCookieStore();
+  if (cookieStore) {
+    cookieStore.set(SESSION_COOKIE_NAME, rawToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      expires: expiresAt,
+    });
+  }
 
   // Return opaque sessionId, NEVER the raw bearer token
   return sessionId;
@@ -98,8 +111,8 @@ export async function createSession(userId: string): Promise<string> {
  * - Throttles sliding idle touch (lastSeenAt) to avoid excessive database writes
  */
 export async function getSession(): Promise<{ session: SessionData | null; user: UserContext | null }> {
-  const cookieStore = await cookies();
-  const rawToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const cookieStore = await getSafeCookieStore();
+  const rawToken = cookieStore?.get(SESSION_COOKIE_NAME)?.value;
 
   if (!rawToken) {
     return { session: null, user: null };
@@ -201,8 +214,8 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
  * Revokes an existing session by marking revokedAt timestamp in DB and deleting cookie if current.
  */
 export async function revokeSession(sessionId: string): Promise<void> {
-  const cookieStore = await cookies();
-  const currentToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const cookieStore = await getSafeCookieStore();
+  const currentToken = cookieStore?.get(SESSION_COOKIE_NAME)?.value;
 
   if (isDatabaseConfigured()) {
     const now = new Date();
@@ -213,7 +226,7 @@ export async function revokeSession(sessionId: string): Promise<void> {
   }
 
   // If this was the current session in the cookie, delete cookie
-  if (currentToken) {
+  if (currentToken && cookieStore) {
     const currentHash = hashSessionToken(currentToken);
     const session = isDatabaseConfigured()
       ? await prisma.session.findUnique({ where: { id: sessionId }, select: { tokenHash: true } })
@@ -247,8 +260,10 @@ export async function revokeAllUserSessions(userId: string, exceptSessionId?: st
  * Completely invalidates / deletes a session by ID and clears session cookie.
  */
 export async function invalidateSession(sessionId: string): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE_NAME);
+  const cookieStore = await getSafeCookieStore();
+  if (cookieStore) {
+    cookieStore.delete(SESSION_COOKIE_NAME);
+  }
 
   if (isDatabaseConfigured()) {
     await prisma.session.deleteMany({
