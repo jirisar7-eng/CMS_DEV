@@ -11,6 +11,10 @@ export const LOGIN_MAX_IP_ATTEMPTS = 20; // IP lockout threshold
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15-minute sliding attempt window
 export const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15-minute lockout duration
 
+export const MFA_MAX_FAILED_ATTEMPTS = 5;
+export const MFA_WINDOW_MS = 15 * 60 * 1000;
+export const MFA_LOCKOUT_MS = 15 * 60 * 1000;
+
 // Uniform external messages (Prevent Account Enumeration)
 export const UNIFORM_LOGIN_ERROR = "Neplatné přihlašovací údaje.";
 export const RATE_LIMIT_ERROR = "Příliš mnoho neúspěšných pokusů o přihlášení. Zkuste to prosím později.";
@@ -337,6 +341,75 @@ export function getAbuseLimiterStore(): AbuseLimiterStore {
     return new PrismaAbuseLimiterStore();
   }
   return new MemoryAbuseLimiterStore();
+}
+
+/**
+ * Checks whether an MFA attempt is allowed. Fail-closed.
+ */
+export async function checkMfaAllowed(params: {
+  accountHash: string;
+  now?: Date;
+}): Promise<boolean> {
+  const store = getAbuseLimiterStore();
+  const now = params.now || new Date();
+  const nowMs = now.getTime();
+  const key = `mfa_${params.accountHash}`;
+
+  try {
+    const record = await store.get(key);
+    if (record?.blockedUntil && record.blockedUntil.getTime() > nowMs) {
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[MfaAbuse] Storage error during checkMfaAllowed (failing closed):", error);
+    return false;
+  }
+}
+
+/**
+ * Records an MFA failure.
+ */
+export async function recordMfaFailure(params: {
+  accountHash: string;
+  now?: Date;
+}): Promise<void> {
+  const store = getAbuseLimiterStore();
+  const now = params.now || new Date();
+  const key = `mfa_${params.accountHash}`;
+
+  try {
+    await store.increment(
+      key,
+      MFA_WINDOW_MS,
+      MFA_MAX_FAILED_ATTEMPTS,
+      MFA_LOCKOUT_MS,
+      now
+    );
+  } catch (error) {
+    console.error("[MfaAbuse] Storage error during recordMfaFailure:", error);
+    throw error;
+  }
+}
+
+/**
+ * Clears the MFA limiter and normal login counter upon success.
+ */
+export async function recordMfaSuccess(params: {
+  accountHash: string;
+}): Promise<void> {
+  const store = getAbuseLimiterStore();
+  const loginKey = params.accountHash;
+  const mfaKey = `mfa_${params.accountHash}`;
+
+  try {
+    await Promise.all([
+      store.reset(mfaKey),
+      store.reset(loginKey),
+    ]);
+  } catch (error) {
+    console.warn("[MfaAbuse] Non-fatal error resetting limiters on MFA success:", error);
+  }
 }
 
 // ============================================================

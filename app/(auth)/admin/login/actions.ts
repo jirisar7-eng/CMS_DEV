@@ -11,6 +11,7 @@ import { isDatabaseConfigured } from "@/lib/runtime/database";
 import {
   computePrivacyIdentifier,
   checkLoginAllowed,
+  checkMfaAllowed,
   recordLoginFailure,
   recordLoginSuccess,
   UNIFORM_LOGIN_ERROR,
@@ -140,25 +141,33 @@ export async function loginAction(state: any, formData: FormData) {
   }
 
   // 3. Success: Reset rate limiter and establish session
-  try {
-    await recordLoginSuccess({ accountHash, ipHash });
-  } catch (resetErr) {
-    console.warn("[LoginAction] Non-fatal error resetting limiter on success:", resetErr);
-  }
-
+  // MFA check: if MFA enabled, we do not reset login limiter yet,
+  // and we must check MFA limiter.
   const mfa = await prisma.userMfa.findUnique({
     where: { userId: user.id },
     select: { status: true },
   });
 
   if (mfa?.status === "ENABLED") {
+    // Check MFA limiter fail-closed
+    if (!(await checkMfaAllowed({ accountHash }))) {
+      return { error: RATE_LIMIT_ERROR };
+    }
+
     const challenge = await createMfaChallenge(user.id);
     await setMfaChallengeCookie(challenge.token, challenge.expiresAt);
     redirect("/admin/login/mfa");
   }
 
+  // Only reset if no MFA
+  try {
+    await recordLoginSuccess({ accountHash, ipHash });
+  } catch (resetErr) {
+    console.warn("[LoginAction] Non-fatal error resetting limiter on success:", resetErr);
+  }
+
   const sessionId = await createSession(user.id);
-  
+
   await logAudit({
     action: "AUTH_LOGIN_SUCCESS",
     scopeType: "SYSTEM",
