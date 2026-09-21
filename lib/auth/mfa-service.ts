@@ -4,6 +4,7 @@ import {
   generateRecoveryCode,
   hashRecoveryCode,
   verifyTotpToken,
+  verifyRecoveryCode,
 } from "@/lib/auth/mfa";
 import { encryptSecret, decryptSecret } from "@/lib/security/encryption";
 
@@ -55,4 +56,31 @@ export async function verifyMfaEnrollment(userId: string, token: string) {
   });
 
   return result.count === 1;
+}
+
+export async function consumeMfaRecoveryCode(userId: string, code: string) {
+  const mfa = await prisma.userMfa.findUnique({
+    where: { userId },
+    include: {
+      recoveryCodes: {
+        where: { usedAt: null },
+        select: { id: true, codeHash: true },
+      },
+    },
+  });
+
+  if (!mfa || mfa.status !== "ENABLED") return false;
+
+  for (const item of mfa.recoveryCodes) {
+    if (!(await verifyRecoveryCode(code, item.codeHash))) continue;
+
+    const used = await prisma.mfaRecoveryCode.updateMany({
+      where: { id: item.id, mfaId: mfa.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    return used.count === 1;
+  }
+
+  return false;
 }
