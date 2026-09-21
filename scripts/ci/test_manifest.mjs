@@ -62,6 +62,7 @@ export const DETERMINISTIC_TESTS = [
 ];
 
 export const POSTGRES_TESTS = [
+  "tests/mfa-postgres.test.ts",
   "tests/login-abuse-postgres.test.ts",
   "tests/session-security-postgres.test.ts",
   "tests/audit-admin-postgres.test.ts",
