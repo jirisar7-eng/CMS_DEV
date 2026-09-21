@@ -1,4 +1,5 @@
 export const DETERMINISTIC_TESTS = [
+  "tests/session-security-v2.test.ts",
   "tests/audit-write-sanitization.test.ts",
     "tests/secret-hygiene.test.ts",
   "tests/admin-capability-status.test.ts",
@@ -58,6 +59,7 @@ export const DETERMINISTIC_TESTS = [
 ];
 
 export const POSTGRES_TESTS = [
+  "tests/session-security-postgres.test.ts",
   "tests/audit-admin-postgres.test.ts",
   "tests/publishing-revisions-postgres.test.ts"
 ];
