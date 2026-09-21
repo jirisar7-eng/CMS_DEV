@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/auth/audit";
 import {
   generateTotpSecret,
   generateRecoveryCode,
