@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 39,
+  "total_capsules": 40,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -477,6 +477,20 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-SEC-005B-20260921-001",
+      "task_id": "SYN-SEC-005B",
+      "title": "Admin Root Authorization Boundary",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-SEC-005B-ADMIN-ROOT-AUTHORIZATION-BOUNDARY.json",
+      "base_sha": "defe1132505443bc667c281ca480d610f4340398",
+      "expected_branch": "task/SYN-SEC-005B-ADMIN-ROOT-AUTHORIZATION-BOUNDARY",
+      "sha256": "4355f908484a7d2668e742d45f206c8f8f7031f87e37219d6605e61dde1120ec",
+      "parent_capsule_id": "CAP-SYN-GOV-CAPSULE-002-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-LEGACY-SYN-SVG-005-INTEGRATION",
