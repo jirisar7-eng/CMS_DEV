@@ -59,12 +59,26 @@ export async function verifyMfaEnrollment(userId: string, token: string) {
   if (!verifyTotpToken(secret, token)) return false;
 
   const now = new Date();
-  const result = await prisma.userMfa.updateMany({
-    where: { id: mfa.id, userId, status: "PENDING" },
-    data: { status: "ENABLED", verifiedAt: now, enabledAt: now },
-  });
 
-  return result.count === 1;
+  return prisma.$transaction(async (tx) => {
+    const result = await tx.userMfa.updateMany({
+      where: { id: mfa.id, userId, status: "PENDING" },
+      data: { status: "ENABLED", verifiedAt: now, enabledAt: now },
+    });
+
+    if (result.count !== 1) return false;
+
+    await logAudit({
+      action: "AUTH_MFA_ENABLED",
+      scopeType: "SYSTEM",
+      actorId: userId,
+      resourceType: "UserMfa",
+      resourceId: mfa.id,
+      tx,
+    });
+
+    return true;
+  });
 }
 
 export async function consumeMfaRecoveryCode(userId: string, code: string) {
