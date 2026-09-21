@@ -61,6 +61,15 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
     email: safeString(255),
     attempt: safeNumber(),
   },
+  AUTH_LOGIN_BLOCKED: {
+    ip: safeString(100),
+    userAgent: safeString(255),
+    identifierHash: safeString(100),
+    clientIpHash: safeString(100),
+    reason: safeString(100),
+    retryAfter: safeNumber(),
+    attempt: safeNumber(),
+  },
   AUTH_LOGOUT: {
     userId: safeString(100),
   },

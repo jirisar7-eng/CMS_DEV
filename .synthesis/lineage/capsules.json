@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 44,
+  "total_capsules": 45,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -545,6 +545,20 @@
       "expected_branch": "task/SYN-SEC-007-SESSION-SECURITY-V2",
       "sha256": "bd0b54c654384ccb7a772cc78d834b183da8668f754abf141c0d4ca0cc46cc98",
       "parent_capsule_id": "CAP-SYN-QA-SEC-001-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-SEC-008-20260921-001",
+      "task_id": "SYN-SEC-008",
+      "title": "Login Abuse Protection & Rate Limiting",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-SEC-008-LOGIN-ABUSE-PROTECTION.json",
+      "base_sha": "3a453ce2bc3b9a77113bf6658728b2e9cd73d3fe",
+      "expected_branch": "task/SYN-SEC-008-LOGIN-ABUSE-PROTECTION",
+      "sha256": "882dbd118c1a4d8a131aed9b28e9aa0c8e66d73b4ab55e462c19df20b7f33aac",
+      "parent_capsule_id": "CAP-SYN-SEC-007-20260921-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
