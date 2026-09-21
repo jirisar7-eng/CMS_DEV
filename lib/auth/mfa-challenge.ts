@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 
 export const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
@@ -46,4 +47,33 @@ export async function consumeMfaChallenge(token: string, userId: string) {
   });
 
   return result.count === 1;
+}
+
+export const MFA_CHALLENGE_COOKIE_NAME = "syn_admin_mfa_challenge";
+
+export async function setMfaChallengeCookie(token: string, expiresAt: Date) {
+  const store = await cookies();
+  store.set(MFA_CHALLENGE_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/admin/login",
+    expires: expiresAt,
+  });
+}
+
+export async function getMfaChallengeCookieToken() {
+  const store = await cookies();
+  return store.get(MFA_CHALLENGE_COOKIE_NAME)?.value ?? null;
+}
+
+export async function clearMfaChallengeCookie() {
+  const store = await cookies();
+  store.set(MFA_CHALLENGE_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/admin/login",
+    expires: new Date(0),
+  });
 }
