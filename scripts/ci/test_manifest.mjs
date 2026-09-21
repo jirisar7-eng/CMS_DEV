@@ -1,5 +1,6 @@
 export const DETERMINISTIC_TESTS = [
   "tests/audit-write-sanitization.test.ts",
+    "tests/secret-hygiene.test.ts",
   "tests/admin-capability-status.test.ts",
   "tests/admin-login-route-isolation.test.ts",
   "tests/admin-nodb-fallback.test.ts",
