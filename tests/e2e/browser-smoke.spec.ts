@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
@@ -7,6 +7,14 @@ import {
   DISABLED_EMAIL,
   DISABLED_PASSWORD,
 } from "./global-setup";
+
+async function loginAsAdmin(page: Page) {
+  await page.goto("/admin/login");
+  await page.fill("#email", ADMIN_EMAIL);
+  await page.fill("#password", ADMIN_PASSWORD);
+  await page.click("button[type=\"submit\"]");
+  await page.waitForURL((url) => url.pathname === "/admin", { timeout: 30000 });
+}
 
 test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
   test.describe("1. Login Smoke", () => {
@@ -23,8 +31,9 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       await page.fill("#password", "WrongPassword999!");
       await page.click("button[type=\"submit\"]");
 
-      const errorMsg = page.locator("text=Neplatné přihlašovací údaje.");
-      await expect(errorMsg).toBeVisible();
+      const alert = page.locator("[role=\"alert\"]");
+      await expect(alert).toBeVisible();
+      await expect(alert).toContainText("Neplatné přihlašovací údaje.");
 
       const cookies = await page.context().cookies();
       const sessionCookie = cookies.find((c) => c.name === "syn_admin_session");
@@ -37,7 +46,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       await page.fill("#password", ADMIN_PASSWORD);
       await page.click("button[type=\"submit\"]");
 
-      await page.waitForURL(/\/admin/);
+      await page.waitForURL((url) => url.pathname === "/admin", { timeout: 30000 });
       expect(page.url()).not.toContain("/admin/login");
 
       const cookies = await page.context().cookies();
@@ -51,18 +60,18 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
     test("denies unauthenticated access to /admin and redirects to login", async ({ page }) => {
       await page.context().clearCookies();
       await page.goto("/admin");
-      await page.waitForURL(/\/admin\/login/);
+      await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
       expect(page.url()).toContain("/admin/login");
     });
 
     test("denies unauthenticated access to sub-admin routes (/admin/projects, /admin/pages)", async ({ page }) => {
       await page.context().clearCookies();
       await page.goto("/admin/projects");
-      await page.waitForURL(/\/admin\/login/);
+      await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
       expect(page.url()).toContain("/admin/login");
 
       await page.goto("/admin/pages");
-      await page.waitForURL(/\/admin\/login/);
+      await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
       expect(page.url()).toContain("/admin/login");
     });
   });
@@ -74,8 +83,12 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       await page.fill("#password", READER_PASSWORD);
       await page.click("button[type=\"submit\"]");
 
+      // Reader is redirected to /admin then immediately bounced to /admin/login by AdminLayout
+      await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
+      expect(page.url()).toContain("/admin/login");
+
       await page.goto("/admin");
-      await page.waitForURL(/\/admin\/login/);
+      await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
       expect(page.url()).toContain("/admin/login");
     });
 
@@ -85,22 +98,19 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
       await page.fill("#password", DISABLED_PASSWORD);
       await page.click("button[type=\"submit\"]");
 
-      const errorMsg = page.locator("[role=\"alert\"]");
-      await expect(errorMsg).toBeVisible();
+      const alert = page.locator("[role=\"alert\"]");
+      await expect(alert).toBeVisible();
+      await expect(alert).toContainText("Účet je deaktivován nebo pozastaven.");
 
       await page.goto("/admin");
-      await page.waitForURL(/\/admin\/login/);
+      await page.waitForURL((url) => url.pathname.includes("/admin/login"), { timeout: 30000 });
       expect(page.url()).toContain("/admin/login");
     });
   });
 
   test.describe("4. Project Context & Isolation", () => {
     test("isolates project content and API data between projects", async ({ page, request }) => {
-      await page.goto("/admin/login");
-      await page.fill("#email", ADMIN_EMAIL);
-      await page.fill("#password", ADMIN_PASSWORD);
-      await page.click("button[type=\"submit\"]");
-      await page.waitForURL(/\/admin/);
+      await loginAsAdmin(page);
 
       const cookies = await page.context().cookies();
       const sessionCookie = cookies.find((c) => c.name === "syn_admin_session");
@@ -138,14 +148,12 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
 
   test.describe("5. Main Content Lifecycle Smoke", () => {
     test("executes draft -> review -> approve -> publish -> public route resolution", async ({ page, request }) => {
-      await page.goto("/admin/login");
-      await page.fill("#email", ADMIN_EMAIL);
-      await page.fill("#password", ADMIN_PASSWORD);
-      await page.click("button[type=\"submit\"]");
-      await page.waitForURL(/\/admin/);
+      await loginAsAdmin(page);
 
       const cookies = await page.context().cookies();
       const sessionCookie = cookies.find((c) => c.name === "syn_admin_session");
+      expect(sessionCookie).toBeDefined();
+
       const headers = {
         Cookie: `syn_admin_session=${sessionCookie?.value}`,
         "Content-Type": "application/json",

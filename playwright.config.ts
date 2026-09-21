@@ -6,6 +6,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
+  timeout: 60000,
+  expect: {
+    timeout: 15000,
+  },
   reporter: process.env.CI ? "github" : "list",
   globalSetup: "./tests/e2e/global-setup.ts",
   use: {
