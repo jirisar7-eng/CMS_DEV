@@ -245,6 +245,177 @@
           }
         }
       }
+    },
+    "CapsuleRecord": {
+      "type": "object",
+      "required": [
+        "capsule_id",
+        "task_id",
+        "version",
+        "status",
+        "archive_path",
+        "base_sha",
+        "expected_branch",
+        "sha256",
+        "parent_capsule_id",
+        "supersedes_capsule_id",
+        "legacy"
+      ],
+      "properties": {
+        "capsule_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string"
+        },
+        "archive_path": {
+          "type": "string"
+        },
+        "base_sha": {
+          "$ref": "#/definitions/Sha1"
+        },
+        "expected_branch": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/definitions/Sha256"
+        },
+        "parent_capsule_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "supersedes_capsule_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "legacy": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CapsulesRegistry": {
+      "type": "object",
+      "required": [
+        "registry_version",
+        "total_capsules",
+        "capsules"
+      ],
+      "properties": {
+        "registry_version": {
+          "type": "string",
+          "const": "1.0.0"
+        },
+        "total_capsules": {
+          "type": "integer"
+        },
+        "capsules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CapsuleRecord"
+          }
+        }
+      }
+    },
+    "ActiveTaskCapsuleV1_1": {
+      "type": "object",
+      "required": [
+        "capsule_id",
+        "task_id",
+        "title",
+        "version",
+        "environment",
+        "created_at",
+        "base_sha",
+        "expected_branch",
+        "owner",
+        "parent_capsule_id",
+        "supersedes_capsule_id",
+        "status",
+        "allowed_mutation_types",
+        "allowed_paths"
+      ],
+      "properties": {
+        "capsule_id": {
+          "type": "string",
+          "pattern": "^CAP-[A-Z0-9-]+$"
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^1\\.[1-9][0-9]*(\\.[0-9]+)?$"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "base_sha": {
+          "$ref": "#/definitions/Sha1"
+        },
+        "expected_branch": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "parent_capsule_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "supersedes_capsule_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "allowed_mutation_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }
