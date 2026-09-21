@@ -59,6 +59,7 @@ model User {
   createdRedirects     RedirectRule[]
   enabledPluginStates  ProjectPluginState[]
   mfa                  UserMfa?
+  mfaChallenges        MfaChallenge[]
 
   @@index([status])
   @@index([email])
@@ -601,4 +602,18 @@ model MfaRecoveryCode {
   mfa UserMfa @relation(fields: [mfaId], references: [id], onDelete: Cascade)
 
   @@index([mfaId])
+}
+
+model MfaChallenge {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
