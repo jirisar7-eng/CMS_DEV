@@ -97,12 +97,25 @@ export async function consumeMfaRecoveryCode(userId: string, code: string) {
   for (const item of mfa.recoveryCodes) {
     if (!(await verifyRecoveryCode(code, item.codeHash))) continue;
 
-    const used = await prisma.mfaRecoveryCode.updateMany({
-      where: { id: item.id, mfaId: mfa.id, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    return prisma.$transaction(async (tx) => {
+      const used = await tx.mfaRecoveryCode.updateMany({
+        where: { id: item.id, mfaId: mfa.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
 
-    return used.count === 1;
+      if (used.count !== 1) return false;
+
+      await logAudit({
+        action: "AUTH_MFA_RECOVERY_USED",
+        scopeType: "SYSTEM",
+        actorId: userId,
+        resourceType: "UserMfa",
+        resourceId: mfa.id,
+        tx,
+      });
+
+      return true;
+    });
   }
 
   return false;
