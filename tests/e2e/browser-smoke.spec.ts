@@ -194,7 +194,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
           },
         },
       });
-      expect(createRes.status).toBe(201);
+      expect(createRes.status, `Create page failed: status=${createRes.status}, body=${JSON.stringify(createRes.json)}`).toBe(201);
       const pageId = createRes.json.data?.pageId || createRes.json.pageId;
       let lockVersion = createRes.json.data?.lockVersion || createRes.json.lockVersion;
       expect(pageId).toBeTruthy();
@@ -207,7 +207,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
         });
         return { status: res.status, json: await res.json() };
       }, { projectId: alphaProject.id, pageId, lockVersion });
-      expect(submitRes.status).toBe(200);
+      expect(submitRes.status, `Submit review failed: status=${submitRes.status}, body=${JSON.stringify(submitRes.json)}`).toBe(200);
       const submitData = submitRes.json.data || submitRes.json;
       expect(submitData.status).toBe("IN_REVIEW");
       lockVersion = submitData.lockVersion;
@@ -220,7 +220,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
         });
         return { status: res.status, json: await res.json() };
       }, { projectId: alphaProject.id, pageId, lockVersion });
-      expect(approveRes.status).toBe(200);
+      expect(approveRes.status, `Approve failed: status=${approveRes.status}, body=${JSON.stringify(approveRes.json)}`).toBe(200);
       const approveData = approveRes.json.data || approveRes.json;
       expect(approveData.status).toBe("APPROVED");
       lockVersion = approveData.lockVersion;
@@ -233,7 +233,7 @@ test.describe("SYN-QA-SEC-001: Browser Smoke Test Suite", () => {
         });
         return { status: res.status, json: await res.json() };
       }, { projectId: alphaProject.id, pageId, lockVersion });
-      expect(publishRes.status).toBe(200);
+      expect(publishRes.status, `Publish failed: status=${publishRes.status}, body=${JSON.stringify(publishRes.json)}`).toBe(200);
       const publishData = publishRes.json.data || publishRes.json;
       expect(publishData.status).toBe("PUBLISHED");
 
