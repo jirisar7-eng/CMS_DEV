@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/auth/audit";
 import bcrypt from "bcryptjs";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createMfaChallenge, setMfaChallengeCookie } from "@/lib/auth/mfa-challenge";
 import { isDatabaseConfigured } from "@/lib/runtime/database";
 import {
   computePrivacyIdentifier,
@@ -143,6 +144,17 @@ export async function loginAction(state: any, formData: FormData) {
     await recordLoginSuccess({ accountHash, ipHash });
   } catch (resetErr) {
     console.warn("[LoginAction] Non-fatal error resetting limiter on success:", resetErr);
+  }
+
+  const mfa = await prisma.userMfa.findUnique({
+    where: { userId: user.id },
+    select: { status: true },
+  });
+
+  if (mfa?.status === "ENABLED") {
+    const challenge = await createMfaChallenge(user.id);
+    await setMfaChallengeCookie(challenge.token, challenge.expiresAt);
+    redirect("/admin/login/mfa");
   }
 
   const sessionId = await createSession(user.id);
