@@ -33,8 +33,88 @@ interface ReleaseData {
   items: ReleaseItem[];
 }
 
+export type PublishingRevisionStatus =
+  | "DRAFT"
+  | "IN_REVIEW"
+  | "APPROVED"
+  | "PUBLISHED";
+
+export type PublishingAction =
+  | "submit-review"
+  | "approve"
+  | "request-changes"
+  | "publish";
+
+export interface PublishingRevision {
+  id: string;
+  pageId: string;
+  revisionNumber: number;
+  status: PublishingRevisionStatus;
+  title: string;
+  slug: string;
+  lockVersion: number;
+}
+
+const ACTION_LABELS: Record<PublishingAction, string> = {
+  "submit-review": "Odeslat ke schválení",
+  approve: "Schválit",
+  "request-changes": "Vrátit k úpravám",
+  publish: "Publikovat",
+};
+
+export function getAllowedPublishingActions(
+  status: PublishingRevisionStatus
+): PublishingAction[] {
+  switch (status) {
+    case "DRAFT":
+      return ["submit-review"];
+    case "IN_REVIEW":
+      return ["approve", "request-changes"];
+    case "APPROVED":
+      return ["publish"];
+    default:
+      return [];
+  }
+}
+
+export function getLatestActionableRevisions(
+  revisions: PublishingRevision[]
+): PublishingRevision[] {
+  const latestByPage = new Map<string, PublishingRevision>();
+
+  for (const revision of revisions) {
+    const current = latestByPage.get(revision.pageId);
+    if (
+      !current ||
+      revision.revisionNumber > current.revisionNumber ||
+      (revision.revisionNumber === current.revisionNumber &&
+        revision.id.localeCompare(current.id) > 0)
+    ) {
+      latestByPage.set(revision.pageId, revision);
+    }
+  }
+
+  return [...latestByPage.values()]
+    .filter((revision) => getAllowedPublishingActions(revision.status).length > 0)
+    .sort(
+      (a, b) =>
+        a.title.localeCompare(b.title, "cs") ||
+        a.pageId.localeCompare(b.pageId)
+    );
+}
+
+export function publishingActionEndpoint(
+  projectId: string,
+  pageId: string,
+  action: PublishingAction
+): string {
+  return `/api/admin/projects/${projectId}/pages/${pageId}/actions/${action}`;
+}
+
 export function PublishingWorkspace({ projectId }: { projectId: string | null }) {
   const [releases, setReleases] = useState<ReleaseData[]>([]);
+  const [revisions, setRevisions] = useState<PublishingRevision[]>([]);
+  const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(projectId));
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -51,22 +131,51 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
 
     let isMounted = true;
 
-    async function loadReleases() {
+    async function loadPublishingData() {
+      setLoading(true);
+
       try {
-        const res = await fetch(`/api/admin/projects/${projectId}/releases`);
-        if (!res.ok) {
-          if (res.status === 403) throw new Error("Nemáte oprávnění k zobrazení publikační historie (content.view).");
-          if (res.status === 401) throw new Error("Relace vypršela. Přihlaste se prosím znovu.");
-          throw new Error("Nepodařilo se načíst publikační data.");
+        const [releasesRes, revisionsRes] = await Promise.all([
+          fetch(`/api/admin/projects/${projectId}/releases`),
+          fetch(`/api/admin/projects/${projectId}/revisions`),
+        ]);
+
+        for (const res of [releasesRes, revisionsRes]) {
+          if (res.status === 403) {
+            throw new Error(
+              "Nemáte oprávnění k publikačnímu workspace (content.view)."
+            );
+          }
+          if (res.status === 401) {
+            throw new Error("Relace vypršela. Přihlaste se prosím znovu.");
+          }
+          if (!res.ok) {
+            throw new Error("Nepodařilo se načíst publikační data.");
+          }
         }
-        const body = await res.json();
+
+        const [releasesBody, revisionsBody] = await Promise.all([
+          releasesRes.json(),
+          revisionsRes.json(),
+        ]);
+
         if (isMounted) {
-          setReleases(body.data?.releases || body.releases || []);
+          setReleases(
+            releasesBody.data?.releases || releasesBody.releases || []
+          );
+          setRevisions(
+            revisionsBody.data?.revisions || revisionsBody.revisions || []
+          );
+          setResolvedProjectId(projectId);
           setError(null);
         }
       } catch (err: unknown) {
         if (isMounted) {
-          const msg = err instanceof Error ? err.message : "Chyba při načítání releases.";
+          const msg =
+            err instanceof Error
+              ? err.message
+              : "Chyba při načítání publikačního workspace.";
+          setResolvedProjectId(projectId);
           setError(msg);
         }
       } finally {
@@ -76,16 +185,82 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
       }
     }
 
-    loadReleases();
+    loadPublishingData();
 
     return () => {
       isMounted = false;
     };
   }, [projectId, reloadToken]);
 
+  const isCurrentProjectResolved = resolvedProjectId === projectId;
+  const workspaceLoading = loading || !isCurrentProjectResolved;
+  const visibleReleases = isCurrentProjectResolved ? releases : [];
+  const actionableRevisions = isCurrentProjectResolved
+    ? getLatestActionableRevisions(revisions)
+    : [];
+
+  const handleLifecycleAction = async (
+    revision: PublishingRevision,
+    action: PublishingAction
+  ) => {
+    if (!projectId) return;
+
+    const processingKey = `${revision.pageId}:${action}`;
+    setProcessingId(processingKey);
+    setActionMessage(null);
+
+    try {
+      const res = await fetch(
+        publishingActionEndpoint(projectId, revision.pageId, action),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CMS-Origin-Check": "1",
+          },
+          body: JSON.stringify({
+            expectedLockVersion: revision.lockVersion,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+
+        if (res.status === 401) {
+          throw new Error("Relace vypršela. Přihlaste se prosím znovu.");
+        }
+        if (res.status === 403) {
+          throw new Error(
+            errData.error?.message ||
+              errData.message ||
+              "Pro tuto publikační akci nemáte oprávnění."
+          );
+        }
+
+        throw new Error(
+          errData.error?.message ||
+            errData.message ||
+            `Publikační akce selhala (${res.status}).`
+        );
+      }
+
+      setActionMessage(
+        `${ACTION_LABELS[action]} dokončeno. Data byla znovu načtena ze serveru.`
+      );
+      handleRefresh();
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Publikační akce selhala.";
+      setActionMessage(`Chyba: ${msg}`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleRollbackPage = async (pageId: string, expectedPublishedRevisionId: string) => {
     if (!projectId) return;
-    setProcessingId(pageId);
+    setProcessingId(`${pageId}:rollback`);
     setActionMessage(null);
     try {
       const res = await fetch(`/api/admin/projects/${projectId}/pages/${pageId}/actions/rollback`, {
@@ -161,6 +336,74 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
             </div>
           )}
 
+          {!workspaceLoading && !error && (
+            <div className="space-y-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-foreground">
+                  Publikační workflow
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Aktuální revize připravené pro review, schválení nebo publikaci.
+                </p>
+              </div>
+
+              {actionableRevisions.length === 0 ? (
+                <div className="p-5 rounded-2xl border border-dashed border-border bg-card/50 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Momentálně není žádná revize čekající na publikační akci.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {actionableRevisions.map((revision) => (
+                    <div
+                      key={revision.id}
+                      className="p-4 rounded-2xl border border-border bg-card shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-sm text-foreground">
+                            {revision.title}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border border-border bg-muted text-muted-foreground">
+                            {revision.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          /{revision.slug} • revize {revision.revisionNumber} • lock {revision.lockVersion}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 shrink-0">
+                        {getAllowedPublishingActions(revision.status).map(
+                          (action) => {
+                            const processingKey = `${revision.pageId}:${action}`;
+                            return (
+                              <button
+                                key={action}
+                                type="button"
+                                disabled={processingId === processingKey}
+                                onClick={() =>
+                                  handleLifecycleAction(revision, action)
+                                }
+                                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                {processingId === processingKey && (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                )}
+                                <span>{ACTION_LABELS[action]}</span>
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <h3 className="text-sm font-bold text-foreground">Historie publikačních snapshotů</h3>
@@ -169,15 +412,15 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
             <button
               type="button"
               onClick={handleRefresh}
-              disabled={loading}
+              disabled={workspaceLoading}
               className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${workspaceLoading ? "animate-spin" : ""}`} />
               <span>Obnovit</span>
             </button>
           </div>
 
-          {loading ? (
+          {workspaceLoading ? (
             <div className="p-8 rounded-2xl border border-border bg-card shadow-xs text-center space-y-3">
               <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
               <p className="text-xs text-muted-foreground">Načítání publikační historie...</p>
@@ -189,7 +432,7 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
                 <span>Chyba načítání: {error}</span>
               </div>
             </div>
-          ) : releases.length === 0 ? (
+          ) : visibleReleases.length === 0 ? (
             <div className="p-8 rounded-2xl border border-dashed border-border bg-card/50 text-center space-y-3">
               <Clock className="w-8 h-8 text-muted-foreground mx-auto" />
               <h4 className="text-sm font-bold text-foreground">Žádné publikované snapshoty</h4>
@@ -199,7 +442,7 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
             </div>
           ) : (
             <div className="space-y-4">
-              {releases.map(({ release, items }) => (
+              {visibleReleases.map(({ release, items }) => (
                 <div key={release.id} className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
                     <div className="space-y-1">
@@ -238,11 +481,11 @@ export function PublishingWorkspace({ projectId }: { projectId: string | null })
                           {release.status === "PUBLISHED" && (
                             <button
                               type="button"
-                              disabled={processingId === item.pageId}
+                              disabled={processingId === `${item.pageId}:rollback`}
                               onClick={() => handleRollbackPage(item.pageId, item.revisionId)}
                               className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
                             >
-                              {processingId === item.pageId ? (
+                              {processingId === `${item.pageId}:rollback` ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
                                 <RotateCcw className="w-3.5 h-3.5" />

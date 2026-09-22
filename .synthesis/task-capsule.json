@@ -1,35 +1,32 @@
 {
   "version": "1.1.0",
-  "capsule_id": "CAP-SYN-DEP-003-20260922-001",
-  "task_id": "SYN-DEP-003",
-  "title": "Toolchain & Dependency Baseline",
+  "capsule_id": "CAP-SYN-CONTENT-004-20260922-001",
+  "task_id": "SYN-CONTENT-004",
+  "title": "Publishing Workspace Completion",
   "environment": "CMS_DEV",
-  "base_sha": "ea5ca6dfb0619c5bbba6c9cb0306d39b0f14b440",
-  "expected_branch": "task/SYN-DEP-003-TOOLCHAIN-BASELINE",
+  "base_sha": "c86e494205aa8e67743dd9255efa878bab6f8f0b",
+  "expected_branch": "task/SYN-CONTENT-004-PUBLISHING-WORKSPACE-COMPLETION",
   "owner": "CHATGPT",
   "status": "IN_PROGRESS",
   "created_at": "2026-09-22T00:00:00Z",
-  "parent_capsule_id": "CAP-SYN-OPS-002-20260922-001",
+  "parent_capsule_id": "CAP-SYN-DEP-003-20260922-001",
   "supersedes_capsule_id": null,
   "allowed_mutation_types": [
-    "CODE",
-    "CONFIG",
+    "ADMIN_UI",
     "TEST",
     "GOVERNANCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    "package.json",
-    "package-lock.json",
-    "bun.lock",
-    ".eslintrc.json",
-    "eslint.config.mjs",
-    "scripts/ci/test_manifest.mjs",
-    "tests/toolchain-contract.test.ts",
-    "next.config.ts"
+    "components/admin/publishing/PublishingWorkspace.tsx",
+    "tests/publishing-workspace-completion.test.ts",
+    "scripts/ci/test_manifest.mjs"
   ],
   "forbidden_paths": [
     ".env*",
+    "prisma/schema.prisma",
+    "prisma/migrations/**",
+    "lib/domain/content/lifecycle/**",
     "docs/environment/ENV-LEGACY-*"
   ]
 }
