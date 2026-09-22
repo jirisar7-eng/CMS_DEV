@@ -27,6 +27,7 @@
     "lib/auth/audit.ts",
     "lib/auth/mfa-challenge.ts",
     "lib/auth/mfa-login.ts",
+    "lib/auth/session.ts",
     "lib/auth/mfa-service.ts",
     "lib/auth/mfa.ts",
     "lib/security/encryption.ts",
