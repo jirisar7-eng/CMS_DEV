@@ -13,10 +13,10 @@ import type { Prisma } from "@prisma/client";
 
 export const MFA_LOGIN_ERROR = "Ověření se nezdařilo. Zkuste to znovu nebo se přihlaste znovu.";
 
-async function recordFailure(token: string, userId: string, accountHash: string, tx: Prisma.TransactionClient) {
+async function recordFailure(token: string, userId: string, accountHash: string, tx?: Prisma.TransactionClient) {
   // Attempt both writes even if one store fails. Never include credentials in logs.
   await Promise.allSettled([
-    recordMfaFailure({ accountHash }),
+    recordMfaFailure({ accountHash, tx }),
     recordFailedMfaChallengeAttempt(token, userId, tx),
   ]);
   return null;
@@ -55,7 +55,7 @@ export async function verifyMfaLogin(token: string | null, input: unknown): Prom
       const valid = await getValidMfaChallenge(challengeToken, tx);
       const mfa = await tx.userMfa.findUnique({ where: { userId } });
       if (!valid || !user || user.status !== "ACTIVE" || mfa?.status !== "ENABLED" ||
-          !(await checkMfaAllowed({ accountHash }))) return fail();
+          !(await checkMfaAllowed({ accountHash, tx }))) return fail();
 
       let recoveryId: string | undefined;
       let verified = false;
@@ -83,11 +83,11 @@ export async function verifyMfaLogin(token: string | null, input: unknown): Prom
         await logAudit({ action: "AUTH_MFA_RECOVERY_USED", scopeType: "SYSTEM", actorId: userId,
           resourceType: "UserMfa", resourceId: mfa.id, tx });
       }
-      await recordMfaSuccess({ accountHash });
+      await recordMfaSuccess({ accountHash, tx });
       return userId;
     }, { timeout: 15000 });
   } catch {
-    if (!failureRecorded) await recordFailure(challengeToken, userId, accountHash, prisma);
+    if (!failureRecorded) await recordFailure(challengeToken, userId, accountHash);
     return null;
   }
 }

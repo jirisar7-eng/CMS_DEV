@@ -201,3 +201,13 @@ test("Audit failure after MFA success cannot issue a session", async () => {
   assert.equal(sessionCount, 0);
   assert.deepEqual(cookieWrites, ["syn_admin_mfa_challenge"]);
 });
+
+
+test("Transactional limiter reset failure cannot complete MFA or issue a session", async () => {
+  stub(store, "reset", async () => { throw new Error("reset unavailable"); });
+  assert.deepEqual(await verifyMfaAction({ error: null }, form(totp())), { error: MFA_LOGIN_ERROR });
+  assert.equal(sessionCount, 0);
+  assert.deepEqual(cookieWrites, []);
+  assert.deepEqual(auditActions, []);
+  assert.equal((await store.get(`mfa_${accountHash}`))?.points, 1);
+});

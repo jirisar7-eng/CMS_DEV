@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createRequire } from "node:module";
-import { createMfaChallenge, hashMfaChallengeToken } from "@/lib/auth/mfa-challenge";
+import { createMfaChallenge, hashMfaChallengeToken, recordFailedMfaChallengeAttempt } from "@/lib/auth/mfa-challenge";
 import { verifyMfaLogin, MFA_LOGIN_ERROR } from "@/lib/auth/mfa-login";
 import { verifyMfaAction } from "@/app/(auth)/admin/login/mfa/actions";
-import { computePrivacyIdentifier } from "@/lib/auth/abuse-protection";
+import { computePrivacyIdentifier, checkMfaAllowed, recordMfaFailure, recordMfaSuccess } from "@/lib/auth/abuse-protection";
 import { encryptSecret } from "@/lib/security/encryption";
 import { hashRecoveryCode } from "@/lib/auth/mfa";
 import * as OTPAuth from "otpauth";
@@ -136,6 +136,37 @@ test("PostgreSQL MFA login completion and concurrency", { skip: !process.env.DAT
       }
     });
   }
+
+  await t.test("MFA failure counters share transaction visibility and rollback", () => fixture(async ({ userId, accountHash }) => {
+    const challenge = await createMfaChallenge(userId);
+    const where = { tokenHash: hashMfaChallengeToken(challenge.token) };
+    await assert.rejects(prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      for (let i = 0; i < 5; i++) {
+        await recordMfaFailure({ accountHash, tx });
+        await recordFailedMfaChallengeAttempt(challenge.token, userId, tx);
+      }
+      assert.equal(await checkMfaAllowed({ accountHash, tx }), false);
+      assert.equal((await tx.authRateLimit.findUnique({ where: { key: `mfa_${accountHash}` } }))?.points, 5);
+      assert.equal((await tx.mfaChallenge.findUnique({ where }))?.attempts, 5);
+      throw new Error("ROLLBACK_MFA_FAILURE_COUNTERS");
+    }), /ROLLBACK_MFA_FAILURE_COUNTERS/);
+    assert.equal(await prisma.authRateLimit.findUnique({ where: { key: `mfa_${accountHash}` } }), null);
+    assert.equal((await prisma.mfaChallenge.findUnique({ where }))?.attempts, 0);
+  }));
+
+  await t.test("MFA success resets both counters only when its transaction commits", () => fixture(async ({ accountHash }) => {
+    const keys = [accountHash, `mfa_${accountHash}`];
+    await prisma.authRateLimit.createMany({ data: keys.map((key) => ({ key, points: 1, lastFailedAt: new Date() })) });
+    await assert.rejects(prisma.$transaction(async (tx) => {
+      await recordMfaSuccess({ accountHash, tx });
+      assert.equal(await tx.authRateLimit.count({ where: { key: { in: keys } } }), 0);
+      throw new Error("ROLLBACK_MFA_SUCCESS_COUNTERS");
+    }), /ROLLBACK_MFA_SUCCESS_COUNTERS/);
+    assert.equal(await prisma.authRateLimit.count({ where: { key: { in: keys } } }), 2);
+    await prisma.$transaction(async (tx) => { await recordMfaSuccess({ accountHash, tx }); });
+    assert.equal(await prisma.authRateLimit.count({ where: { key: { in: keys } } }), 0);
+  }));
 
   for (const method of ["totp", "recovery"]) {
     await t.test(`${method}: concurrent submissions create exactly one session and login audit`, () => fixture(async ({ userId }) => {
