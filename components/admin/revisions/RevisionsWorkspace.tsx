@@ -56,43 +56,92 @@ interface BlockDiff {
 
 
 
+export function canonicalizeValue(val: unknown): unknown {
+  if (val === null || typeof val !== "object") {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val.map(canonicalizeValue);
+  }
+  const obj = val as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  const result: Record<string, unknown> = {};
+  for (const k of keys) {
+    result[k] = canonicalizeValue(obj[k]);
+  }
+  return result;
+}
+
+export function isDeepEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(canonicalizeValue(a)) === JSON.stringify(canonicalizeValue(b));
+}
+
+export function selectPreviousRevision(
+  selectedRevision: PageRevision | null,
+  allRevisions: PageRevision[]
+): PageRevision | null {
+  if (!selectedRevision || !allRevisions || allRevisions.length === 0) return null;
+  return (
+    allRevisions
+      .filter(
+        (r) =>
+          r.pageId === selectedRevision.pageId &&
+          r.revisionNumber < selectedRevision.revisionNumber
+      )
+      .sort((a, b) => b.revisionNumber - a.revisionNumber)[0] || null
+  );
+}
+
 export function computeRevisionDiff(
   current: {
     title: string;
     slug: string;
+    locale?: string;
     description?: string | null;
     visibility?: string;
+    seo?: Record<string, unknown> | null;
+    navigation?: Record<string, unknown> | null;
     content?: { blocks?: Array<{ id?: string; type: string; data?: Record<string, unknown> }> };
     revisionNumber?: number;
   },
   previous?: {
     title: string;
     slug: string;
+    locale?: string;
     description?: string | null;
     visibility?: string;
+    seo?: Record<string, unknown> | null;
+    navigation?: Record<string, unknown> | null;
     content?: { blocks?: Array<{ id?: string; type: string; data?: Record<string, unknown> }> };
     revisionNumber?: number;
   } | null
 ) {
   const titleChanged = previous ? current.title !== previous.title : false;
   const slugChanged = previous ? current.slug !== previous.slug : false;
-  const descriptionChanged = previous ? current.description !== previous.description : false;
-  const visibilityChanged = previous ? current.visibility !== previous.visibility : false;
+  const localeChanged = previous ? (current.locale || "") !== (previous.locale || "") : false;
+  const descriptionChanged = previous ? (current.description ?? null) !== (previous.description ?? null) : false;
+  const visibilityChanged = previous ? (current.visibility || "") !== (previous.visibility || "") : false;
+
+  const seoChanged = previous ? !isDeepEqual(current.seo || {}, previous.seo || {}) : false;
+  const navigationChanged = previous ? !isDeepEqual(current.navigation || {}, previous.navigation || {}) : false;
 
   const currentBlocks = current.content?.blocks || [];
   const previousBlocks = previous?.content?.blocks || [];
 
   const prevBlockMap = new Map<string, { type: string; data?: Record<string, unknown> }>();
+  const prevIndexMap = new Map<string, number>();
+
   previousBlocks.forEach((b, idx) => {
     const key = b.id || `block-${idx}`;
     prevBlockMap.set(key, b);
+    prevIndexMap.set(key, idx);
   });
 
   const blockDiffs: BlockDiff[] = [];
   const visitedPrevKeys = new Set<string>();
 
-  currentBlocks.forEach((currBlock, idx) => {
-    const key = currBlock.id || `block-${idx}`;
+  currentBlocks.forEach((currBlock, currIdx) => {
+    const key = currBlock.id || `block-${currIdx}`;
     const prevBlock = prevBlockMap.get(key);
     visitedPrevKeys.add(key);
 
@@ -103,23 +152,34 @@ export function computeRevisionDiff(
         status: "ADDED",
         summary: `Přidán nový blok (${currBlock.type})`,
       });
-    } else if (
-      JSON.stringify(currBlock.data || {}) !== JSON.stringify(prevBlock.data || {}) ||
-      currBlock.type !== prevBlock.type
-    ) {
-      blockDiffs.push({
-        id: key,
-        type: currBlock.type,
-        status: "MODIFIED",
-        summary: `Změna obsahu/typu bloku (${prevBlock.type} -> ${currBlock.type})`,
-      });
     } else {
-      blockDiffs.push({
-        id: key,
-        type: currBlock.type,
-        status: "UNCHANGED",
-        summary: `Bez beze změny (${currBlock.type})`,
-      });
+      const prevIdx = prevIndexMap.get(key) ?? currIdx;
+      const dataChanged = !isDeepEqual(currBlock.data || {}, prevBlock.data || {});
+      const typeChanged = currBlock.type !== prevBlock.type;
+      const positionChanged = currIdx !== prevIdx;
+
+      if (typeChanged || dataChanged) {
+        blockDiffs.push({
+          id: key,
+          type: currBlock.type,
+          status: "MODIFIED",
+          summary: `Změna obsahu/typu bloku (${prevBlock.type} ➔ ${currBlock.type})`,
+        });
+      } else if (positionChanged) {
+        blockDiffs.push({
+          id: key,
+          type: currBlock.type,
+          status: "MODIFIED",
+          summary: `Přemístění bloku (${currBlock.type}: pozice ${prevIdx + 1} ➔ ${currIdx + 1})`,
+        });
+      } else {
+        blockDiffs.push({
+          id: key,
+          type: currBlock.type,
+          status: "UNCHANGED",
+          summary: `Bez beze změny (${currBlock.type})`,
+        });
+      }
     }
   });
 
@@ -135,18 +195,34 @@ export function computeRevisionDiff(
     }
   });
 
+  const prevKeysSequence = previousBlocks.map((b, idx) => b.id || `block-${idx}`);
+  const currKeysSequence = currentBlocks.map((b, idx) => b.id || `block-${idx}`);
+  const blockOrderChanged = previous
+    ? prevKeysSequence.length === currKeysSequence.length &&
+      prevKeysSequence.some((id, idx) => currKeysSequence[idx] !== id) &&
+      prevKeysSequence.every((id) => currKeysSequence.includes(id))
+    : false;
+
   const hasChanges =
     titleChanged ||
     slugChanged ||
+    localeChanged ||
     descriptionChanged ||
     visibilityChanged ||
+    seoChanged ||
+    navigationChanged ||
+    blockOrderChanged ||
     blockDiffs.some((b) => b.status !== "UNCHANGED");
 
   return {
     titleChanged,
     slugChanged,
+    localeChanged,
     descriptionChanged,
     visibilityChanged,
+    seoChanged,
+    navigationChanged,
+    blockOrderChanged,
     blockDiffs,
     hasChanges,
     previousRevisionNumber: previous?.revisionNumber ?? null,
@@ -154,6 +230,7 @@ export function computeRevisionDiff(
 }
 
 export function RevisionsWorkspace({ projectId }: { projectId: string | null }) {
+  const [prevProjectId, setPrevProjectId] = useState<string | null>(projectId);
   const [revisions, setRevisions] = useState<PageRevision[]>([]);
   const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(projectId));
@@ -161,6 +238,14 @@ export function RevisionsWorkspace({ projectId }: { projectId: string | null }) 
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState<boolean>(false);
   const [reloadToken, setReloadToken] = useState<number>(0);
+
+  if (projectId !== prevProjectId) {
+    setPrevProjectId(projectId);
+    setRevisions([]);
+    setSelectedRevisionId(null);
+    setError(null);
+    setLoading(Boolean(projectId));
+  }
 
   const handleRefresh = useCallback(() => {
     setLoading(true);
@@ -211,11 +296,7 @@ export function RevisionsWorkspace({ projectId }: { projectId: string | null }) 
 
   const selectedRevision = revisions.find((r) => r.id === selectedRevisionId) || null;
 
-  const previousRevision = selectedRevision
-    ? revisions
-        .filter((r) => r.pageId === selectedRevision.pageId && r.revisionNumber < selectedRevision.revisionNumber)
-        .sort((a, b) => b.revisionNumber - a.revisionNumber)[0] || null
-    : null;
+  const previousRevision = selectPreviousRevision(selectedRevision, revisions);
 
   const diffResult = selectedRevision ? computeRevisionDiff(selectedRevision, previousRevision) : null;
 
@@ -473,7 +554,13 @@ export function RevisionsWorkspace({ projectId }: { projectId: string | null }) 
                       </div>
 
                       {/* Změny v hlavičce */}
-                      {(diffResult.titleChanged || diffResult.slugChanged || diffResult.descriptionChanged || diffResult.visibilityChanged) && (
+                      {(diffResult.titleChanged ||
+                        diffResult.slugChanged ||
+                        diffResult.localeChanged ||
+                        diffResult.descriptionChanged ||
+                        diffResult.visibilityChanged ||
+                        diffResult.seoChanged ||
+                        diffResult.navigationChanged) && (
                         <div className="p-3 rounded-xl border border-border bg-muted/30 space-y-2 text-xs">
                           <span className="font-semibold text-foreground block">Změny v metadatech:</span>
                           {diffResult.titleChanged && previousRevision && (
@@ -486,6 +573,36 @@ export function RevisionsWorkspace({ projectId }: { projectId: string | null }) 
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <Edit3 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                               <span>Slug: &quot;/{previousRevision.slug}&quot; ➔ &quot;/{selectedRevision.slug}&quot;</span>
+                            </div>
+                          )}
+                          {diffResult.localeChanged && previousRevision && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Edit3 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span>Jazyk (locale): &quot;{previousRevision.locale}&quot; ➔ &quot;{selectedRevision.locale}&quot;</span>
+                            </div>
+                          )}
+                          {diffResult.descriptionChanged && previousRevision && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Edit3 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span>Popis: &quot;{previousRevision.description ?? "—"}&quot; ➔ &quot;{selectedRevision.description ?? "—"}&quot;</span>
+                            </div>
+                          )}
+                          {diffResult.visibilityChanged && previousRevision && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Edit3 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span>Viditelnost: &quot;{previousRevision.visibility}&quot; ➔ &quot;{selectedRevision.visibility}&quot;</span>
+                            </div>
+                          )}
+                          {diffResult.seoChanged && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Edit3 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span>Změna v SEO nastavení</span>
+                            </div>
+                          )}
+                          {diffResult.navigationChanged && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Edit3 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span>Změna v nastavení navigace</span>
                             </div>
                           )}
                         </div>
