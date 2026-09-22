@@ -23,7 +23,6 @@
     "@prisma/client": "^6.4.1",
     "@puckeditor/cloud-client": "^0.8.3",
     "@puckeditor/core": "^0.23.0",
-    "@puckeditor/plugin-ai": "^0.8.3",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.3",
     "canonicalize": "5.0.0",
@@ -31,18 +30,19 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.553.0",
     "motion": "^12.23.24",
-    "next": "^15.4.9",
+    "next": "15.5.25",
     "next-themes": "0.4.6",
     "otpauth": "^9.5.2",
-    "postcss": "^8.5.6",
+    "postcss": "8.5.28",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "sanitize-html": "2.17.0",
+    "sanitize-html": "2.17.7",
     "saxes": "6.0.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "15.5.25",
     "@playwright/test": "^1.50.0",
     "@tailwindcss/postcss": "4.1.11",
     "@tailwindcss/typography": "^0.5.19",
@@ -51,8 +51,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/sanitize-html": "2.16.0",
+    "@typescript-eslint/eslint-plugin": "8.70.1",
+    "@typescript-eslint/parser": "8.70.1",
     "eslint": "9.39.1",
-    "eslint-config-next": "16.0.8",
+    "eslint-config-next": "15.5.25",
+    "eslint-plugin-react-hooks": "7.1.1",
     "firebase-tools": "^15.0.0",
     "prisma": "^6.4.1",
     "tailwindcss": "4.1.11",
@@ -67,6 +70,9 @@
   "packageManager": "npm@10.9.3",
   "overrides": {
     "deepmerge-ts": "8.0.2",
-    "qs": "6.16.0"
+    "qs": "6.16.0",
+    "next": {
+      "postcss": "$postcss"
+    }
   }
 }

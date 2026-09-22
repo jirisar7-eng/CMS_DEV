@@ -1,4 +1,5 @@
 export const DETERMINISTIC_TESTS = [
+  "tests/toolchain-contract.test.ts",
   "tests/security-headers.test.ts",
   "tests/health-contract.test.ts",
   "tests/login-abuse-protection.test.ts",
