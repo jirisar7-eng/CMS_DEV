@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
+import type { Prisma } from "@prisma/client";
 import { isDatabaseConfigured } from '@/lib/runtime/database';
 
 export const SESSION_COOKIE_NAME = 'syn_admin_session';
@@ -59,44 +60,45 @@ export function hashSessionToken(rawToken: string): string {
  * - Issues raw token exclusively into HttpOnly secure cookie
  * - Never returns raw token in plaintext to caller (returns opaque session ID)
  */
-export async function createSession(userId: string): Promise<string> {
-  if (!isDatabaseConfigured()) {
-    throw new Error('DATABASE_UNAVAILABLE');
-  }
+export interface PendingSessionCookie {
+  sessionId: string;
+  rawToken: string;
+  expiresAt: Date;
+}
 
-  const rawToken = crypto.randomBytes(32).toString('hex');
+export async function createSessionRecord(
+  userId: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<PendingSessionCookie> {
+  const rawToken = crypto.randomBytes(32).toString("hex");
   const tokenHash = hashSessionToken(rawToken);
   const sessionId = crypto.randomUUID();
-
   const now = Date.now();
   const expiresAt = new Date(now + SESSION_ABSOLUTE_TIMEOUT_MS);
   const idleExpiresAt = new Date(now + SESSION_IDLE_TIMEOUT_MS);
   const lastSeenAt = new Date(now);
+  await db.session.create({ data: { id: sessionId, tokenHash, userId, expiresAt, idleExpiresAt, lastSeenAt } });
+  return { sessionId, rawToken, expiresAt };
+}
 
-  await prisma.session.create({
-    data: {
-      id: sessionId,
-      tokenHash,
-      userId,
-      expiresAt,
-      idleExpiresAt,
-      lastSeenAt,
-    },
-  });
-
+export async function setSessionCookie({ rawToken, expiresAt }: PendingSessionCookie): Promise<void> {
   const cookieStore = await getSafeCookieStore();
   if (cookieStore) {
     cookieStore.set(SESSION_COOKIE_NAME, rawToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
       expires: expiresAt,
     });
   }
+}
 
-  // Return opaque sessionId, NEVER the raw bearer token
-  return sessionId;
+export async function createSession(userId: string): Promise<string> {
+  if (!isDatabaseConfigured()) throw new Error("DATABASE_UNAVAILABLE");
+  const pending = await createSessionRecord(userId);
+  await setSessionCookie(pending);
+  return pending.sessionId;
 }
 
 /**

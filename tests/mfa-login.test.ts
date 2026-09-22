@@ -34,6 +34,7 @@ let sessionCount: number;
 let auditActions: string[];
 let cookieWrites: string[];
 let recoveryCodes: { id: string; codeHash: string }[];
+let sessionFailure: boolean;
 let recoveryUses: number;
 const restores: (() => void)[] = [];
 function stub(target: object, key: string, implementation: unknown) {
@@ -50,11 +51,11 @@ beforeEach(() => {
   mock.timers.enable({ apis: ["Date"], now });
   used = false; attempts = 0; attemptWrites = 0; status = "ACTIVE"; mfaStatus = "ENABLED";
   valid = true; known = true; present = true; sessionCount = 0;
-  recoveryCodes = []; recoveryUses = 0; auditActions = []; cookieWrites = [];
+  recoveryCodes = []; recoveryUses = 0; auditActions = []; cookieWrites = []; sessionFailure = false;
   encrypted = encryptSecret(secret);
   store = new MemoryAbuseLimiterStore();
   setAbuseLimiterStoreForTesting(store);
-  stub(prisma, "$transaction", async (fn: (tx: typeof prisma) => unknown) => fn(prisma));
+  stub(prisma, "$transaction", async (fn: (tx: typeof prisma) => unknown) => { const before = { used, auditLength: auditActions.length, sessionCount, recoveryUses, limiter: new Map((store as unknown as { records: Map<string, unknown> }).records) }; try { return await fn(prisma); } catch (error) { used = before.used; auditActions.length = before.auditLength; sessionCount = before.sessionCount; recoveryUses = before.recoveryUses; (store as unknown as { records: Map<string, unknown> }).records = before.limiter; throw error; } });
   stub(prisma, "$queryRaw", async () => []);
   stub(prisma.mfaChallenge, "findUnique", async () => known ? { userId: "user-1" } : null);
   stub(prisma.mfaChallenge, "findFirst", async () => valid && !used && attempts < 5 ? { userId: "user-1" } : null);
@@ -71,6 +72,7 @@ beforeEach(() => {
   stub(prisma.mfaRecoveryCode, "updateMany", async () => { recoveryUses++; return { count: 1 }; });
   stub(prisma.auditLog, "create", async ({ data }: { data: { action: string } }) => { auditActions.push(data.action); return {}; });
   stub(prisma.session, "create", async () => {
+    if (sessionFailure) throw new Error("session unavailable");
     assert.equal(used, true, "Session must follow challenge consumption");
     sessionCount++;
     return {};
@@ -197,11 +199,25 @@ test("Database read failure attempts both failure writes and remains closed", as
 test("Audit failure after MFA success cannot issue a session", async () => {
   stub(prisma.auditLog, "create", async () => { throw new Error("audit unavailable"); });
   assert.deepEqual(await verifyMfaAction({ error: null }, form(totp())), { error: MFA_LOGIN_ERROR });
-  assert.equal(used, true);
+  assert.equal(used, false);
   assert.equal(sessionCount, 0);
-  assert.deepEqual(cookieWrites, ["syn_admin_mfa_challenge"]);
+  assert.deepEqual(cookieWrites, []);
 });
 
+
+test("Session persistence failure rolls back completion and leaves challenge retryable", async () => {
+  sessionFailure = true;
+  assert.deepEqual(await verifyMfaAction({ error: null }, form(totp())), { error: MFA_LOGIN_ERROR });
+  assert.equal(used, false);
+  assert.equal(sessionCount, 0);
+  assert.deepEqual(auditActions, []);
+  assert.deepEqual(cookieWrites, []);
+  sessionFailure = false;
+  await assert.rejects(verifyMfaAction({ error: null }, form(totp())), /NEXT_REDIRECT/);
+  assert.equal(used, true);
+  assert.equal(sessionCount, 1);
+  assert.deepEqual(auditActions, ["AUTH_LOGIN_SUCCESS"]);
+});
 
 test("Transactional limiter reset failure cannot complete MFA or issue a session", async () => {
   stub(store, "reset", async () => { throw new Error("reset unavailable"); });
