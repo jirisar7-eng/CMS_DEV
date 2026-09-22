@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "id": "synthesis.orion",
+  "version": "1.0.0",
+  "displayName": "Orion",
+  "systemIdentity": "ORION",
+  "role": "ai-copilot-presentation",
+  "style": "clean-flat-illustration",
+  "assetRoot": "/orion",
+  "palette": {
+    "orange": "#FB8317",
+    "cream": "#F9F1D9",
+    "ink": "#2B2927",
+    "surface": "#FFF7ED"
+  },
+  "placement": {
+    "allowed": [
+      "orion-plugin",
+      "ai-layer",
+      "project-pack",
+      "theme-pack",
+      "brand-pack"
+    ],
+    "forbidden": [
+      "hardcoded-cms-core-dependency"
+    ]
+  },
+  "runtime": {
+    "preferredAnimatedFormat": "image/webp",
+    "fallbackAnimatedFormat": "image/gif",
+    "staticFormat": "image/png",
+    "frameWidth": 192,
+    "frameHeight": 208,
+    "loop": true,
+    "staticIdle": "/orion/static/idle.png"
+  },
+  "states": {
+    "WAITING": {
+      "labelCs": "Orion čeká",
+      "meaning": "Waiting for input, approval, or a dependency.",
+      "animatedWebp": "/orion/animated/waiting.webp",
+      "animatedGif": "/orion/animated/waiting.gif",
+      "staticPng": "/orion/static/waiting.png",
+      "durationMs": 1010
+    },
+    "ANALYZING": {
+      "labelCs": "Orion analyzuje",
+      "meaning": "Active analysis or processing.",
+      "animatedWebp": "/orion/animated/analyzing.webp",
+      "animatedGif": "/orion/animated/analyzing.gif",
+      "staticPng": "/orion/static/analyzing.png",
+      "durationMs": 820
+    },
+    "VALIDATING": {
+      "labelCs": "Orion ověřuje",
+      "meaning": "Checking evidence, policy, tests, or output.",
+      "animatedWebp": "/orion/animated/validating.webp",
+      "animatedGif": "/orion/animated/validating.gif",
+      "staticPng": "/orion/static/validating.png",
+      "durationMs": 1030
+    },
+    "PROPOSING": {
+      "labelCs": "Orion navrhuje řešení",
+      "meaning": "Presenting a proposal or asking for attention.",
+      "animatedWebp": "/orion/animated/proposing.webp",
+      "animatedGif": "/orion/animated/proposing.gif",
+      "staticPng": "/orion/static/proposing.png",
+      "durationMs": 700
+    },
+    "COMPLETED": {
+      "labelCs": "Orion dokončil úlohu",
+      "meaning": "Finished and ready for the user.",
+      "animatedWebp": "/orion/animated/completed.webp",
+      "animatedGif": "/orion/animated/completed.gif",
+      "staticPng": "/orion/static/completed.png",
+      "durationMs": 1240
+    },
+    "FAILED": {
+      "labelCs": "Orion úlohu nedokončil",
+      "meaning": "Blocked, rejected, cancelled, or failed.",
+      "animatedWebp": "/orion/animated/failed.webp",
+      "animatedGif": "/orion/animated/failed.gif",
+      "staticPng": "/orion/static/failed.png",
+      "durationMs": 1220
+    }
+  },
+  "avatars": {
+    "full": {
+      "sizes": [64, 128, 256, 512],
+      "pathPattern": "/orion/avatar/full/orion-full-{size}.png"
+    },
+    "face": {
+      "sizes": [32, 48, 64, 96, 128, 256, 512],
+      "pathPattern": "/orion/avatar/face/orion-face-{size}.png"
+    }
+  },
+  "look": {
+    "directions": 16,
+    "animatedWebp": "/orion/look/orion-look-loop.webp",
+    "animatedGif": "/orion/look/orion-look-loop.gif"
+  },
+  "accessibility": {
+    "reducedMotion": "Use the state's staticPng asset.",
+    "statusTextRequired": true,
+    "animationMayBeSoleStatusSignal": false
+  },
+  "security": {
+    "capabilityGranting": false,
+    "authorizationMechanism": false,
+    "serverStatusRequired": true,
+    "failClosed": true
+  },
+  "provenance": {
+    "sourcePackVersion": "1.0.0",
+    "sourcePackSha256": "a22e3e55304d46c4e23a95155a9f54ae44bdf5bb6e02225502243ea33e1b55b9",
+    "workSpriteSheetSha256": "92ee2adcb3e6d1e45a3f44ed1a4f34abcb00fa886556ab84bdf3f1b46e706c8b",
+    "sourceFilesCommitted": false
+  }
+}
