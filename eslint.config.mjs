@@ -1,11 +1,42 @@
 import { defineConfig } from "eslint/config";
-import next from "eslint-config-next";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactHooks from "eslint-plugin-react-hooks";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const common = {
+  "@next/next": nextPlugin,
+  "react-hooks": reactHooks,
+  "@typescript-eslint": tsPlugin,
+};
 
-export default defineConfig([{
-    extends: [...next],
-}]);
+export default defineConfig([
+  {
+    ignores: [".next/**", "out/**", "build/**", "coverage/**", "node_modules/**", "next-env.d.ts"],
+  },
+  {
+    files: ["**/*.{js,cjs,mjs,jsx}"],
+    plugins: common,
+    languageOptions: {
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...reactHooks.configs.flat.recommended.rules,
+    },
+  },
+  {
+    files: ["**/*.{ts,tsx}"],
+    plugins: common,
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...reactHooks.configs.flat.recommended.rules,
+    },
+  },
+]);
