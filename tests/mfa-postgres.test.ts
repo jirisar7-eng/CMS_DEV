@@ -1,3 +1,4 @@
+import { createSessionRecord } from "@/lib/auth/session";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -230,5 +231,43 @@ test("PostgreSQL MFA login completion and concurrency", { skip: !process.env.DAT
       assert.equal(await prisma.session.count({ where: { userId } }), 0);
     }));
   }
+  await t.test("concurrent MFA state transition cannot yield a password-only session after the authoritative MFA-enabled state wins", () => fixture(async ({ userId }) => {
+    await prisma.userMfa.update({ where: { userId }, data: { status: "PENDING" } });
+
+    let releaseWorker1: () => void = () => {};
+    const lockGate = new Promise<void>((resolve) => {
+      releaseWorker1 = resolve;
+    });
+
+    let worker1Locked = false;
+    const worker1 = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      worker1Locked = true;
+      await tx.userMfa.update({ where: { userId }, data: { status: "ENABLED" } });
+      await lockGate;
+    });
+
+    while (!worker1Locked) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+
+    const worker2 = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      const currentUser = await tx.user.findUnique({ where: { id: userId }, select: { id: true, status: true } });
+      if (!currentUser || currentUser.status !== "ACTIVE") return { outcome: "INVALID_STATUS" };
+      const mfa = await tx.userMfa.findUnique({ where: { userId }, select: { status: true } });
+      if (mfa?.status === "ENABLED") return { outcome: "MFA_REQUIRED" };
+      await createSessionRecord(userId, tx);
+      return { outcome: "SESSION_CREATED" };
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    releaseWorker1();
+
+    const [_, completion] = await Promise.all([worker1, worker2]);
+    assert.equal(completion.outcome, "MFA_REQUIRED");
+    assert.equal(await prisma.session.count({ where: { userId } }), 0);
+  }));
+
   await prisma.authRateLimit.deleteMany({ where: { key: "mfa_account_anonymous" } });
 });
