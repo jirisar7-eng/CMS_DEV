@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 export const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 export const MFA_CHALLENGE_MAX_ATTEMPTS = 5;
@@ -21,10 +22,10 @@ export async function createMfaChallenge(userId: string) {
   return { token, expiresAt };
 }
 
-export async function getValidMfaChallenge(token: string) {
+export async function getValidMfaChallenge(token: string, db: Prisma.TransactionClient = prisma) {
   const tokenHash = hashMfaChallengeToken(token);
 
-  return prisma.mfaChallenge.findFirst({
+  return db.mfaChallenge.findFirst({
     where: {
       tokenHash,
       usedAt: null,
@@ -35,10 +36,10 @@ export async function getValidMfaChallenge(token: string) {
   });
 }
 
-export async function consumeMfaChallenge(token: string, userId: string) {
+export async function consumeMfaChallenge(token: string, userId: string, db: Prisma.TransactionClient = prisma) {
   const tokenHash = hashMfaChallengeToken(token);
 
-  const result = await prisma.mfaChallenge.updateMany({
+  const result = await db.mfaChallenge.updateMany({
     where: {
       tokenHash,
       userId,
@@ -82,10 +83,10 @@ export async function clearMfaChallengeCookie() {
 }
 
 
-export async function recordFailedMfaChallengeAttempt(token: string, userId: string) {
+export async function recordFailedMfaChallengeAttempt(token: string, userId: string, db: Prisma.TransactionClient = prisma) {
   const tokenHash = hashMfaChallengeToken(token);
 
-  const result = await prisma.mfaChallenge.updateMany({
+  const result = await db.mfaChallenge.updateMany({
     where: {
       tokenHash,
       userId,
