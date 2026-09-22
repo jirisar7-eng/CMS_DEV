@@ -8,8 +8,11 @@ import {
   MemoryAbuseLimiterStore,
   setAbuseLimiterStoreForTesting,
   checkLoginAllowed,
+  checkMfaAllowed,
   recordLoginFailure,
   recordLoginSuccess,
+  recordMfaFailure,
+  recordMfaSuccess,
   LOGIN_MAX_FAILED_ATTEMPTS,
   LOGIN_MAX_IP_ATTEMPTS,
   LOGIN_WINDOW_MS,
@@ -292,6 +295,37 @@ describe("SYN-SEC-008: Login Abuse Protection & Rate Limiting", () => {
       // Assert timing differences are negligible (within bcrypt range)
       assert.ok(Math.abs(durationA - durationB) < 300, "Durations must be comparable");
       assert.ok(Math.abs(durationB - durationC) < 300, "Durations must be comparable");
+    });
+  });
+
+  describe("7. MFA Rate Limiting", () => {
+    it("throttles MFA attempts after 5 failures", async () => {
+      const accountHash = computePrivacyIdentifier("account", "mfa-target@example.com");
+
+      // 4 failures allowed
+      for (let i = 1; i <= 4; i++) {
+        assert.equal(await checkMfaAllowed({ accountHash }), true);
+        await recordMfaFailure({ accountHash });
+      }
+
+      // 5th failure triggers block
+      await recordMfaFailure({ accountHash });
+      assert.equal(await checkMfaAllowed({ accountHash }), false);
+    });
+
+    it("clears both login and MFA limiters on MFA success", async () => {
+      const accountHash = computePrivacyIdentifier("account", "mfa-success@example.com");
+
+      // Setup some failures
+      await recordLoginFailure({ accountHash, ipHash: "ip_1" });
+      await recordMfaFailure({ accountHash });
+
+      // MFA Success clears all
+      await recordMfaSuccess({ accountHash });
+
+      assert.equal(await checkMfaAllowed({ accountHash }), true);
+      const loginCheck = await checkLoginAllowed({ accountHash, ipHash: "ip_1" });
+      assert.equal(loginCheck.allowed, true);
     });
   });
 

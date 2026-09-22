@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
   // Protect /admin routes
   if (pathname.startsWith('/admin')) {
     // Exclude login page from redirect loop
-    if (pathname === '/admin/login') {
+    if (pathname === '/admin/login' || pathname === '/admin/login/mfa') {
       return NextResponse.next();
     }
 

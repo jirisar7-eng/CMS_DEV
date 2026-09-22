@@ -58,6 +58,8 @@ model User {
   createdReleases      ContentRelease[]         @relation("ContentReleaseCreatedBy")
   createdRedirects     RedirectRule[]
   enabledPluginStates  ProjectPluginState[]
+  mfa                  UserMfa?
+  mfaChallenges        MfaChallenge[]
 
   @@index([status])
   @@index([email])
@@ -67,7 +69,7 @@ model Session {
   id            String    @id // session id (cuid or random hex)
   tokenHash     String?   @unique // SHA-256 hash of the bearer session token
   userId        String
-  expiresAt     DateTime  // Absolute session expiration
+  expiresAt     DateTime // Absolute session expiration
   idleExpiresAt DateTime? // Sliding idle expiration
   lastSeenAt    DateTime  @default(now())
   revokedAt     DateTime? // Revocation timestamp if terminated early
@@ -574,4 +576,45 @@ model ProjectPluginState {
   @@unique([projectId, pluginId])
   @@index([projectId, enabled])
   @@index([pluginId])
+}
+
+model UserMfa {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  totpSecretEncrypted String?
+  status              String    @default("PENDING")
+  verifiedAt          DateTime?
+  enabledAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recoveryCodes MfaRecoveryCode[]
+}
+
+model MfaRecoveryCode {
+  id        String    @id @default(uuid())
+  mfaId     String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  mfa UserMfa @relation(fields: [mfaId], references: [id], onDelete: Cascade)
+
+  @@index([mfaId])
+}
+
+model MfaChallenge {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

@@ -1,15 +1,22 @@
 'use server';
 
 import { prisma } from "@/lib/db";
-import { createSession, invalidateSession } from "@/lib/auth/session";
+import {
+  createSessionRecord,
+  setSessionCookie,
+  invalidateSession,
+  type PendingSessionCookie,
+} from "@/lib/auth/session";
 import { logAudit } from "@/lib/auth/audit";
 import bcrypt from "bcryptjs";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createMfaChallenge, setMfaChallengeCookie } from "@/lib/auth/mfa-challenge";
 import { isDatabaseConfigured } from "@/lib/runtime/database";
 import {
   computePrivacyIdentifier,
   checkLoginAllowed,
+  checkMfaAllowed,
   recordLoginFailure,
   recordLoginSuccess,
   UNIFORM_LOGIN_ERROR,
@@ -138,28 +145,65 @@ export async function loginAction(state: any, formData: FormData) {
     return { error: UNIFORM_LOGIN_ERROR };
   }
 
-  // 3. Success: Reset rate limiter and establish session
+  // 3. Protected password-login completion path:
+  // Serialize against concurrent MFA state transitions and re-check ACTIVE status & MFA state.
+  type CompletionResult =
+    | { outcome: "INVALID_STATUS" }
+    | { outcome: "MFA_REQUIRED" }
+    | { outcome: "SESSION_CREATED"; pendingSession: PendingSessionCookie };
+
+  const completion: CompletionResult = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
+    const currentUser = await tx.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, status: true },
+    });
+    if (!currentUser || currentUser.status !== "ACTIVE") {
+      return { outcome: "INVALID_STATUS" };
+    }
+    const mfa = await tx.userMfa.findUnique({
+      where: { userId: user.id },
+      select: { status: true },
+    });
+    if (mfa?.status === "ENABLED") {
+      return { outcome: "MFA_REQUIRED" };
+    }
+    const pendingSession = await createSessionRecord(user.id, tx);
+    await logAudit({
+      action: "AUTH_LOGIN_SUCCESS",
+      scopeType: "SYSTEM",
+      actorId: user.id,
+      tx,
+    });
+    return { outcome: "SESSION_CREATED", pendingSession };
+  });
+
+  if (completion.outcome === "INVALID_STATUS") {
+    return { error: UNIFORM_LOGIN_ERROR };
+  }
+
+  if (completion.outcome === "MFA_REQUIRED") {
+    if (!(await checkMfaAllowed({ accountHash }))) {
+      return { error: RATE_LIMIT_ERROR };
+    }
+    const challenge = await createMfaChallenge(user.id);
+    await setMfaChallengeCookie(challenge.token, challenge.expiresAt);
+    redirect("/admin/login/mfa");
+  }
+
   try {
     await recordLoginSuccess({ accountHash, ipHash });
   } catch (resetErr) {
     console.warn("[LoginAction] Non-fatal error resetting limiter on success:", resetErr);
   }
 
-  const sessionId = await createSession(user.id);
-  
-  await logAudit({
-    action: "AUTH_LOGIN_SUCCESS",
-    scopeType: "SYSTEM",
-    actorId: user.id,
-  });
-
+  await setSessionCookie(completion.pendingSession);
   redirect("/admin");
 }
 
 export async function logoutAction() {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get("syn_admin_session")?.value;
-
   if (sessionId) {
     if (isDatabaseConfigured()) {
       await logAudit({
@@ -169,6 +213,5 @@ export async function logoutAction() {
     }
     await invalidateSession(sessionId);
   }
-
   redirect("/admin/login");
 }

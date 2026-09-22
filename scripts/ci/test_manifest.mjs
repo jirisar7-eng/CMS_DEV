@@ -1,5 +1,8 @@
 export const DETERMINISTIC_TESTS = [
   "tests/login-abuse-protection.test.ts",
+  "tests/mfa-foundation.test.ts",
+  "tests/mfa-login.test.ts",
+  "tests/encryption.test.ts",
   "tests/session-security-v2.test.ts",
   "tests/audit-write-sanitization.test.ts",
     "tests/secret-hygiene.test.ts",
@@ -60,6 +63,8 @@ export const DETERMINISTIC_TESTS = [
 ];
 
 export const POSTGRES_TESTS = [
+  "tests/mfa-postgres.test.ts",
+  "tests/mfa-pool-postgres.test.ts",
   "tests/login-abuse-postgres.test.ts",
   "tests/session-security-postgres.test.ts",
   "tests/audit-admin-postgres.test.ts",

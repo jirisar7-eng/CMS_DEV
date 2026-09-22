@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { isDatabaseConfigured } from "@/lib/runtime/database";
 
 // ============================================================
@@ -10,6 +11,10 @@ export const LOGIN_MAX_FAILED_ATTEMPTS = 5; // Account lockout threshold
 export const LOGIN_MAX_IP_ATTEMPTS = 20; // IP lockout threshold
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15-minute sliding attempt window
 export const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15-minute lockout duration
+
+export const MFA_MAX_FAILED_ATTEMPTS = 5;
+export const MFA_WINDOW_MS = 15 * 60 * 1000;
+export const MFA_LOCKOUT_MS = 15 * 60 * 1000;
 
 // Uniform external messages (Prevent Account Enumeration)
 export const UNIFORM_LOGIN_ERROR = "Neplatné přihlašovací údaje.";
@@ -241,8 +246,10 @@ export class MemoryAbuseLimiterStore implements AbuseLimiterStore {
  * PostgreSQL / Prisma persistent store.
  */
 export class PrismaAbuseLimiterStore implements AbuseLimiterStore {
+  constructor(private readonly tx?: Prisma.TransactionClient) {}
+
   async get(key: string): Promise<AbuseLimiterRecord | null> {
-    const record = await prisma.authRateLimit.findUnique({
+    const record = await (this.tx ?? prisma).authRateLimit.findUnique({
       where: { key },
     });
     if (!record) return null;
@@ -263,7 +270,7 @@ export class PrismaAbuseLimiterStore implements AbuseLimiterStore {
   ): Promise<{ points: number; blockedUntil: Date | null }> {
     const now = nowDate.getTime();
 
-    return await prisma.$transaction(async (tx) => {
+    const increment = async (tx: Prisma.TransactionClient) => {
       const existing = await tx.authRateLimit.findUnique({
         where: { key },
       });
@@ -304,21 +311,26 @@ export class PrismaAbuseLimiterStore implements AbuseLimiterStore {
       });
 
       return { points: updated.points, blockedUntil: updated.blockedUntil };
-    });
+    };
+
+    // MFA already owns a transaction and the account lock. Never acquire a
+    // second connection while other attempts are waiting for that lock.
+    return this.tx ? increment(this.tx) : prisma.$transaction(increment);
   }
 
   async reset(key: string): Promise<void> {
     try {
-      await prisma.authRateLimit.deleteMany({
+      await (this.tx ?? prisma).authRateLimit.deleteMany({
         where: { key },
       });
-    } catch {
+    } catch (error) {
+      if (this.tx) throw error;
       // Ignore if record already absent
     }
   }
 
   async clearAll(): Promise<void> {
-    await prisma.authRateLimit.deleteMany();
+    await (this.tx ?? prisma).authRateLimit.deleteMany();
   }
 }
 
@@ -329,14 +341,87 @@ export function setAbuseLimiterStoreForTesting(store: AbuseLimiterStore | null):
   activeStore = store;
 }
 
-export function getAbuseLimiterStore(): AbuseLimiterStore {
+export function getAbuseLimiterStore(tx?: Prisma.TransactionClient): AbuseLimiterStore {
   if (activeStore) {
     return activeStore;
   }
   if (isDatabaseConfigured()) {
-    return new PrismaAbuseLimiterStore();
+    return new PrismaAbuseLimiterStore(tx);
   }
   return new MemoryAbuseLimiterStore();
+}
+
+/**
+ * Checks whether an MFA attempt is allowed. Fail-closed.
+ */
+export async function checkMfaAllowed(params: {
+  accountHash: string;
+  tx?: Prisma.TransactionClient;
+  now?: Date;
+}): Promise<boolean> {
+  const store = getAbuseLimiterStore(params.tx);
+  const now = params.now || new Date();
+  const nowMs = now.getTime();
+  const key = `mfa_${params.accountHash}`;
+
+  try {
+    const record = await store.get(key);
+    if (record?.blockedUntil && record.blockedUntil.getTime() > nowMs) {
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[MfaAbuse] Storage error during checkMfaAllowed (failing closed):", error);
+    return false;
+  }
+}
+
+/**
+ * Records an MFA failure.
+ */
+export async function recordMfaFailure(params: {
+  accountHash: string;
+  tx?: Prisma.TransactionClient;
+  now?: Date;
+}): Promise<void> {
+  const store = getAbuseLimiterStore(params.tx);
+  const now = params.now || new Date();
+  const key = `mfa_${params.accountHash}`;
+
+  try {
+    await store.increment(
+      key,
+      MFA_WINDOW_MS,
+      MFA_MAX_FAILED_ATTEMPTS,
+      MFA_LOCKOUT_MS,
+      now
+    );
+  } catch (error) {
+    console.error("[MfaAbuse] Storage error during recordMfaFailure:", error);
+    throw error;
+  }
+}
+
+/**
+ * Clears the MFA limiter and normal login counter upon success.
+ */
+export async function recordMfaSuccess(params: {
+  accountHash: string;
+  tx?: Prisma.TransactionClient;
+}): Promise<void> {
+  const store = getAbuseLimiterStore(params.tx);
+  const loginKey = params.accountHash;
+  const mfaKey = `mfa_${params.accountHash}`;
+
+  try {
+    await Promise.all([
+      store.reset(mfaKey),
+      store.reset(loginKey),
+    ]);
+  } catch (error) {
+    if (params.tx) throw error;
+    console.warn("[MfaAbuse] Non-fatal error resetting limiters on MFA success:", error);
+  }
 }
 
 // ============================================================
