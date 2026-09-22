@@ -54,6 +54,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/project-context-security.test.ts",
   "tests/publishing-revisions-admin-cutover.test.ts",
   "tests/publishing-workspace-completion.test.ts",
+  "tests/revisions-workspace-completion.test.ts",
   "tests/puck-integration-security.test.ts",
   "tests/redirects-domain.test.ts",
   "tests/routing-domain.test.ts",
