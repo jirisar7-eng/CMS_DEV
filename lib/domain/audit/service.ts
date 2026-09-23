@@ -161,6 +161,28 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
     newDraftRevisionNumber: safeNumber(),
     lockVersion: safeNumber(),
   },
+  CONTENT_PUBLISH_SCHEDULED: {
+    pageId: safeString(100),
+    revisionId: safeString(100),
+    revisionNumber: safeNumber(),
+    lockVersion: safeNumber(),
+    scheduledPublishAt: safeString(100),
+    scheduledById: safeString(100),
+  },
+  CONTENT_PUBLISH_SCHEDULE_CANCELLED: {
+    pageId: safeString(100),
+    revisionId: safeString(100),
+    revisionNumber: safeNumber(),
+    scheduledPublishAt: safeString(100),
+    scheduledById: safeString(100),
+    cancelledById: safeString(100),
+  },
+  CONTENT_PAGE_UNPUBLISHED: {
+    pageId: safeString(100),
+    unpublishedRevisionId: safeString(100),
+    draftRevisionId: safeString(100),
+    createdDraft: safeBoolean(),
+  },
 
   // Brand events
   BRAND_DRAFT_CREATED: {

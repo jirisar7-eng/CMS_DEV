@@ -37,7 +37,9 @@
     "tests/content-lifecycle-schedule-unpublish.test.ts",
     "tests/content-lifecycle-schedule-unpublish-postgres.test.ts",
     "tests/publishing-workspace-completion.test.ts",
-    "scripts/ci/test_manifest.mjs"
+    "scripts/ci/test_manifest.mjs",
+    "lib/auth/audit.ts",
+    "lib/domain/audit/service.ts"
   ],
   "forbidden_paths": [
     ".env*",

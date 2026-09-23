@@ -13,6 +13,14 @@ import {
   RequestChangesResult,
   PublishApprovedInput,
   PublishApprovedResult,
+  SchedulePublishInput,
+  SchedulePublishResult,
+  CancelScheduledPublishInput,
+  CancelScheduledPublishResult,
+  PublishScheduledInput,
+  PublishScheduledResult,
+  UnpublishPageInput,
+  UnpublishPageResult,
   RollbackPublishedInput,
   RollbackPublishedResult,
   CreateDraftFromPublishedInput,
@@ -842,6 +850,669 @@ export class ContentLifecycleService {
         revision: transitionResult.revision,
         release,
         releaseItem,
+      };
+    });
+  }
+
+  async schedulePublish(input: SchedulePublishInput): Promise<SchedulePublishResult> {
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim()
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'actorId, projectId and pageId are required'
+      );
+    }
+
+    if (
+      typeof input.expectedLockVersion !== 'number' ||
+      !Number.isInteger(input.expectedLockVersion) ||
+      input.expectedLockVersion < 1
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'expectedLockVersion must be a positive integer'
+      );
+    }
+
+    if (
+      !(input.publishAt instanceof Date) ||
+      Number.isNaN(input.publishAt.getTime()) ||
+      input.publishAt.getTime() <= Date.now()
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'publishAt must be a valid future date'
+      );
+    }
+
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+
+    const allowed = await this.hasPermission(actorId, 'content.publish', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError(
+        'FORBIDDEN',
+        'Permission content.publish required'
+      );
+    }
+
+    return this.store.transaction(async (txStore) => {
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError(
+          'PAGE_NOT_FOUND',
+          'Page not found in this project'
+        );
+      }
+
+      const scheduledRevisionId = page.scheduledRevisionId ?? null;
+      const scheduledPublishAt = page.scheduledPublishAt ?? null;
+      const scheduledById = page.scheduledById ?? null;
+      const scheduleFields = [
+        scheduledRevisionId,
+        scheduledPublishAt,
+        scheduledById,
+      ];
+      const populatedScheduleFields = scheduleFields.filter(
+        (value) => value !== null
+      ).length;
+
+      if (populatedScheduleFields !== 0 && populatedScheduleFields !== 3) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Page contains a partial publish schedule'
+        );
+      }
+
+      if (populatedScheduleFields === 3) {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          'Page already has a scheduled publication'
+        );
+      }
+
+      if (!page.draftRevisionId) {
+        throw new ContentLifecycleError(
+          'NO_DRAFT',
+          'Page has no active unpublished revision pointer'
+        );
+      }
+
+      const revision = await txStore.findRevisionById(page.draftRevisionId);
+      if (
+        !revision ||
+        revision.id !== page.draftRevisionId ||
+        revision.pageId !== page.id
+      ) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Active revision pointer is invalid'
+        );
+      }
+
+      if (revision.status !== 'APPROVED') {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          `Cannot schedule revision in ${revision.status} status`
+        );
+      }
+
+      if (revision.lockVersion !== input.expectedLockVersion) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Revision was modified concurrently'
+        );
+      }
+
+      if (!txStore.setScheduledPublishAtomic) {
+        throw new Error('Store does not implement setScheduledPublishAtomic');
+      }
+
+      const pointerResult = await txStore.setScheduledPublishAtomic({
+        projectId,
+        pageId: page.id,
+        expectedDraftRevisionId: revision.id,
+        scheduledRevisionId: revision.id,
+        scheduledPublishAt: input.publishAt,
+        scheduledById: actorId,
+      });
+
+      if (!pointerResult.updated || !pointerResult.page) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Page pointers or schedule changed concurrently'
+        );
+      }
+
+      await txStore.recordAudit({
+        action: 'CONTENT_PUBLISH_SCHEDULED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'PAGE',
+        resourceId: page.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          revisionId: revision.id,
+          revisionNumber: revision.revisionNumber,
+          lockVersion: revision.lockVersion,
+          scheduledPublishAt: input.publishAt.toISOString(),
+          scheduledById: actorId,
+        },
+      });
+
+      return {
+        page: pointerResult.page,
+        revision,
+      };
+    });
+  }
+
+  async cancelScheduledPublish(
+    input: CancelScheduledPublishInput
+  ): Promise<CancelScheduledPublishResult> {
+    if (
+      !input.actorId ||
+      !input.actorId.trim() ||
+      !input.projectId ||
+      !input.projectId.trim() ||
+      !input.pageId ||
+      !input.pageId.trim() ||
+      !input.expectedScheduledRevisionId ||
+      !input.expectedScheduledRevisionId.trim()
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'actorId, projectId, pageId and expectedScheduledRevisionId are required'
+      );
+    }
+
+    if (
+      !(input.expectedScheduledPublishAt instanceof Date) ||
+      Number.isNaN(input.expectedScheduledPublishAt.getTime())
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'expectedScheduledPublishAt must be a valid date'
+      );
+    }
+
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+    const expectedScheduledRevisionId =
+      input.expectedScheduledRevisionId.trim();
+
+    const allowed = await this.hasPermission(actorId, 'content.publish', projectId);
+    if (!allowed) {
+      throw new ContentLifecycleError(
+        'FORBIDDEN',
+        'Permission content.publish required'
+      );
+    }
+
+    return this.store.transaction(async (txStore) => {
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError(
+          'PAGE_NOT_FOUND',
+          'Page not found in this project'
+        );
+      }
+
+      const scheduledRevisionId = page.scheduledRevisionId ?? null;
+      const scheduledPublishAt = page.scheduledPublishAt ?? null;
+      const scheduledById = page.scheduledById ?? null;
+      const scheduleFields = [
+        scheduledRevisionId,
+        scheduledPublishAt,
+        scheduledById,
+      ];
+      const populatedScheduleFields = scheduleFields.filter(
+        (value) => value !== null
+      ).length;
+
+      if (populatedScheduleFields === 0) {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          'Page has no scheduled publication'
+        );
+      }
+
+      if (populatedScheduleFields !== 3) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Page contains a partial publish schedule'
+        );
+      }
+
+      if (
+        scheduledRevisionId !== expectedScheduledRevisionId ||
+        scheduledPublishAt!.getTime() !==
+          input.expectedScheduledPublishAt.getTime()
+      ) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Publish schedule changed concurrently'
+        );
+      }
+
+      const revision = await txStore.findRevisionById(
+        scheduledRevisionId!
+      );
+      if (
+        !revision ||
+        revision.id !== scheduledRevisionId ||
+        revision.pageId !== page.id
+      ) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Scheduled revision pointer is invalid'
+        );
+      }
+
+      if (!txStore.clearScheduledPublishAtomic) {
+        throw new Error('Store does not implement clearScheduledPublishAtomic');
+      }
+
+      const pointerResult = await txStore.clearScheduledPublishAtomic({
+        projectId,
+        pageId: page.id,
+        expectedScheduledRevisionId: scheduledRevisionId!,
+        expectedScheduledPublishAt: scheduledPublishAt!,
+        expectedScheduledById: scheduledById!,
+      });
+
+      if (!pointerResult.updated || !pointerResult.page) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Publish schedule changed concurrently'
+        );
+      }
+
+      await txStore.recordAudit({
+        action: 'CONTENT_PUBLISH_SCHEDULE_CANCELLED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'PAGE',
+        resourceId: page.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          revisionId: revision.id,
+          revisionNumber: revision.revisionNumber,
+          scheduledPublishAt: scheduledPublishAt!.toISOString(),
+          scheduledById,
+          cancelledById: actorId,
+        },
+      });
+
+      return {
+        page: pointerResult.page,
+      };
+    });
+  }
+
+  async publishScheduled(
+    input: PublishScheduledInput
+  ): Promise<PublishScheduledResult> {
+    if (
+      !input.projectId?.trim() ||
+      !input.pageId?.trim() ||
+      !input.expectedScheduledRevisionId?.trim() ||
+      !input.expectedScheduledById?.trim()
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'Scheduled publish input is incomplete');
+    }
+
+    if (
+      !Number.isInteger(input.expectedLockVersion) ||
+      input.expectedLockVersion < 1 ||
+      !(input.expectedScheduledPublishAt instanceof Date) ||
+      Number.isNaN(input.expectedScheduledPublishAt.getTime())
+    ) {
+      throw new ContentLifecycleError('INVALID_INPUT', 'Scheduled publish CAS input is invalid');
+    }
+
+    const now = input.now ?? new Date();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+    const revisionId = input.expectedScheduledRevisionId.trim();
+    const scheduledById = input.expectedScheduledById.trim();
+
+    return this.store.transaction(async (txStore) => {
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError('PAGE_NOT_FOUND', 'Page not found in this project');
+      }
+
+      const scheduledRevisionId = page.scheduledRevisionId ?? null;
+      const scheduledPublishAt = page.scheduledPublishAt ?? null;
+      const pageScheduledById = page.scheduledById ?? null;
+
+      if (!scheduledRevisionId || !scheduledPublishAt || !pageScheduledById) {
+        throw new ContentLifecycleError('STATE_TRANSITION_INVALID', 'Page has no complete publish schedule');
+      }
+
+      if (
+        scheduledRevisionId !== revisionId ||
+        scheduledPublishAt.getTime() !== input.expectedScheduledPublishAt.getTime() ||
+        pageScheduledById !== scheduledById
+      ) {
+        throw new ContentLifecycleError('LOCK_CONFLICT', 'Publish schedule changed concurrently');
+      }
+
+      if (scheduledPublishAt.getTime() > now.getTime()) {
+        throw new ContentLifecycleError('STATE_TRANSITION_INVALID', 'Scheduled publication is not due yet');
+      }
+
+      if (!txStore.findUserStatus) {
+        throw new Error('Store does not implement findUserStatus');
+      }
+
+      const userStatus = await txStore.findUserStatus(scheduledById);
+      if (userStatus !== 'ACTIVE') {
+        throw new ContentLifecycleError('FORBIDDEN', 'Scheduled publisher is not active');
+      }
+
+      const allowed = await this.hasPermission(
+        scheduledById,
+        'content.publish',
+        projectId
+      );
+      if (!allowed) {
+        throw new ContentLifecycleError(
+          'FORBIDDEN',
+          'Scheduled publisher no longer has content.publish permission'
+        );
+      }
+
+      if (page.draftRevisionId !== revisionId) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Scheduled revision is not the active unpublished revision'
+        );
+      }
+
+      const revision = await txStore.findRevisionById(revisionId);
+      if (!revision || revision.pageId !== page.id) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Scheduled revision pointer is invalid'
+        );
+      }
+
+      if (revision.status !== 'APPROVED') {
+        throw new ContentLifecycleError(
+          'STATE_TRANSITION_INVALID',
+          'Scheduled revision is no longer APPROVED'
+        );
+      }
+
+      if (revision.lockVersion !== input.expectedLockVersion) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Scheduled revision changed concurrently'
+        );
+      }
+
+      const previousPublishedRevisionId = page.publishedRevisionId;
+
+      if (previousPublishedRevisionId) {
+        const previous = await txStore.findRevisionById(
+          previousPublishedRevisionId
+        );
+
+        if (
+          !previous ||
+          previous.pageId !== page.id ||
+          previous.status !== 'PUBLISHED'
+        ) {
+          throw new ContentLifecycleError(
+            'POINTER_INTEGRITY_VIOLATION',
+            'Previous published revision pointer is invalid'
+          );
+        }
+      }
+
+      const transition = await txStore.transitionRevisionStatusAtomic({
+        pageId: page.id,
+        revisionId: revision.id,
+        expectedStatus: 'APPROVED',
+        targetStatus: 'PUBLISHED',
+        expectedLockVersion: input.expectedLockVersion,
+        publishedAt: now,
+      });
+
+      if (!transition.updated || !transition.revision) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Scheduled revision changed concurrently'
+        );
+      }
+
+      const release = await txStore.createPublishedRelease({
+        projectId,
+        status: 'PUBLISHED',
+        createdById: scheduledById,
+        publishedAt: now,
+      });
+
+      const releaseItem = await txStore.createReleaseItem({
+        releaseId: release.id,
+        pageId: page.id,
+        revisionId: revision.id,
+        previousRevisionId: previousPublishedRevisionId,
+      });
+
+      if (!txStore.setScheduledPublishedPagePointersAtomic) {
+        throw new Error(
+          'Store does not implement setScheduledPublishedPagePointersAtomic'
+        );
+      }
+
+      const pointerResult =
+        await txStore.setScheduledPublishedPagePointersAtomic({
+          projectId,
+          pageId: page.id,
+          expectedDraftRevisionId: revision.id,
+          expectedPreviousPublishedRevisionId: previousPublishedRevisionId,
+          expectedScheduledRevisionId: revisionId,
+          expectedScheduledPublishAt: scheduledPublishAt,
+          expectedScheduledById: scheduledById,
+          newPublishedRevisionId: revision.id,
+          updatedAt: now,
+        });
+
+      if (!pointerResult.updated || !pointerResult.page) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Page pointers or publish schedule changed concurrently'
+        );
+      }
+
+      await txStore.recordAudit({
+        action: 'CONTENT_RELEASE_PUBLISHED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'CONTENT_RELEASE',
+        resourceId: release.id,
+        actorId: scheduledById,
+        metadata: {
+          pageId: page.id,
+          releaseId: release.id,
+          revisionId: revision.id,
+          previousRevisionId: previousPublishedRevisionId,
+          scheduled: true,
+          scheduledPublishAt: scheduledPublishAt.toISOString(),
+          scheduledById,
+        },
+      });
+
+      return {
+        page: pointerResult.page,
+        revision: transition.revision,
+        release,
+        releaseItem,
+      };
+    });
+  }
+
+  async unpublish(
+    input: UnpublishPageInput
+  ): Promise<UnpublishPageResult> {
+    if (
+      !input.actorId?.trim() ||
+      !input.projectId?.trim() ||
+      !input.pageId?.trim() ||
+      !input.expectedPublishedRevisionId?.trim()
+    ) {
+      throw new ContentLifecycleError(
+        'INVALID_INPUT',
+        'Unpublish input is incomplete'
+      );
+    }
+
+    const actorId = input.actorId.trim();
+    const projectId = input.projectId.trim();
+    const pageId = input.pageId.trim();
+    const expectedPublishedRevisionId =
+      input.expectedPublishedRevisionId.trim();
+
+    const allowed = await this.hasPermission(
+      actorId,
+      'content.publish',
+      projectId
+    );
+    if (!allowed) {
+      throw new ContentLifecycleError(
+        'FORBIDDEN',
+        'Permission content.publish required'
+      );
+    }
+
+    return this.store.transaction(async (txStore) => {
+      const page = await txStore.findPageById(projectId, pageId);
+      if (!page) {
+        throw new ContentLifecycleError(
+          'PAGE_NOT_FOUND',
+          'Page not found in this project'
+        );
+      }
+
+      if (!page.publishedRevisionId) {
+        throw new ContentLifecycleError(
+          'NO_PUBLISHED_REVISION',
+          'Page has no published revision'
+        );
+      }
+
+      if (page.publishedRevisionId !== expectedPublishedRevisionId) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Published revision changed concurrently'
+        );
+      }
+
+      const publishedRevision =
+        await txStore.findRevisionById(page.publishedRevisionId);
+
+      if (
+        !publishedRevision ||
+        publishedRevision.pageId !== page.id ||
+        publishedRevision.status !== 'PUBLISHED'
+      ) {
+        throw new ContentLifecycleError(
+          'POINTER_INTEGRITY_VIOLATION',
+          'Published revision pointer is invalid'
+        );
+      }
+
+      let draftRevision;
+      let createdDraft = false;
+
+      if (page.draftRevisionId) {
+        draftRevision =
+          await txStore.findRevisionById(page.draftRevisionId);
+
+        if (
+          !draftRevision ||
+          draftRevision.pageId !== page.id ||
+          draftRevision.status === 'PUBLISHED'
+        ) {
+          throw new ContentLifecycleError(
+            'POINTER_INTEGRITY_VIOLATION',
+            'Active draft revision pointer is invalid'
+          );
+        }
+      } else {
+        const nextRevisionNumber =
+          await txStore.getNextRevisionNumber(page.id);
+
+        draftRevision =
+          await txStore.createDraftRevisionFromSource({
+            pageId: page.id,
+            revisionNumber: nextRevisionNumber,
+            actorId,
+            derivedFromRevisionId: publishedRevision.id,
+            sourceRevision: publishedRevision,
+          });
+
+        createdDraft = true;
+      }
+
+      if (!txStore.setUnpublishedPagePointersAtomic) {
+        throw new Error(
+          'Store does not implement setUnpublishedPagePointersAtomic'
+        );
+      }
+
+      const unpublishedAt = new Date();
+
+      const pointerResult =
+        await txStore.setUnpublishedPagePointersAtomic({
+          projectId,
+          pageId: page.id,
+          expectedPublishedRevisionId: publishedRevision.id,
+          expectedDraftRevisionId: page.draftRevisionId,
+          newDraftRevisionId: draftRevision.id,
+          updatedAt: unpublishedAt,
+        });
+
+      if (!pointerResult.updated || !pointerResult.page) {
+        throw new ContentLifecycleError(
+          'LOCK_CONFLICT',
+          'Page pointers changed concurrently'
+        );
+      }
+
+      await txStore.recordAudit({
+        action: 'CONTENT_PAGE_UNPUBLISHED',
+        scopeType: 'PROJECT',
+        scopeId: projectId,
+        resourceType: 'PAGE',
+        resourceId: page.id,
+        actorId,
+        metadata: {
+          pageId: page.id,
+          unpublishedRevisionId: publishedRevision.id,
+          draftRevisionId: draftRevision.id,
+          createdDraft,
+        },
+      });
+
+      return {
+        page: pointerResult.page,
+        unpublishedRevision: publishedRevision,
+        draftRevision,
+        createdDraft,
       };
     });
   }

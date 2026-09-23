@@ -11,6 +11,10 @@ import {
   CreatePublishedReleaseParams,
   CreateReleaseItemParams,
   SetPublishedPagePointersAtomicParams,
+  SetScheduledPublishAtomicParams,
+  ClearScheduledPublishAtomicParams,
+  SetScheduledPublishedPagePointersAtomicParams,
+  SetUnpublishedPagePointersAtomicParams,
   PublishedReleaseLineage,
   CreateRollbackReleaseParams,
   SetRollbackPublishedPointerAtomicParams,
@@ -53,6 +57,14 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
     });
     if (!page) return null;
     return this.mapPage(page);
+  }
+
+  async findUserStatus(userId: string): Promise<string | null> {
+    const user = await (this.db as any).user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    return user?.status ?? null;
   }
 
   async createPageWithDraft(
@@ -346,7 +358,121 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
       data: {
         publishedRevisionId: params.newPublishedRevisionId,
         draftRevisionId: null,
+        scheduledRevisionId: null,
+        scheduledPublishAt: null,
+        scheduledById: null,
         updatedAt: params.updatedAt ?? new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    return { updated: true, page: page ?? undefined };
+  }
+
+  async setScheduledPublishAtomic(
+    params: SetScheduledPublishAtomicParams
+  ): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+        draftRevisionId: params.expectedDraftRevisionId,
+        scheduledRevisionId: null,
+        scheduledPublishAt: null,
+        scheduledById: null,
+      },
+      data: {
+        scheduledRevisionId: params.scheduledRevisionId,
+        scheduledPublishAt: params.scheduledPublishAt,
+        scheduledById: params.scheduledById,
+        updatedAt: params.updatedAt ?? new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    return { updated: true, page: page ?? undefined };
+  }
+
+  async clearScheduledPublishAtomic(
+    params: ClearScheduledPublishAtomicParams
+  ): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+        scheduledRevisionId: params.expectedScheduledRevisionId,
+        scheduledPublishAt: params.expectedScheduledPublishAt,
+        scheduledById: params.expectedScheduledById,
+      },
+      data: {
+        scheduledRevisionId: null,
+        scheduledPublishAt: null,
+        scheduledById: null,
+        updatedAt: params.updatedAt ?? new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    return { updated: true, page: page ?? undefined };
+  }
+
+  async setScheduledPublishedPagePointersAtomic(
+    params: SetScheduledPublishedPagePointersAtomicParams
+  ): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+        draftRevisionId: params.expectedDraftRevisionId,
+        publishedRevisionId: params.expectedPreviousPublishedRevisionId,
+        scheduledRevisionId: params.expectedScheduledRevisionId,
+        scheduledPublishAt: params.expectedScheduledPublishAt,
+        scheduledById: params.expectedScheduledById,
+      },
+      data: {
+        publishedRevisionId: params.newPublishedRevisionId,
+        draftRevisionId: null,
+        scheduledRevisionId: null,
+        scheduledPublishAt: null,
+        scheduledById: null,
+        updatedAt: params.updatedAt ?? new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      return { updated: false };
+    }
+
+    const page = await this.findPageById(params.projectId, params.pageId);
+    return { updated: true, page: page ?? undefined };
+  }
+
+  async setUnpublishedPagePointersAtomic(
+    params: SetUnpublishedPagePointersAtomicParams
+  ): Promise<{ updated: boolean; page?: LifecyclePage }> {
+    const result = await (this.db as any).page.updateMany({
+      where: {
+        id: params.pageId,
+        projectId: params.projectId,
+        publishedRevisionId: params.expectedPublishedRevisionId,
+        draftRevisionId: params.expectedDraftRevisionId,
+      },
+      data: {
+        publishedRevisionId: null,
+        draftRevisionId: params.newDraftRevisionId,
+        updatedAt: params.updatedAt,
       },
     });
 
@@ -521,7 +647,10 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
 
   async recordAudit(params: RecordLifecycleAuditParams): Promise<void> {
     await logAudit({
-      action: params.action,
+      // SYN-CONTENT-006 adds lifecycle audit actions while the shared
+      // AuditAction union is outside this task capsule. Runtime storage is
+      // string-backed; keep the compatibility boundary local to this adapter.
+      action: params.action as any,
       scopeType: params.scopeType,
       scopeId: params.scopeId,
       resourceType: params.resourceType,
@@ -541,6 +670,9 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
       sortOrder: raw.sortOrder,
       draftRevisionId: raw.draftRevisionId,
       publishedRevisionId: raw.publishedRevisionId,
+      scheduledRevisionId: raw.scheduledRevisionId ?? null,
+      scheduledPublishAt: raw.scheduledPublishAt ?? null,
+      scheduledById: raw.scheduledById ?? null,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
     };

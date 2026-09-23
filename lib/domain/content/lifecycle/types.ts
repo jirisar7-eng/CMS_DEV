@@ -38,6 +38,9 @@ export interface LifecyclePage {
   sortOrder: number;
   draftRevisionId: string | null;
   publishedRevisionId: string | null;
+  scheduledRevisionId?: string | null;
+  scheduledPublishAt?: Date | null;
+  scheduledById?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -169,6 +172,57 @@ export interface PublishApprovedResult {
   revision: LifecyclePageRevision;
   release: LifecycleContentRelease;
   releaseItem: LifecycleContentReleaseItem;
+}
+
+export interface SchedulePublishInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedLockVersion: number;
+  publishAt: Date;
+}
+
+export interface SchedulePublishResult {
+  page: LifecyclePage;
+  revision: LifecyclePageRevision;
+}
+
+export interface CancelScheduledPublishInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedScheduledRevisionId: string;
+  expectedScheduledPublishAt: Date;
+}
+
+export interface CancelScheduledPublishResult {
+  page: LifecyclePage;
+}
+
+export interface PublishScheduledInput {
+  projectId: string;
+  pageId: string;
+  expectedScheduledRevisionId: string;
+  expectedScheduledPublishAt: Date;
+  expectedScheduledById: string;
+  expectedLockVersion: number;
+  now?: Date;
+}
+
+export type PublishScheduledResult = PublishApprovedResult;
+
+export interface UnpublishPageInput {
+  actorId: string;
+  projectId: string;
+  pageId: string;
+  expectedPublishedRevisionId: string;
+}
+
+export interface UnpublishPageResult {
+  page: LifecyclePage;
+  unpublishedRevision: LifecyclePageRevision;
+  draftRevision: LifecyclePageRevision;
+  createdDraft: boolean;
 }
 
 export interface RollbackPublishedInput {

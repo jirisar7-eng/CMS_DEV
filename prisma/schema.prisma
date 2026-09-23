@@ -55,6 +55,7 @@ model User {
   overrides            UserPermissionOverride[]
   auditLogs            AuditLog[]
   createdPageRevisions PageRevision[]           @relation("PageRevisionCreatedBy")
+  scheduledPages       Page[]                   @relation("PageScheduledBy")
   createdReleases      ContentRelease[]         @relation("ContentReleaseCreatedBy")
   createdRedirects     RedirectRule[]
   enabledPluginStates  ProjectPluginState[]
@@ -317,6 +318,9 @@ model Page {
   sortOrder           Int      @default(0)
   draftRevisionId     String?
   publishedRevisionId String?
+  scheduledRevisionId String?
+  scheduledPublishAt  DateTime?
+  scheduledById       String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -325,6 +329,8 @@ model Page {
   revisions         PageRevision[]       @relation("PageToRevisions")
   draftRevision     PageRevision?        @relation("PageDraftRevision", fields: [draftRevisionId], references: [id], onDelete: SetNull)
   publishedRevision PageRevision?        @relation("PagePublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
+  scheduledRevision PageRevision?        @relation("PageScheduledRevision", fields: [scheduledRevisionId], references: [id], onDelete: SetNull)
+  scheduledBy       User?                @relation("PageScheduledBy", fields: [scheduledById], references: [id], onDelete: SetNull)
   releaseItems      ContentReleaseItem[]
   navigationItems   NavigationItem[]
   searchDocuments   SearchDocument[]
@@ -332,6 +338,9 @@ model Page {
   @@unique([projectId, key])
   @@index([projectId])
   @@index([parentId])
+  @@index([scheduledRevisionId])
+  @@index([scheduledById])
+  @@index([projectId, scheduledPublishAt])
   @@index([projectId, parentId, sortOrder])
 }
 
@@ -374,6 +383,7 @@ model PageRevision {
 
   draftForPages     Page[]           @relation("PageDraftRevision")
   publishedForPages Page[]           @relation("PagePublishedRevision")
+  scheduledForPages Page[]           @relation("PageScheduledRevision")
   searchDocuments   SearchDocument[]
 
   releaseItems         ContentReleaseItem[] @relation("ReleaseItemRevision")
