@@ -577,3 +577,136 @@ export function validatePublishedRevisionActionBody(
   return { expectedPublishedRevisionId: expectedPublishedRevisionId.trim() };
 }
 
+
+export interface ValidatedSchedulePublishBody {
+  expectedLockVersion: number;
+  publishAt: Date;
+}
+
+export function validateSchedulePublishBody(
+  body: Record<string, unknown>
+): ValidatedSchedulePublishBody {
+  const forbiddenKeys = [
+    "actorId",
+    "userId",
+    "role",
+    "permissions",
+    "projectId",
+    "pageId",
+    "status",
+    "revisionId",
+    "publishedRevisionId",
+    "draftRevisionId",
+    "scheduledRevisionId",
+    "scheduledById",
+    "lockVersion",
+    "revisionNumber",
+  ];
+  for (const k of forbiddenKeys) {
+    if (k in body) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        `Field '${k}' cannot be provided in request body`,
+        400
+      );
+    }
+  }
+
+  const { expectedLockVersion, publishAt } = body;
+
+  if (
+    typeof expectedLockVersion !== "number" ||
+    !Number.isInteger(expectedLockVersion) ||
+    expectedLockVersion < 1
+  ) {
+    throw new ApiError(
+      "INVALID_INPUT",
+      "expectedLockVersion must be a positive integer",
+      400
+    );
+  }
+
+  if (typeof publishAt !== "string") {
+    throw new ApiError("INVALID_INPUT", "publishAt must be an ISO date string", 400);
+  }
+
+  const parsed = new Date(publishAt);
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) {
+    throw new ApiError("INVALID_INPUT", "publishAt must be a valid future date", 400);
+  }
+
+  return { expectedLockVersion, publishAt: parsed };
+}
+
+export interface ValidatedCancelScheduleBody {
+  expectedScheduledRevisionId: string;
+  expectedScheduledPublishAt: Date;
+}
+
+export function validateCancelScheduleBody(
+  body: Record<string, unknown>
+): ValidatedCancelScheduleBody {
+  const forbiddenKeys = [
+    "actorId",
+    "userId",
+    "role",
+    "permissions",
+    "projectId",
+    "pageId",
+    "status",
+    "revisionId",
+    "publishedRevisionId",
+    "draftRevisionId",
+    "scheduledRevisionId",
+    "scheduledById",
+    "expectedLockVersion",
+    "lockVersion",
+    "revisionNumber",
+  ];
+  for (const k of forbiddenKeys) {
+    if (k in body) {
+      throw new ApiError(
+        "INVALID_INPUT",
+        `Field '${k}' cannot be provided in request body`,
+        400
+      );
+    }
+  }
+
+  const { expectedScheduledRevisionId, expectedScheduledPublishAt } = body;
+
+  if (
+    typeof expectedScheduledRevisionId !== "string" ||
+    expectedScheduledRevisionId.trim().length === 0 ||
+    expectedScheduledRevisionId.trim().length > 128 ||
+    /[\x00-\x1f\x7f<>]/.test(expectedScheduledRevisionId)
+  ) {
+    throw new ApiError(
+      "INVALID_INPUT",
+      "expectedScheduledRevisionId must be a non-empty string with maximum 128 characters without control characters",
+      400
+    );
+  }
+
+  if (typeof expectedScheduledPublishAt !== "string") {
+    throw new ApiError(
+      "INVALID_INPUT",
+      "expectedScheduledPublishAt must be an ISO date string",
+      400
+    );
+  }
+
+  const parsed = new Date(expectedScheduledPublishAt);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new ApiError(
+      "INVALID_INPUT",
+      "expectedScheduledPublishAt must be a valid date",
+      400
+    );
+  }
+
+  return {
+    expectedScheduledRevisionId: expectedScheduledRevisionId.trim(),
+    expectedScheduledPublishAt: parsed,
+  };
+}

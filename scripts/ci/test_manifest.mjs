@@ -40,6 +40,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/content-lifecycle-publish.test.ts",
   "tests/content-lifecycle-review.test.ts",
   "tests/content-lifecycle-rollback.test.ts",
+  "tests/content-lifecycle-schedule-unpublish.test.ts",
   "tests/content-rbac-foundation.test.ts",
   "tests/content-schema-foundation.test.ts",
   "tests/editor-foundation.test.ts",
@@ -73,5 +74,6 @@ export const POSTGRES_TESTS = [
   "tests/login-abuse-postgres.test.ts",
   "tests/session-security-postgres.test.ts",
   "tests/audit-admin-postgres.test.ts",
-  "tests/publishing-revisions-postgres.test.ts"
+  "tests/publishing-revisions-postgres.test.ts",
+  "tests/content-lifecycle-schedule-unpublish-postgres.test.ts"
 ];
