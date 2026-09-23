@@ -179,6 +179,15 @@ export interface RecordLifecycleAuditParams {
   metadata: Record<string, unknown>;
 }
 
+export interface LifecycleRevisionReadProjection extends LifecyclePageRevision {
+  pageTitle?: string;
+  pageSlug?: string;
+  draftRevisionId: string | null;
+  publishedRevisionId: string | null;
+  scheduledRevisionId: string | null;
+  scheduledPublishAt: Date | null;
+}
+
 export interface ContentLifecycleStore {
   transaction<T>(fn: (txStore: ContentLifecycleStore) => Promise<T>): Promise<T>;
   findPageById(projectId: string, pageId: string): Promise<LifecyclePage | null>;
@@ -207,6 +216,6 @@ export interface ContentLifecycleStore {
     release: LifecycleContentRelease;
     items: Array<LifecycleContentReleaseItem & { pageTitle?: string; pageSlug?: string }>;
   }>>;
-  listProjectRevisions?(projectId: string, pageId?: string): Promise<Array<LifecyclePageRevision & { pageTitle?: string; pageSlug?: string }>>;
+  listProjectRevisions?(projectId: string, pageId?: string): Promise<LifecycleRevisionReadProjection[]>;
   recordAudit(params: RecordLifecycleAuditParams): Promise<void>;
 }

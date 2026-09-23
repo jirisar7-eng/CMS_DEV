@@ -20,6 +20,7 @@ import {
   SetRollbackPublishedPointerAtomicParams,
   SetDraftFromPublishedPointerAtomicParams,
   RecordLifecycleAuditParams,
+  LifecycleRevisionReadProjection,
 } from './store';
 import {
   LifecyclePage,
@@ -609,7 +610,7 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
     }));
   }
 
-  async listProjectRevisions(projectId: string, pageId?: string): Promise<Array<LifecyclePageRevision & { pageTitle?: string; pageSlug?: string }>> {
+  async listProjectRevisions(projectId: string, pageId?: string): Promise<LifecycleRevisionReadProjection[]> {
     const whereClause: any = {
       page: {
         projectId,
@@ -626,6 +627,10 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
         page: {
           select: {
             key: true,
+            draftRevisionId: true,
+            publishedRevisionId: true,
+            scheduledRevisionId: true,
+            scheduledPublishAt: true,
             draftRevision: { select: { title: true, slug: true } },
             publishedRevision: { select: { title: true, slug: true } },
           },
@@ -641,6 +646,10 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
         ...mapped,
         pageTitle: title,
         pageSlug: slug,
+        draftRevisionId: rev.page?.draftRevisionId ?? null,
+        publishedRevisionId: rev.page?.publishedRevisionId ?? null,
+        scheduledRevisionId: rev.page?.scheduledRevisionId ?? null,
+        scheduledPublishAt: rev.page?.scheduledPublishAt ?? null,
       };
     });
   }

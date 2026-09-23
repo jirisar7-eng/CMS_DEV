@@ -368,4 +368,75 @@ describe('PostgreSQL integration: SYN-CONTENT-006 schedule and unpublish lifecyc
       await cleanup(fixture);
     }
   });
+
+  it('returns authoritative page lifecycle pointers in revision reads with project isolation', async () => {
+    const fixture = await createFixture();
+    const otherFixture = await createFixture();
+    try {
+      const historicalPublished = await prisma.pageRevision.create({
+        data: {
+          pageId: fixture.pageId,
+          revisionNumber: 2,
+          status: 'PUBLISHED',
+          title: 'Historical published revision',
+          slug: 'postgres-lifecycle',
+          locale: 'en',
+          visibility: 'PUBLIC',
+          content: content as any,
+          seo: {},
+          navigation: {},
+          schemaVersion: '1.0.0',
+          lockVersion: 3,
+          createdById: fixture.userId,
+          publishedAt: new Date('2030-02-02T00:00:00.000Z'),
+        },
+      });
+      await prisma.page.update({ where: { id: fixture.pageId }, data: { publishedRevisionId: historicalPublished.id } });
+
+      const { service } = serviceFor(fixture, new Set([
+        'content.publish',
+        `${fixture.userId}:content.view:${fixture.projectId}`,
+      ]));
+      await service.schedulePublish({ actorId: fixture.userId, projectId: fixture.projectId, pageId: fixture.pageId, expectedLockVersion: 7, publishAt: scheduleAt });
+
+      const otherService = serviceFor(otherFixture, new Set([
+        'content.publish',
+        `${otherFixture.userId}:content.view:${otherFixture.projectId}`,
+      ]));
+      await otherService.service.schedulePublish({ actorId: otherFixture.userId, projectId: otherFixture.projectId, pageId: otherFixture.pageId, expectedLockVersion: 7, publishAt: dueAt });
+
+      const revisions = await service.listRevisions({ actorId: fixture.userId, projectId: fixture.projectId });
+      const current = revisions.find((revision) => revision.id === fixture.revisionId);
+      const historical = revisions.find((revision) => revision.id === historicalPublished.id);
+      assert.ok(current);
+      assert.ok(historical);
+      for (const revision of [current, historical]) {
+        assert.equal(revision.draftRevisionId, fixture.revisionId);
+        assert.equal(revision.publishedRevisionId, historicalPublished.id);
+        assert.equal(revision.scheduledRevisionId, fixture.revisionId);
+        assert.equal(revision.scheduledPublishAt?.getTime(), scheduleAt.getTime());
+        assert.equal(revision.pageTitle, revision.title);
+        assert.equal(revision.pageSlug, revision.slug);
+        assert.equal('scheduledById' in revision, false);
+      }
+      assert.equal(revisions.some((revision) => revision.id === otherFixture.revisionId), false);
+      assert.equal(revisions.some((revision) => revision.scheduledPublishAt?.getTime() === dueAt.getTime()), false);
+
+      const nullFixture = await createFixture();
+      try {
+        const nullService = serviceFor(nullFixture, new Set([`${nullFixture.userId}:content.view:${nullFixture.projectId}`]));
+        const nullRevision = (await nullService.service.listRevisions({ actorId: nullFixture.userId, projectId: nullFixture.projectId })).find((revision) => revision.id === nullFixture.revisionId);
+        assert.ok(nullRevision);
+        assert.equal(nullRevision.draftRevisionId, nullFixture.revisionId);
+        assert.equal(nullRevision.publishedRevisionId, null);
+        assert.equal(nullRevision.scheduledRevisionId, null);
+        assert.equal(nullRevision.scheduledPublishAt, null);
+      } finally {
+        await cleanup(nullFixture);
+      }
+    } finally {
+      await cleanup(fixture);
+      await cleanup(otherFixture);
+    }
+  });
 });
