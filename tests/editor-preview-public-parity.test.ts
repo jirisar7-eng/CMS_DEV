@@ -9,18 +9,16 @@ import { ContentBlock, PageContent } from "@/lib/domain/pages";
 import { getBlockDefinition } from "@/lib/composer/registry";
 import { canonicalToPuckData, puckDataToCanonical } from "@/lib/composer/adapter";
 import { ProjectEntitlements } from "@/lib/composer/types";
+import { resolveProjectEntitlements } from "@/lib/composer/entitlements";
 
-const ALL_ENTITLEMENTS: ProjectEntitlements = {
-  tier: "enterprise",
-  features: {
-    advancedComponents: true,
-    customCode: true,
-    customCss: true,
-    formsModule: true,
-    ecommerceModule: true,
-    analyticsModule: true
-  }
-};
+const ALL_ENTITLEMENTS: ProjectEntitlements = resolveProjectEntitlements("COMMERCIAL", {
+  "labs.access": true,
+  "labs.puck_ai": true,
+  "labs.ai_design": true,
+  "labs.virtualization": true,
+  "labs.new_components": true,
+  "labs.beta_plugins": true,
+});
 
 describe("SYN-EDITOR-002 Step 1.1: Parity Test Hardening", () => {
   describe("1. Component Parity (Preview vs Public)", () => {
