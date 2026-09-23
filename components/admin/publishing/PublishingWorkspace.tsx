@@ -146,6 +146,17 @@ export function publishingActionEndpoint(
   return `/api/admin/projects/${projectId}/pages/${pageId}/actions/${action}`;
 }
 
+export function isValidFuturePublishDateTime(
+  publishAtInput: string,
+  nowEpochMs: number = Date.now()
+): boolean {
+  const date = new Date(publishAtInput);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+  return date.getTime() > nowEpochMs;
+}
+
 function getFormattedDefaultFutureDateTime(): string {
   const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
   date.setMinutes(0, 0, 0);
@@ -325,11 +336,12 @@ export function PublishingWorkspace({
   ) => {
     if (!projectId) return;
 
-    const date = new Date(publishAtInput);
-    if (Number.isNaN(date.getTime()) || date.getTime() <= Date.now()) {
+    if (!isValidFuturePublishDateTime(publishAtInput)) {
       setActionMessage("Chyba: Zadejte platné budoucí datum a čas publikace.");
       return;
     }
+
+    const date = new Date(publishAtInput);
 
     const processingKey = `${revision.pageId}:schedule-publish`;
     setProcessingId(processingKey);

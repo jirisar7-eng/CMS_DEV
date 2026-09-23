@@ -23,7 +23,16 @@ function proveIsolatedDatabase(): void {
   const raw = process.env.DATABASE_URL;
   if (!raw) throw new Error('BLOCKER: DATABASE_URL is not configured for the isolated PostgreSQL test database');
   const url = new URL(raw);
-  if (!['127.0.0.1', 'localhost'].includes(url.hostname) || url.port !== isolatedPort || url.pathname !== `/${isolatedDatabase}`) {
+  const isLocalHost = ['127.0.0.1', 'localhost'].includes(url.hostname);
+  if (!isLocalHost) {
+    throw new Error(`BLOCKER: refusing PostgreSQL test against non-isolated endpoint ${url.hostname}:${url.port}/${url.pathname}`);
+  }
+
+  const isLocalIsolated = url.port === isolatedPort && url.pathname === `/${isolatedDatabase}`;
+  const isCiEvidence = process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true';
+  const isCiPostgres = isCiEvidence && (url.port === '5432' || url.port === '') && url.pathname === '/postgres';
+
+  if (!isLocalIsolated && !isCiPostgres) {
     throw new Error(`BLOCKER: refusing PostgreSQL test against non-isolated endpoint ${url.hostname}:${url.port}/${url.pathname}`);
   }
 }
