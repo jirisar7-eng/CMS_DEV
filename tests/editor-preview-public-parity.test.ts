@@ -7,8 +7,22 @@ import { CanonicalContentRenderer } from "@/lib/composer/render";
 import { puckConfig } from "@/lib/composer/puck.config";
 import { ContentBlock, PageContent } from "@/lib/domain/pages";
 import { getBlockDefinition } from "@/lib/composer/registry";
+import { canonicalToPuckData, puckDataToCanonical } from "@/lib/composer/adapter";
+import { ProjectEntitlements } from "@/lib/composer/types";
 
-describe("SYN-EDITOR-002 Step 1: Editor Preview & Public Renderer Parity", () => {
+const ALL_ENTITLEMENTS: ProjectEntitlements = {
+  tier: "enterprise",
+  features: {
+    advancedComponents: true,
+    customCode: true,
+    customCss: true,
+    formsModule: true,
+    ecommerceModule: true,
+    analyticsModule: true
+  }
+};
+
+describe("SYN-EDITOR-002 Step 1.1: Parity Test Hardening", () => {
   describe("1. Component Parity (Preview vs Public)", () => {
     test("heading parity across preview and public rendering", () => {
       const block: ContentBlock = {
@@ -125,7 +139,7 @@ describe("SYN-EDITOR-002 Step 1: Editor Preview & Public Renderer Parity", () =>
       assert.ok(previewHtml.includes("Labyrint světa"));
     });
 
-    test("button parity and navigation behavior contract", () => {
+    test("button parity HTML attributes across preview and public", () => {
       const block: ContentBlock = {
         id: "b-1",
         type: "button",
@@ -140,6 +154,39 @@ describe("SYN-EDITOR-002 Step 1: Editor Preview & Public Renderer Parity", () =>
       assert.ok(previewHtml.includes("target=\"_blank\""));
       assert.ok(previewHtml.includes("rel=\"noopener noreferrer\""));
       assert.ok(publicHtml.includes("href=\"/kontakt\""));
+    });
+
+    test("button interaction contract: invokes preventDefault when isPreview=true, allows default when isPreview=false", () => {
+      const block: ContentBlock = {
+        id: "b-int-1",
+        type: "button",
+        order: 0,
+        data: { label: "Klik", url: "/cil", variant: "primary", target: "_self" }
+      };
+
+      // 1. In preview mode: must preventDefault
+      const previewElement = BlockRenderer({ block, isPreview: true }) as React.ReactElement<{ children: React.ReactElement<{ onClick: (e: any) => void }> }>;
+      assert.ok(previewElement && previewElement.props && previewElement.props.children);
+      const previewAnchor = previewElement.props.children;
+      let previewPrevented = false;
+      previewAnchor.props.onClick({
+        preventDefault: () => {
+          previewPrevented = true;
+        }
+      });
+      assert.equal(previewPrevented, true, "isPreview=true MUST invoke preventDefault to protect editor workspace");
+
+      // 2. In public mode: must NOT preventDefault
+      const publicElement = BlockRenderer({ block, isPreview: false }) as React.ReactElement<{ children: React.ReactElement<{ onClick: (e: any) => void }> }>;
+      assert.ok(publicElement && publicElement.props && publicElement.props.children);
+      const publicAnchor = publicElement.props.children;
+      let publicPrevented = false;
+      publicAnchor.props.onClick({
+        preventDefault: () => {
+          publicPrevented = true;
+        }
+      });
+      assert.equal(publicPrevented, false, "isPreview=false MUST NOT invoke preventDefault to allow user navigation");
     });
 
     test("divider parity across preview and public", () => {
@@ -176,7 +223,6 @@ describe("SYN-EDITOR-002 Step 1: Editor Preview & Public Renderer Parity", () =>
   });
 
   describe("2. Shared Layout Semantics for Columns", () => {
-
     test("getColumnsLayoutInfo provides identical classes for layout ratios and gaps", () => {
       const layout11 = getColumnsLayoutInfo("1-1", "sm");
       assert.equal(layout11.gapClass, "gap-3");
@@ -203,18 +249,102 @@ describe("SYN-EDITOR-002 Step 1: Editor Preview & Public Renderer Parity", () =>
       assert.equal(layout111.getColumnSpanClass(2), "md:col-span-1");
     });
 
-    test("Puck config component render function reuses BlockRenderer and layout contract", () => {
-      const headingPuckComponent = puckConfig.components["heading"];
-      assert.ok(headingPuckComponent);
-      const renderedHeading = renderToStaticMarkup(headingPuckComponent.render({ text: "Puck Heading", level: 1 }));
-      assert.ok(renderedHeading.includes("<h1"));
-      assert.ok(renderedHeading.includes("Puck Heading"));
+    test("Puck columns and public columns derive layout and gap from the same shared contract across all layouts", () => {
+      const testCases = [
+        { layout: "1-1", gap: "sm", expectedGrid: "grid-cols-1 md:grid-cols-2", expectedGap: "gap-3" },
+        { layout: "1-2", gap: "md", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-5" },
+        { layout: "2-1", gap: "lg", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-8" },
+        { layout: "1-1-1", gap: "md", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-5" }
+      ] as const;
 
       const columnsPuckComponent = puckConfig.components["columns"];
-      assert.ok(columnsPuckComponent);
-      const renderedColumns = renderToStaticMarkup(columnsPuckComponent.render({ layout: "1-2", gap: "lg" }));
-      assert.ok(renderedColumns.includes("grid-cols-1 md:grid-cols-3"));
-      assert.ok(renderedColumns.includes("gap-8"));
+      assert.ok(columnsPuckComponent, "columns component must exist in puckConfig");
+
+      for (const tc of testCases) {
+        // 1. Verify getColumnsLayoutInfo contract
+        const layoutInfo = getColumnsLayoutInfo(tc.layout, tc.gap);
+        assert.equal(layoutInfo.gridClass, tc.expectedGrid);
+        assert.equal(layoutInfo.gapClass, tc.expectedGap);
+
+        // 2. Verify Puck render output carries exact shared classes
+        const renderedPuck = renderToStaticMarkup(columnsPuckComponent.render({ layout: tc.layout, gap: tc.gap }));
+        assert.ok(renderedPuck.includes(tc.expectedGrid), `Puck columns must include ${tc.expectedGrid}`);
+        assert.ok(renderedPuck.includes(tc.expectedGap), `Puck columns must include ${tc.expectedGap}`);
+
+        // 3. Verify public BlockRenderer output carries exact shared classes and column spans
+        const colBlock: ContentBlock = {
+          id: `col-${tc.layout}`,
+          type: "columns",
+          order: 0,
+          data: { layout: tc.layout, gap: tc.gap },
+          children: [
+            { id: "c-1", type: "paragraph", order: 0, data: { text: "Col 1" } },
+            { id: "c-2", type: "paragraph", order: 1, data: { text: "Col 2" } }
+          ]
+        };
+
+        const renderedPublic = renderToStaticMarkup(React.createElement(BlockRenderer, { block: colBlock, isPreview: false }));
+        assert.ok(renderedPublic.includes(tc.expectedGrid), `Public columns must include ${tc.expectedGrid}`);
+        assert.ok(renderedPublic.includes(tc.expectedGap), `Public columns must include ${tc.expectedGap}`);
+        assert.ok(renderedPublic.includes(layoutInfo.getColumnSpanClass(0)), "First column must have layout span class");
+        assert.ok(renderedPublic.includes(layoutInfo.getColumnSpanClass(1)), "Second column must have layout span class");
+      }
+    });
+
+    test("nested content serialization contract: bidirectional round-trip preserves tree and data", () => {
+      const originalPageContent: PageContent = {
+        version: 1,
+        schemaVersion: "syn-content-v1",
+        blocks: [
+          {
+            id: "cols-nested-1",
+            type: "columns",
+            order: 0,
+            data: { layout: "1-2", gap: "lg" },
+            children: [
+              {
+                id: "child-h-1",
+                type: "heading",
+                order: 0,
+                data: { level: 3, text: "Levý sloupec", align: "left" }
+              },
+              {
+                id: "child-p-1",
+                type: "paragraph",
+                order: 1,
+                data: { text: "Pravý širší sloupec s textem", size: "md", align: "left" }
+              }
+            ]
+          }
+        ]
+      };
+
+      // 1. Serialize canonical -> Puck data format
+      const puckData = canonicalToPuckData(originalPageContent);
+      assert.equal(puckData.content.length, 1);
+      assert.equal(puckData.content[0].type, "columns");
+      assert.equal(puckData.content[0].props.layout, "1-2");
+      assert.equal(puckData.content[0].props.gap, "lg");
+      assert.ok(puckData.content[0].zones && puckData.content[0].zones.default);
+      assert.equal(puckData.content[0].zones.default.length, 2);
+      assert.equal(puckData.content[0].zones.default[0].type, "heading");
+      assert.equal(puckData.content[0].zones.default[0].props.text, "Levý sloupec");
+      assert.equal(puckData.content[0].zones.default[1].type, "paragraph");
+
+      // 2. Deserialize Puck data format -> canonical PageContent
+      const roundtripped = puckDataToCanonical(puckData, "syn-content-v1", ALL_ENTITLEMENTS);
+      assert.equal(roundtripped.blocks.length, 1);
+      assert.equal(roundtripped.blocks[0].id, "cols-nested-1");
+      assert.equal(roundtripped.blocks[0].type, "columns");
+      assert.deepEqual(roundtripped.blocks[0].data, { layout: "1-2", gap: "lg" });
+      assert.ok(Array.isArray(roundtripped.blocks[0].children));
+      assert.equal(roundtripped.blocks[0].children.length, 2);
+      assert.equal(roundtripped.blocks[0].children[0].id, "child-h-1");
+      assert.equal(roundtripped.blocks[0].children[0].type, "heading");
+      assert.equal(roundtripped.blocks[0].children[0].data.text, "Levý sloupec");
+      assert.equal(roundtripped.blocks[0].children[1].id, "child-p-1");
+      assert.equal(roundtripped.blocks[0].children[1].type, "paragraph");
+      assert.equal(roundtripped.blocks[0].children[1].data.text, "Pravý širší sloupec s textem");
     });
 
     test("CanonicalContentRenderer delegates rendering with order sorting", () => {
