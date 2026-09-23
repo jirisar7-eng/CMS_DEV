@@ -2,18 +2,26 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Puck } from "@puckeditor/core";
+import { Puck, type Viewports } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
 import { puckConfig } from "@/lib/composer/puck.config";
 import { puckDataToCanonical, canonicalToPuckData, PuckData } from "@/lib/composer/adapter";
-import { PageDetail, PageContent } from "@/lib/domain/pages";
+import { PageDetail } from "@/lib/domain/pages";
 import { AdminPageLifecycleState } from "@/lib/domain/pages-client/types";
 import { ProjectEntitlements } from "@/lib/composer/types";
 import { createAdminPagesClient } from "@/lib/domain/pages-client/client";
 import { normalizeAdminProjectId, withAdminProjectContext } from "@/lib/domain/pages-client/project-context";
 import { AlertCircle, CheckCircle } from "lucide-react";
 
-interface PageComposerWorkspaceProps {
+export const EDITOR_VIEWPORTS: Viewports = [
+  { width: 360, height: "auto", icon: "Smartphone", label: "Mobil (360px)" },
+  { width: 390, height: "auto", icon: "Smartphone", label: "Mobil (390px)" },
+  { width: 768, height: "auto", icon: "Tablet", label: "Tablet (768px)" },
+  { width: 1280, height: "auto", icon: "Monitor", label: "Desktop (1280px)" },
+  { width: "100%", height: "auto", label: "Plná šířka" },
+];
+
+export interface PageComposerWorkspaceProps {
   pageId: string;
   projectId: string;
   initialEntitlements: ProjectEntitlements;
@@ -28,6 +36,7 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
   const [page, setPage] = useState<PageDetail | null>(null);
   const [lifecycle, setLifecycle] = useState<AdminPageLifecycleState | null>(null);
   const entitlements = initialEntitlements;
+
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -43,6 +52,7 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
         const { page: pageData, lifecycle: lc } = await client.getPageById(pageId);
         if (!active) return;
         if (!pageData) throw new Error("Nelze načíst stránku");
+
         setPage(pageData);
         setLifecycle(lc);
         
@@ -57,6 +67,7 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
         setErrorMessage(e instanceof Error ? e.message : "Chyba načítání");
       }
     };
+
     fetchAll();
     return () => { active = false; };
   }, [pageId, client, refetchCounter]);
@@ -101,67 +112,91 @@ export const PageComposerWorkspace: React.FC<PageComposerWorkspaceProps> = ({ pa
 
   if (!projectId || !client) {
     return (
-      <div className="p-8 text-center text-destructive flex flex-col items-center justify-center gap-2">
-        <AlertCircle className="w-6 h-6" />
-        <span className="font-semibold">Chybí platný kontext projektu</span>
-        <span className="text-sm text-muted-foreground">Úpravy obsahu v editoru vyžadují vybraný a aktivní projekt.</span>
+      <div data-testid="fail-closed-project-context" className="p-4 sm:p-8 text-center text-destructive flex flex-col items-center justify-center gap-2 w-full max-w-full min-w-0">
+        <AlertCircle className="w-6 h-6 shrink-0" />
+        <span className="font-semibold break-words">Chybí platný kontext projektu</span>
+        <span className="text-sm text-muted-foreground break-words">Úpravy obsahu v editoru vyžadují vybraný a aktivní projekt.</span>
       </div>
     );
   }
 
   if (!initialData || !page) {
-    return <div className="p-8 text-center text-muted-foreground">Načítám editor...</div>;
+    return <div className="p-4 sm:p-8 text-center text-muted-foreground w-full max-w-full min-w-0">Načítám editor...</div>;
   }
 
   const isDraft = page.status === "Koncept";
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen w-full max-w-full flex flex-col bg-background overflow-x-hidden min-w-0">
       {!isDraft && (
-        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-sm font-medium text-amber-900 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            <span>Stránka není ve stavu Koncept. Úpravy se neuloží.</span>
+        <div
+          data-testid="banner-not-draft"
+          className="px-3 sm:px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs sm:text-sm font-medium text-amber-900 flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-2 w-full max-w-full min-w-0"
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1 break-words">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="min-w-0 flex-1 break-words">Stránka není ve stavu Koncept. Úpravy se neuloží.</span>
           </div>
-          <button onClick={() => router.push(withAdminProjectContext(`/admin/pages/${pageId}`, projectId))} className="underline text-amber-800">
+          <button
+            onClick={() => router.push(withAdminProjectContext(`/admin/pages/${pageId}`, projectId))}
+            className="underline text-amber-800 text-xs sm:text-sm shrink-0 self-end sm:self-auto hover:text-amber-900 cursor-pointer"
+          >
             Zpět
           </button>
         </div>
       )}
+
       {lockConflict && (
-        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-sm font-medium text-destructive flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            <span>Konflikt verzí: Jiný uživatel uložil novější verzi.</span>
+        <div
+          data-testid="banner-lock-conflict"
+          className="px-3 sm:px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-xs sm:text-sm font-medium text-destructive flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-2 w-full max-w-full min-w-0"
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1 break-words">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span className="min-w-0 flex-1 break-words">Konflikt verzí: Jiný uživatel uložil novější verzi.</span>
           </div>
-          <button onClick={() => setRefetchCounter(c => c + 1)} className="px-3 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold">
+          <button
+            onClick={() => setRefetchCounter(c => c + 1)}
+            data-testid="btn-reload-conflict"
+            className="px-2.5 sm:px-3 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold shrink-0 self-end sm:self-auto cursor-pointer"
+          >
             Načíst aktuální data
           </button>
         </div>
       )}
+
       {successMessage && (
-        <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-sm font-medium text-emerald-800 flex items-center gap-2">
-          <CheckCircle className="w-4 h-4" />
-          <span>{successMessage}</span>
+        <div
+          data-testid="banner-success"
+          className="px-3 sm:px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-xs sm:text-sm font-medium text-emerald-800 flex items-center gap-2 w-full max-w-full min-w-0"
+        >
+          <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+          <span className="min-w-0 flex-1 break-words">{successMessage}</span>
         </div>
       )}
+
       {errorMessage && !lockConflict && (
-        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-sm font-medium text-destructive flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          <span>{errorMessage}</span>
+        <div
+          data-testid="banner-error"
+          className="px-3 sm:px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-xs sm:text-sm font-medium text-destructive flex items-center gap-2 w-full max-w-full min-w-0"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="min-w-0 flex-1 break-words">{errorMessage}</span>
         </div>
       )}
-      <div className="flex-1 overflow-hidden">
+
+      <div className="flex-1 w-full max-w-full min-w-0 overflow-hidden relative">
         <Puck
           config={puckConfig}
           data={initialData}
           onPublish={handleSave}
           headerPath={page.title}
+          viewports={EDITOR_VIEWPORTS}
           overrides={{
             headerActions: ({ children }) => (
-              <div className="flex items-center gap-2">
+              <div data-testid="puck-header-actions" className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
                 {children}
-                {isSaving && <span className="text-xs text-muted-foreground mr-2">Ukládám...</span>}
+                {isSaving && <span className="text-xs text-muted-foreground mr-1 sm:mr-2 shrink-0">Ukládám...</span>}
               </div>
             )
           }}
