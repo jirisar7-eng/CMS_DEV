@@ -656,10 +656,7 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
 
   async recordAudit(params: RecordLifecycleAuditParams): Promise<void> {
     await logAudit({
-      // SYN-CONTENT-006 adds lifecycle audit actions while the shared
-      // AuditAction union is outside this task capsule. Runtime storage is
-      // string-backed; keep the compatibility boundary local to this adapter.
-      action: params.action as any,
+      action: params.action,
       scopeType: params.scopeType,
       scopeId: params.scopeId,
       resourceType: params.resourceType,

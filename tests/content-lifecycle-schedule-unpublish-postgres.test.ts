@@ -373,6 +373,13 @@ describe('PostgreSQL integration: SYN-CONTENT-006 schedule and unpublish lifecyc
       assert.equal((scheduleAudit?.metadata as any).revisionId, fixture.revisionId);
       assert.equal((scheduleAudit?.metadata as any).scheduledById, fixture.userId);
       assert.equal((scheduleAudit?.metadata as any).scheduledPublishAt, scheduleAt.toISOString());
+
+      const publishedAudit = audits.find((audit: any) => audit.action === 'CONTENT_RELEASE_PUBLISHED');
+      assert.ok(publishedAudit);
+      assert.equal((publishedAudit.metadata as any).revisionId, fixture.revisionId);
+      assert.equal((publishedAudit.metadata as any).scheduled, true);
+      assert.equal((publishedAudit.metadata as any).scheduledById, fixture.userId);
+      assert.equal((publishedAudit.metadata as any).scheduledPublishAt, scheduleAt.toISOString());
     } finally {
       await cleanup(fixture);
     }

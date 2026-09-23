@@ -24,6 +24,12 @@ import {
 } from '../lib/domain/content/lifecycle';
 import { PageContent } from '../lib/domain/content/contracts';
 import { PermissionKey } from '../lib/auth/rbac';
+import { sanitizeAuditMetadata } from '../lib/domain/audit';
+import {
+  validateSchedulePublishBody,
+  validateCancelScheduleBody,
+} from '../lib/domain/pages-api/validation';
+import { ApiError } from '../lib/domain/pages-api/errors';
 
 const projectId = 'project-a';
 const otherProjectId = 'project-b';
@@ -482,5 +488,195 @@ describe('SYN-CONTENT-006: schedule and unpublish lifecycle', () => {
       assert.equal('content' in audit.metadata, false);
       assert.equal(JSON.stringify(audit.metadata).includes('heading-1'), false);
     }
+  });
+
+  describe('audit metadata provenance and sanitization', () => {
+    it('scheduled publish audit metadata survives sanitization', () => {
+      const scheduledMetadata = {
+        pageId: 'page-scheduled-1',
+        releaseId: 'rel-scheduled-1',
+        revisionId: 'rev-scheduled-1',
+        previousRevisionId: 'rev-prev-1',
+        scheduled: true,
+        scheduledPublishAt: '2030-01-02T03:04:05.000Z',
+        scheduledById: 'user-scheduled-1',
+      };
+
+      const sanitized = sanitizeAuditMetadata(
+        scheduledMetadata,
+        'CONTENT_RELEASE_PUBLISHED',
+        { mode: 'write' }
+      );
+
+      assert.deepEqual(sanitized, scheduledMetadata);
+
+      // Verify unallowlisted or sensitive fields are stripped
+      const withUntrusted = {
+        ...scheduledMetadata,
+        secretToken: 'sensitive-token',
+        password: 'sensitive-password',
+        unauthorizedField: 'forbidden-payload',
+      };
+      const sanitizedUntrusted = sanitizeAuditMetadata(
+        withUntrusted,
+        'CONTENT_RELEASE_PUBLISHED',
+        { mode: 'write' }
+      );
+      assert.deepEqual(sanitizedUntrusted, scheduledMetadata);
+    });
+
+    it('standard publish audit metadata survives sanitization with extended fields', () => {
+      const standardPublishMetadata = {
+        pageId: 'page-std-1',
+        releaseId: 'rel-std-1',
+        revisionId: 'rev-std-1',
+        revisionNumber: 4,
+        previousRevisionId: 'rev-prev-0',
+        lockVersion: 8,
+        fromStatus: 'APPROVED',
+        toStatus: 'PUBLISHED',
+      };
+
+      const sanitized = sanitizeAuditMetadata(
+        standardPublishMetadata,
+        'CONTENT_RELEASE_PUBLISHED',
+        { mode: 'write' }
+      );
+
+      assert.deepEqual(sanitized, standardPublishMetadata);
+    });
+  });
+
+  describe('schedule and cancel request validation hardening', () => {
+    const validFutureDate = new Date(Date.now() + 86400000).toISOString();
+
+    it('valid schedule and cancel payloads remain accepted', () => {
+      const validSchedule = validateSchedulePublishBody({
+        expectedLockVersion: 3,
+        publishAt: validFutureDate,
+      });
+      assert.equal(validSchedule.expectedLockVersion, 3);
+      assert.equal(validSchedule.publishAt.toISOString(), validFutureDate);
+
+      const validCancel = validateCancelScheduleBody({
+        expectedScheduledRevisionId: 'rev-scheduled-xyz',
+        expectedScheduledPublishAt: validFutureDate,
+      });
+      assert.equal(validCancel.expectedScheduledRevisionId, 'rev-scheduled-xyz');
+      assert.equal(validCancel.expectedScheduledPublishAt.toISOString(), validFutureDate);
+    });
+
+    it('forbidden request identity/scope fields are rejected for schedule-publish', () => {
+      const forbiddenFields = [
+        'actorId',
+        'userId',
+        'role',
+        'permissions',
+        'projectId',
+        'pageId',
+        'status',
+        'revisionId',
+        'publishedRevisionId',
+        'draftRevisionId',
+        'scheduledRevisionId',
+        'scheduledById',
+        'lockVersion',
+        'revisionNumber',
+      ];
+
+      for (const field of forbiddenFields) {
+        assert.throws(
+          () =>
+            validateSchedulePublishBody({
+              expectedLockVersion: 1,
+              publishAt: validFutureDate,
+              [field]: 'forbidden-value',
+            }),
+          (err: unknown) => {
+            return (
+              err instanceof ApiError &&
+              err.code === 'INVALID_INPUT' &&
+              err.status === 400 &&
+              err.message.includes(`Field '${field}' cannot be provided in request body`)
+            );
+          },
+          `Expected field '${field}' to be rejected in schedule-publish`
+        );
+      }
+    });
+
+    it('forbidden request identity/scope fields are rejected for cancel-schedule', () => {
+      const forbiddenFields = [
+        'actorId',
+        'userId',
+        'role',
+        'permissions',
+        'projectId',
+        'pageId',
+        'status',
+        'revisionId',
+        'publishedRevisionId',
+        'draftRevisionId',
+        'scheduledRevisionId',
+        'scheduledById',
+        'expectedLockVersion',
+        'lockVersion',
+        'revisionNumber',
+      ];
+
+      for (const field of forbiddenFields) {
+        assert.throws(
+          () =>
+            validateCancelScheduleBody({
+              expectedScheduledRevisionId: 'rev-valid',
+              expectedScheduledPublishAt: validFutureDate,
+              [field]: 'forbidden-value',
+            }),
+          (err: unknown) => {
+            return (
+              err instanceof ApiError &&
+              err.code === 'INVALID_INPUT' &&
+              err.status === 400 &&
+              err.message.includes(`Field '${field}' cannot be provided in request body`)
+            );
+          },
+          `Expected field '${field}' to be rejected in cancel-schedule`
+        );
+      }
+    });
+
+    it('control characters and invalid formats in expectedScheduledRevisionId are rejected', () => {
+      const invalidRevisionIds = [
+        'rev\x00invalid',
+        'rev\x1finvalid',
+        'rev\x7finvalid',
+        'rev\ninvalid',
+        'rev\rinvalid',
+        'rev\tinvalid',
+        'rev<script>',
+        'rev>invalid',
+        '',
+        '   ',
+        'a'.repeat(129),
+      ];
+
+      for (const invalidId of invalidRevisionIds) {
+        assert.throws(
+          () =>
+            validateCancelScheduleBody({
+              expectedScheduledRevisionId: invalidId,
+              expectedScheduledPublishAt: validFutureDate,
+            }),
+          (err: unknown) => {
+            return (
+              err instanceof ApiError &&
+              err.code === 'INVALID_INPUT' &&
+              err.status === 400
+            );
+          },
+          `Expected invalid revision ID '${invalidId}' to be rejected`
+        );
+      }
+    });
   });
 });
