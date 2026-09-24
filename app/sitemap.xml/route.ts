@@ -83,7 +83,6 @@ export async function GET(req: Request) {
             id: true,
             seo: true,
             publishedAt: true,
-            updatedAt: true,
           },
         },
       },
@@ -134,7 +133,7 @@ export async function GET(req: Request) {
         loc = `${requestOrigin}${cleanPath}`;
       }
 
-      const dateVal = route.publishedAt || rev.publishedAt || rev.updatedAt;
+      const dateVal = route.publishedAt || rev.publishedAt || null;
       let lastmod: string | undefined = undefined;
       if (dateVal) {
         const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
