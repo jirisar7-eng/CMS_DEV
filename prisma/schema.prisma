@@ -452,17 +452,20 @@ enum NavigationSetStatus {
 }
 
 model NavigationSet {
-  id          String              @id @default(uuid())
-  projectId   String
-  project     Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  key         String
-  name        String
-  context     NavigationContext
-  status      NavigationSetStatus @default(DRAFT)
-  version     Int                 @default(1)
-  description String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id                String              @id @default(uuid())
+  projectId         String
+  project           Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  key               String
+  name              String
+  context           NavigationContext
+  status            NavigationSetStatus @default(DRAFT)
+  version           Int                 @default(1)
+  description       String?
+  publishedSnapshot Json?
+  publishedVersion  Int?
+  publishedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   items NavigationItem[]
 
