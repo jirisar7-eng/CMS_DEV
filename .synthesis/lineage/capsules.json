@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 45,
+  "total_capsules": 47,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -297,6 +297,20 @@
       "legacy": true
     },
     {
+      "capsule_id": "CAP-SYN-EDITOR-002-20260923-001",
+      "task_id": "SYN-EDITOR-002",
+      "title": "Puck Preview/Public Parity & Mobile UX",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-EDITOR-002-PUCK-PARITY-MOBILE.json",
+      "base_sha": "7b45ffea82220946e3aab088768ca5d32e8a4598",
+      "expected_branch": "task/SYN-EDITOR-002-PUCK-PARITY-MOBILE",
+      "sha256": "63a025c497831cb615a4098e1bba3bac7fba3bfde678bf4dd9f4d566e4740063",
+      "parent_capsule_id": "CAP-SYN-SEC-008-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
       "capsule_id": "CAP-SYN-GOV-CAPSULE-002-20260921-001",
       "task_id": "SYN-GOV-CAPSULE-002",
       "title": "Task Capsule Identity & Registry Foundation",
@@ -307,6 +321,20 @@
       "expected_branch": "task/SYN-GOV-CAPSULE-002-TASK-CAPSULE-IDENTITY-REGISTRY",
       "sha256": "992a204f9340106ba36398f28e814c254c25ba975cfbccc8c502fd27a2f917ba",
       "parent_capsule_id": null,
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-EDITOR-002-20260923-001",
+      "task_id": "SYN-GOV-EDITOR-002-CLOSEOUT",
+      "title": "Governance Closeout for SYN-EDITOR-002",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-EDITOR-002-CLOSEOUT.json",
+      "base_sha": "73fe2192ee6354fc82c574d448d0e6aed90931cf",
+      "expected_branch": "task/SYN-GOV-EDITOR-002-CLOSEOUT",
+      "sha256": "f48de755ab612df495c9e5f829c062c10aeb2d180635c4813f374aae669a1fc2",
+      "parent_capsule_id": "CAP-SYN-EDITOR-002-20260923-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
