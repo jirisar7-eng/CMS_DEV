@@ -22,12 +22,12 @@
   "allowed_paths": [
     ".synthesis/task-capsule.json",
     "prisma/schema.prisma",
-    "prisma/migrations/*_navigation_published_snapshot/migration.sql",
-    "lib/domain/navigation/**",
-    "app/api/admin/navigation/**",
-    "app/api/public/navigation/**",
-    "components/admin/navigation/**",
-    "app/admin/navigation/**",
+    "prisma/migrations/*",
+    "lib/domain/navigation/*",
+    "app/api/admin/navigation/*",
+    "app/api/public/navigation/*",
+    "components/admin/navigation/*",
+    "app/admin/navigation/*",
     "lib/navigation/adminNav.ts",
     "tests/navigation-foundation.test.ts",
     "tests/navigation-lifecycle.test.ts",
@@ -38,10 +38,10 @@
     ".env*",
     "package.json",
     "package-lock.json",
-    ".github/**",
-    "lib/auth/**",
+    ".github/*",
+    "lib/auth/*",
     "scripts/bootstrap-admin.ts",
-    "deployment/**",
-    "infra/**"
+    "deployment/*",
+    "infra/*"
   ]
 }

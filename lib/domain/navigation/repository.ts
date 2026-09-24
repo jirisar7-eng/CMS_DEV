@@ -5,104 +5,124 @@ import {
   CreateNavigationItemInput,
   UpdateNavigationItemInput,
   BrokenPageReference,
-} from './types';
+} from "./types";
 
 class ApiNavigationRepository {
   private async fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`/api/admin/navigation${path}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(options?.headers || {}),
       },
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || `Request failed with status ${response.status}`);
     }
-
     return response.json();
   }
 
   async getNavigationSets(): Promise<NavigationSet[]> {
-    return this.fetchApi<NavigationSet[]>('/');
+    return this.fetchApi<NavigationSet[]>("/");
   }
 
   async createNavigationSet(input: CreateNavigationSetInput): Promise<NavigationSet> {
-    return this.fetchApi<NavigationSet>('/', {
-      method: 'POST',
+    return this.fetchApi<NavigationSet>("/", {
+      method: "POST",
       body: JSON.stringify(input),
     });
   }
 
-  async updateNavigationSet(setId: string, updates: Partial<NavigationSet>): Promise<NavigationSet> {
+  async updateNavigationSet(setId: string, updates: { key?: string; name?: string; description?: string | null; context?: any }): Promise<NavigationSet> {
+    // Only send allowed metadata fields; lifecycle state is managed via explicit endpoints
+    const safePayload = {
+      ...(updates.key !== undefined ? { key: updates.key } : {}),
+      ...(updates.name !== undefined ? { name: updates.name } : {}),
+      ...(updates.description !== undefined ? { description: updates.description } : {}),
+      ...(updates.context !== undefined ? { context: updates.context } : {}),
+    };
     return this.fetchApi<NavigationSet>(`/${setId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
+      method: "PATCH",
+      body: JSON.stringify(safePayload),
+    });
+  }
+
+  async publishNavigationSet(setId: string): Promise<NavigationSet> {
+    return this.fetchApi<NavigationSet>(`/${setId}/publish`, {
+      method: "POST",
+    });
+  }
+
+  async unpublishNavigationSet(setId: string): Promise<NavigationSet> {
+    return this.fetchApi<NavigationSet>(`/${setId}/unpublish`, {
+      method: "POST",
+    });
+  }
+
+  async archiveNavigationSet(setId: string): Promise<NavigationSet> {
+    return this.fetchApi<NavigationSet>(`/${setId}/archive`, {
+      method: "POST",
     });
   }
 
   async deleteNavigationSet(setId: string): Promise<boolean> {
     const res = await this.fetchApi<{ success: boolean }>(`/${setId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
     return res.success;
   }
 
   async addItem(setId: string, input: CreateNavigationItemInput): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(input),
     });
   }
 
   async updateItem(setId: string, itemId: string, input: UpdateNavigationItemInput): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items/${itemId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(input),
     });
   }
 
   async deleteItem(setId: string, itemId: string): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items/${itemId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
-  async moveItem(setId: string, itemId: string, direction: 'UP' | 'DOWN'): Promise<NavigationSet> {
+  async moveItem(setId: string, itemId: string, direction: "UP" | "DOWN"): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items/${itemId}/move`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ direction }),
     });
   }
 
   async indentItem(setId: string, itemId: string): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items/${itemId}/indent`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
   async outdentItem(setId: string, itemId: string): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items/${itemId}/outdent`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
   async toggleVisibility(setId: string, itemId: string): Promise<NavigationSet> {
     return this.fetchApi<NavigationSet>(`/${setId}/items/${itemId}/toggle-visibility`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
-  checkBrokenReferences(items: NavigationItem[], availablePageIds: string[], setKey: string = 'unknown', setName: string = 'unknown'): BrokenPageReference[] {
-    // This is a UI helper, so we can keep it as is
+  checkBrokenReferences(items: NavigationItem[], availablePageIds: string[], setKey: string = "unknown", setName: string = "unknown"): BrokenPageReference[] {
     const broken: BrokenPageReference[] = [];
     const validSet = new Set(availablePageIds);
-
-    // This method is called in the UI and usually receives a specific set's items
     items.forEach((item) => {
-      if (item.type === 'PAGE' && item.pageId && !validSet.has(item.pageId)) {
+      if (item.type === "PAGE" && item.pageId && !validSet.has(item.pageId)) {
         broken.push({
           itemId: item.id,
           itemLabel: item.label,
@@ -112,7 +132,6 @@ class ApiNavigationRepository {
         });
       }
     });
-
     return broken;
   }
 }

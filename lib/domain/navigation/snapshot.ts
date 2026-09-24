@@ -195,8 +195,8 @@ export function buildPublishedNavigationSnapshot(
 }
 
 /**
- * Parses and validates a published navigation snapshot from raw DB JSON.
- * Returns null if the snapshot is missing, malformed, or invalid (fail-closed).
+ * Parses and strictly validates a published navigation snapshot from raw DB JSON.
+ * Fails closed (returns null) on any missing, malformed, cyclic, or insecure data.
  */
 export function parsePublishedNavigationSnapshot(raw: unknown): PublishedNavigationSnapshot | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -213,32 +213,89 @@ export function parsePublishedNavigationSnapshot(raw: unknown): PublishedNavigat
 
   const validItems: PublishedNavigationItem[] = [];
   const itemIdSet = new Set<string>();
+  const itemMap = new Map<string, any>();
 
+  // Pass 1: validate basic fields and unique IDs
   for (const item of obj.items) {
     if (!item || typeof item !== "object" || Array.isArray(item)) return null;
     if (typeof item.id !== "string" || !item.id.trim()) return null;
-    if (itemIdSet.has(item.id)) return null;
+    if (itemIdSet.has(item.id)) return null; // duplicate ID
     itemIdSet.add(item.id);
 
     if (typeof item.label !== "string") return null;
+    const cleanLabel = sanitizeLabel(item.label);
+    if (!cleanLabel) return null; // empty / unsafe label
+
     if (!["PAGE", "EXTERNAL_LINK", "ANCHOR", "GROUP"].includes(item.type)) return null;
 
-    if (item.type === "EXTERNAL_LINK" && item.externalUrl) {
+    if (typeof item.order !== "number" || !Number.isFinite(item.order)) return null;
+
+    // Type-specific field consistency
+    if (item.type === "PAGE") {
+      if (typeof item.pageId !== "string" || !item.pageId.trim()) return null;
+      if (item.externalUrl !== null && item.externalUrl !== undefined) return null;
+      if (item.anchor !== null && item.anchor !== undefined) return null;
+    } else if (item.type === "EXTERNAL_LINK") {
+      if (typeof item.externalUrl !== "string" || !item.externalUrl.trim()) return null;
       if (!isSafeUrl(item.externalUrl).safe) return null;
+      if (item.pageId !== null && item.pageId !== undefined) return null;
+      if (item.anchor !== null && item.anchor !== undefined) return null;
+    } else if (item.type === "ANCHOR") {
+      if (typeof item.anchor !== "string" || !item.anchor.trim()) return null;
+      if (item.pageId !== null && item.pageId !== undefined) return null;
+      if (item.externalUrl !== null && item.externalUrl !== undefined) return null;
+    } else if (item.type === "GROUP") {
+      if (item.pageId !== null && item.pageId !== undefined) return null;
+      if (item.externalUrl !== null && item.externalUrl !== undefined) return null;
+      if (item.anchor !== null && item.anchor !== undefined) return null;
     }
+
+    if (item.parentId !== null && item.parentId !== undefined) {
+      if (typeof item.parentId !== "string") return null;
+      if (item.parentId === item.id) return null; // self-parent
+    }
+
+    itemMap.set(item.id, item);
 
     validItems.push({
       id: item.id,
       parentId: typeof item.parentId === "string" ? item.parentId : null,
       type: item.type,
-      label: item.label,
+      label: cleanLabel,
       pageId: typeof item.pageId === "string" ? item.pageId : null,
       externalUrl: typeof item.externalUrl === "string" ? item.externalUrl : null,
       anchor: typeof item.anchor === "string" ? item.anchor : null,
       icon: typeof item.icon === "string" ? item.icon : null,
       openInNewTab: Boolean(item.openInNewTab),
-      order: typeof item.order === "number" ? item.order : 0,
+      order: item.order,
     });
+  }
+
+  // Pass 2: validate parent existence, cycles, and max depth
+  for (const item of validItems) {
+    if (item.parentId && !itemIdSet.has(item.parentId)) {
+      return null; // parentId points outside snapshot
+    }
+  }
+
+  // Check cycles and depth
+  for (const item of validItems) {
+    let depth = 0;
+    let currParentId = item.parentId;
+    const visited = new Set<string>([item.id]);
+
+    while (currParentId) {
+      if (visited.has(currParentId)) {
+        return null; // cycle detected
+      }
+      visited.add(currParentId);
+      depth++;
+      if (depth > MAX_NAVIGATION_DEPTH) {
+        return null; // depth exceeded
+      }
+      const parent = itemMap.get(currParentId);
+      currParentId = parent && typeof parent.parentId === "string" ? parent.parentId : null;
+    }
   }
 
   return {
@@ -246,6 +303,6 @@ export function parsePublishedNavigationSnapshot(raw: unknown): PublishedNavigat
     name: obj.name.trim(),
     context: obj.context,
     description: typeof obj.description === "string" ? obj.description.trim() : null,
-    items: validItems,
+    items: validItems.sort((a, b) => a.order - b.order),
   };
 }
