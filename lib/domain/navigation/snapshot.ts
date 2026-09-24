@@ -11,6 +11,7 @@ import {
 } from "./types";
 import {
   isSafeUrl,
+  isValidAnchor,
   sanitizeLabel,
   flattenAndCalculateDepths,
   MAX_NAVIGATION_DEPTH,
@@ -137,8 +138,8 @@ export function buildPublishedNavigationSnapshot(
         }
       }
     } else if (item.type === "ANCHOR") {
-      if (!item.anchor || !item.anchor.trim()) {
-        errors.push("Položka typu Kotva „" + item.label + "“ nemá zadanou kotvu.");
+      if (!isValidAnchor(item.anchor)) {
+        errors.push("Položka typu Kotva „" + item.label + "“ musí začínat znakem # a mít platný název kotvy bez mezer.");
       }
     } else if (item.type !== "GROUP") {
       errors.push("Neznámý typ položky: " + item.type);
@@ -241,7 +242,7 @@ export function parsePublishedNavigationSnapshot(raw: unknown): PublishedNavigat
       if (item.pageId !== null && item.pageId !== undefined) return null;
       if (item.anchor !== null && item.anchor !== undefined) return null;
     } else if (item.type === "ANCHOR") {
-      if (typeof item.anchor !== "string" || !item.anchor.trim()) return null;
+      if (!isValidAnchor(item.anchor)) return null;
       if (item.pageId !== null && item.pageId !== undefined) return null;
       if (item.externalUrl !== null && item.externalUrl !== undefined) return null;
     } else if (item.type === "GROUP") {
@@ -301,7 +302,7 @@ export function parsePublishedNavigationSnapshot(raw: unknown): PublishedNavigat
   return {
     key: obj.key.trim(),
     name: obj.name.trim(),
-    context: obj.context,
+    context: obj.context as NavigationContext,
     description: typeof obj.description === "string" ? obj.description.trim() : null,
     items: validItems.sort((a, b) => a.order - b.order),
   };

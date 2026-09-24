@@ -1,7 +1,7 @@
 /**
- * SYNTHESIS CMS — NAVIGATION LIFECYCLE DETERMINISTIC TESTS
- * Tests for immutable published snapshots, validation gates, security invariants,
- * metadata stripping, and tree consistency.
+ * SYNTHESIS CMS — NAVIGATION LIFECYCLE & CONCURRENCY DETERMINISTIC TESTS
+ * Tests for immutable published snapshots, validation gates, anchor safety,
+ * security invariants, metadata stripping, and tree consistency.
  */
 
 import { describe, it } from "node:test";
@@ -10,13 +10,14 @@ import {
   buildPublishedNavigationSnapshot,
   parsePublishedNavigationSnapshot,
 } from "../lib/domain/navigation/snapshot";
+import { isValidAnchor } from "../lib/domain/navigation/validation";
 import {
   NavigationItem,
   NavigationSet,
   PublishedNavigationSnapshot,
 } from "../lib/domain/navigation/types";
 
-describe("SYN-NAV-002 Phase B: Navigation Lifecycle & Snapshot Hardening", () => {
+describe("SYN-NAV-002 Phase B1: Navigation Lifecycle & Concurrency Hardening", () => {
   const baseItems: NavigationItem[] = [
     {
       id: "item-1",
@@ -268,7 +269,6 @@ describe("SYN-NAV-002 Phase B: Navigation Lifecycle & Snapshot Hardening", () =>
   });
 
   it("8. rejects items exceeding maximum navigation depth", () => {
-    // 0 -> 1 -> 2 -> 3 -> 4 (exceeds MAX_NAVIGATION_DEPTH = 3)
     const deepItems: NavigationItem[] = [
       { id: "d0", parentId: null, type: "GROUP", label: "Level 0", visibility: true, openInNewTab: false, order: 1 },
       { id: "d1", parentId: "d0", type: "GROUP", label: "Level 1", visibility: true, openInNewTab: false, order: 1 },
@@ -291,7 +291,50 @@ describe("SYN-NAV-002 Phase B: Navigation Lifecycle & Snapshot Hardening", () =>
     assert.ok(res.errors.some(e => e.includes("překračuje maximální povolené zanoření")));
   });
 
-  it("9. hardened parsePublishedNavigationSnapshot rejects malformed or invalid inputs fail-closed", () => {
+  it("9. validates anchor format strictly and rejects invalid anchors", () => {
+    assert.strictEqual(isValidAnchor("#section-1"), true);
+    assert.strictEqual(isValidAnchor("#kontakt"), true);
+    assert.strictEqual(isValidAnchor("#faq_2026"), true);
+
+    // Invalid anchors
+    assert.strictEqual(isValidAnchor(""), false);
+    assert.strictEqual(isValidAnchor("#"), false);
+    assert.strictEqual(isValidAnchor("kontakt"), false); // missing #
+    assert.strictEqual(isValidAnchor("#kontakt sef"), false); // contains space
+    assert.strictEqual(isValidAnchor("#kontakt "), false); // control char
+    assert.strictEqual(isValidAnchor(null), false);
+    assert.strictEqual(isValidAnchor(undefined), false);
+
+    const anchorItem: NavigationItem = {
+      id: "a1",
+      parentId: null,
+      type: "ANCHOR",
+      label: "Kotva",
+      anchor: "#kontakt",
+      visibility: true,
+      openInNewTab: false,
+      order: 1,
+    };
+
+    const validRes = buildPublishedNavigationSnapshot({
+      key: "menu",
+      name: "Menu",
+      context: "HEADER",
+      items: [anchorItem],
+    });
+    assert.strictEqual(validRes.success, true);
+
+    const invalidRes = buildPublishedNavigationSnapshot({
+      key: "menu",
+      name: "Menu",
+      context: "HEADER",
+      items: [{ ...anchorItem, anchor: "invalid-no-hash" }],
+    });
+    assert.strictEqual(invalidRes.success, false);
+    assert.ok(invalidRes.errors.some(e => e.includes("Kotva")));
+  });
+
+  it("10. hardened parsePublishedNavigationSnapshot rejects malformed or invalid inputs fail-closed", () => {
     const validSnapshot = {
       key: "header-main",
       name: "Hlavní",
@@ -370,9 +413,15 @@ describe("SYN-NAV-002 Phase B: Navigation Lifecycle & Snapshot Hardening", () =>
       ...validSnapshot,
       items: [{ id: "x", parentId: null, label: "x", type: "EXTERNAL_LINK", externalUrl: "javascript:evil()", order: 1 }]
     }), null);
+
+    // Malformed: invalid anchor in snapshot
+    assert.strictEqual(parsePublishedNavigationSnapshot({
+      ...validSnapshot,
+      items: [{ id: "x", parentId: null, label: "x", type: "ANCHOR", anchor: "invalid-no-hash", order: 1 }]
+    }), null);
   });
 
-  it("10. mutating draft items array after snapshot creation does not mutate snapshot", () => {
+  it("11. mutating draft items array after snapshot creation does not mutate snapshot", () => {
     const itemsCopy = JSON.parse(JSON.stringify(baseItems));
     const res = buildPublishedNavigationSnapshot({
       key: "main",
@@ -400,7 +449,7 @@ describe("SYN-NAV-002 Phase B: Navigation Lifecycle & Snapshot Hardening", () =>
     assert.strictEqual(res.snapshot.items[0].label, "Domů");
   });
 
-  it("11. verifies publishedVersion <= version contract and unpublished changes detection", () => {
+  it("12. verifies publishedVersion <= version contract and unpublished changes detection", () => {
     const navSet: NavigationSet = {
       id: "set-1",
       projectId: "proj-1",
@@ -415,11 +464,9 @@ describe("SYN-NAV-002 Phase B: Navigation Lifecycle & Snapshot Hardening", () =>
       items: baseItems,
     };
 
-    // When version === publishedVersion, no unpublished changes
     const hasUnpublishedChanges = (navSet.publishedVersion ?? 0) < navSet.version;
     assert.strictEqual(hasUnpublishedChanges, false);
 
-    // When version incremented on draft edit
     navSet.version = 6;
     const hasUnpublishedChangesAfterEdit = (navSet.publishedVersion ?? 0) < navSet.version;
     assert.strictEqual(hasUnpublishedChangesAfterEdit, true);

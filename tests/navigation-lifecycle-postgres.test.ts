@@ -152,7 +152,7 @@ describe("PostgreSQL Real Integration - Navigation Published Snapshot & Lifecycl
       where: { projectId: testProjectIdA },
       select: { id: true },
     });
-    const availablePageIds = new Set(projectAPages.map((p: any) => p.id));
+    const availablePageIds = new Set<string>(projectAPages.map((p: any) => p.id as string));
 
     const buildRes = buildPublishedNavigationSnapshot(
       {
@@ -195,7 +195,7 @@ describe("PostgreSQL Real Integration - Navigation Published Snapshot & Lifecycl
       where: { projectId: testProjectIdA },
       select: { id: true },
     });
-    const availablePageIds = new Set(projectAPages.map((p: any) => p.id));
+    const availablePageIds = new Set<string>(projectAPages.map((p: any) => p.id as string));
 
     const buildRes = buildPublishedNavigationSnapshot(
       {
