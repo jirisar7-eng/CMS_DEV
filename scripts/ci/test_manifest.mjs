@@ -52,6 +52,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/media-project-isolation.test.ts",
   "tests/media-rbac-authorization.test.ts",
   "tests/media-replace-lifecycle.test.ts",
+  "tests/media-usage-references.test.ts",
   "tests/navigation-foundation.test.ts",
   "tests/plugin-lifecycle-persistence.test.ts",
   "tests/plugin-registry.test.ts",

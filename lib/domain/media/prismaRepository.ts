@@ -1,5 +1,17 @@
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/db';
+import type { Prisma } from '@prisma/client';
+
+let defaultPrisma: any;
+function getDefaultPrisma(): any {
+  if (defaultPrisma === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      defaultPrisma = require('@/lib/db').prisma;
+    } catch {
+      defaultPrisma = null;
+    }
+  }
+  return defaultPrisma;
+}
 import {
   IMediaRepository,
   MediaAsset,
@@ -16,8 +28,9 @@ import {
 import { resolveMediaType } from './mockProviders';
 
 export class PrismaMediaRepository implements IMediaRepository {
+  constructor(private readonly injectedPrisma?: any) {}
   private get prisma() {
-    return prisma;
+    return this.injectedPrisma || getDefaultPrisma();
   }
 
   private mapAsset(dbAsset: any): MediaAsset {
@@ -560,7 +573,17 @@ export class PrismaMediaRepository implements IMediaRepository {
     const asset = await this.getById(id, projectId);
     if (!asset) return false;
     const statusUpper = (asset.status as string).toUpperCase();
-    return asset.usageCount === 0 && statusUpper !== 'PUBLISHED';
+    if (statusUpper === 'PUBLISHED') {
+      return false;
+    }
+    const actualCount = await this.prisma.mediaUsageReference.count({
+      where: { assetId: id },
+    });
+    // Disagreement between stored usageCount and actual row count -> FAIL CLOSED
+    if (asset.usageCount !== actualCount) {
+      return false;
+    }
+    return actualCount === 0;
   }
 
   async archiveAsset(id: string, projectId: string): Promise<MediaAsset | undefined> {

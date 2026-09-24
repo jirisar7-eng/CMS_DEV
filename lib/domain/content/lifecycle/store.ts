@@ -218,4 +218,93 @@ export interface ContentLifecycleStore {
   }>>;
   listProjectRevisions?(projectId: string, pageId?: string): Promise<LifecycleRevisionReadProjection[]>;
   recordAudit(params: RecordLifecycleAuditParams): Promise<void>;
+  reconcilePageMediaUsage?(projectId: string, pageId: string): Promise<void>;
+}
+
+export interface ExtractedMediaReference {
+  assetId: string;
+  blockId?: string;
+  blockType?: string;
+  field?: string;
+}
+
+function traverseBlockData(
+  obj: unknown,
+  currentPath: string,
+  block: { id?: string; type?: string },
+  results: ExtractedMediaReference[]
+): void {
+  if (obj === null || obj === undefined) return;
+
+  if (typeof obj === "string") {
+    const match = obj.trim().match(/^\/api\/media\/([a-zA-Z0-9_\-]+)$/);
+    if (match) {
+      results.push({
+        assetId: match[1],
+        blockId: block.id,
+        blockType: block.type,
+        field: currentPath || undefined,
+      });
+    }
+    return;
+  }
+
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length; i++) {
+      const nextPath = currentPath ? `${currentPath}[${i}]` : `[${i}]`;
+      traverseBlockData(obj[i], nextPath, block, results);
+    }
+    return;
+  }
+
+  if (typeof obj === "object") {
+    for (const [key, value] of Object.entries(obj)) {
+      const nextPath = currentPath ? `${currentPath}.${key}` : key;
+      traverseBlockData(value, nextPath, block, results);
+    }
+  }
+}
+
+function traverseContentBlocks(blocks: unknown, results: ExtractedMediaReference[]): void {
+  if (!Array.isArray(blocks)) return;
+  for (const block of blocks) {
+    if (!block || typeof block !== "object") continue;
+    const bId = typeof block.id === "string" ? block.id : undefined;
+    const bType = typeof block.type === "string" ? block.type : undefined;
+
+    if (block.data && typeof block.data === "object") {
+      traverseBlockData(block.data, "", { id: bId, type: bType }, results);
+    }
+
+    if (Array.isArray(block.children)) {
+      traverseContentBlocks(block.children, results);
+    }
+  }
+}
+
+export function extractMediaReferences(content: unknown): ExtractedMediaReference[] {
+  if (!content || typeof content !== "object") return [];
+  const rawResults: ExtractedMediaReference[] = [];
+  const c = content as Record<string, unknown>;
+
+  if (Array.isArray(c.blocks)) {
+    traverseContentBlocks(c.blocks, rawResults);
+  }
+
+  const seen = new Set<string>();
+  const deduplicated: ExtractedMediaReference[] = [];
+
+  for (const ref of rawResults) {
+    const key = `${ref.assetId}:::${ref.blockId || ""}:::${ref.field || ""}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(ref);
+    }
+  }
+
+  return deduplicated;
+}
+
+export function hasMediaReferences(content: unknown): boolean {
+  return extractMediaReferences(content).length > 0;
 }
