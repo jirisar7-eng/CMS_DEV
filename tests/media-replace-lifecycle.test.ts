@@ -33,13 +33,17 @@ Module.prototype.require = function (id: string) {
     return { getSignedUrl: async () => 'https://mock-storage.s3.amazonaws.com/direct-signed-url' };
   }
   if (id === 'saxes' || id.endsWith('mock-saxes.js')) {
-    return {
-      SaxesParser: class {
-        on() {}
-        write() {}
-        close() {}
-      },
-    };
+    try {
+      return originalRequire.call(this, 'saxes');
+    } catch {
+      return {
+        SaxesParser: class {
+          on() {}
+          write() { return this; }
+          close() { return this; }
+        },
+      };
+    }
   }
   if (id.startsWith('@/')) {
     const relativePath = id.slice(2);
@@ -177,6 +181,9 @@ class MockInMemoryMediaRepository implements IMediaRepository {
     if (!projectId) return undefined;
     const asset = await this.getById(assetId, projectId);
     if (!asset) return undefined;
+    if ((asset.status as string).toUpperCase() === "PUBLISHED") {
+      throw new Error("Cannot restore version of a PUBLISHED media asset");
+    }
 
     const version = this.versions.find(v => v.id === versionId && v.assetId === assetId);
     if (!version) return undefined;
@@ -761,5 +768,85 @@ describe('SYN-MEDIA-002 Phase A1: Secure Media Replace & Version Safety Lifecycl
       },
       /cannot be READY or PUBLISHED/i
     );
+  });
+
+  it('11. Restoring version on PUBLISHED current asset is strictly rejected by service and repository mutation path', async () => {
+    const repository = new MockInMemoryMediaRepository();
+    const storageProvider = new MockTrackingStorageProvider();
+    const scanner = new MockDeterministicScanner();
+    const service = new MediaService(repository, storageProvider, scanner);
+
+    const asset = await service.uploadAsset(
+      { name: 'published_doc.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
+      { title: 'Published Doc' },
+      projectId
+    );
+
+    // Create a previous version while asset is not published
+    const v1 = await service.createVersion(
+      asset.id,
+      {
+        status: 'READY',
+        mimeType: 'image/png',
+        sizeBytes: 1234,
+        storageKey: 'ast_v1_key',
+        security: {
+          validated: true,
+          contentVerified: true,
+          scannerId: 'clamav',
+          canonicalChecksumSha256: 'some-hash',
+        },
+        originalFilename: 'v1_doc.png',
+      },
+      projectId
+    );
+
+    // Publish current asset
+    await service.changeStatus(asset.id, 'PUBLISHED', projectId);
+    assert.strictEqual((await service.getAsset(asset.id, projectId))?.status, 'PUBLISHED');
+
+    // Service-level reject
+    await assert.rejects(
+      async () => {
+        await service.setCurrentVersion(asset.id, v1.id, projectId);
+      },
+      /Cannot restore version of a PUBLISHED media asset/
+    );
+
+    // Repository mutation path also directly rejects
+    await assert.rejects(
+      async () => {
+        await repository.setCurrentVersion(asset.id, v1.id, projectId);
+      },
+      /Cannot restore version of a PUBLISHED media asset/
+    );
+  });
+
+  it('12. Restoring version preserves canonical URL /api/media/<id> and no direct storage URL becomes canonical', async () => {
+    const repository = new MockInMemoryMediaRepository();
+    const storageProvider = new MockTrackingStorageProvider();
+    const scanner = new MockDeterministicScanner();
+    const service = new MediaService(repository, storageProvider, scanner);
+
+    const asset = await service.uploadAsset(
+      { name: 'test.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
+      { title: 'Test Asset' },
+      projectId
+    );
+
+    const replaced = await service.replaceAsset(
+      asset.id,
+      { name: 'test_v2.png', type: 'image/png', size: VALID_PNG_BUFFER_V2.length, data: VALID_PNG_BUFFER_V2 },
+      projectId
+    );
+
+    assert.strictEqual(replaced.url, `/api/media/${asset.id}`);
+    assert.doesNotMatch(replaced.url, /s3\.amazonaws\.com|https?:\/\//);
+
+    const versions = await service.listVersions(asset.id, projectId);
+    const restored = await service.setCurrentVersion(asset.id, versions[0].id, projectId);
+    assert.ok(restored);
+    assert.strictEqual(restored.url, `/api/media/${asset.id}`);
+    assert.doesNotMatch(restored.url, /s3\.amazonaws\.com|https?:\/\//);
   });
 });
