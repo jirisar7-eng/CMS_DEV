@@ -6,17 +6,19 @@ import { hasPermission } from "@/lib/auth/rbac";
 
 export async function GET() {
   const context = await getActiveProjectContext();
-  if (context.status !== "PROJECT_VALID" || !context.projectId) {
+  if (context.status !== "PROJECT_VALID" || !context.projectId || !context.userId) {
     return NextResponse.json({ error: context.status }, { status: 403 });
   }
+  const projectId = context.projectId;
+  const userId = context.userId;
 
-  if (!await hasPermission(context.userId!, "navigation.view", context.projectId!)) {
+  if (!await hasPermission(userId, "navigation.view", projectId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
     const navSets = await prisma.navigationSet.findMany({
-      where: { projectId: context.projectId },
+      where: { projectId },
       include: {
         items: {
           orderBy: { order: "asc" }
@@ -64,8 +66,10 @@ export async function POST(req: Request) {
   if (context.status !== "PROJECT_VALID" || !context.projectId || !context.userId) {
     return NextResponse.json({ error: context.status }, { status: 403 });
   }
+  const projectId = context.projectId;
+  const userId = context.userId;
 
-  if (!await hasPermission(context.userId, "navigation.create", context.projectId)) {
+  if (!await hasPermission(userId, "navigation.create", projectId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -75,7 +79,7 @@ export async function POST(req: Request) {
 
     const navSet = await prisma.navigationSet.create({
       data: {
-        projectId: context.projectId,
+        projectId,
         key: String(key).trim(),
         name: String(name).trim(),
         context: navContext,
@@ -91,9 +95,9 @@ export async function POST(req: Request) {
     await logAudit({
       action: "NAVIGATION_SET_CREATED",
       scopeType: "PROJECT",
-      scopeId: context.projectId,
-      actorId: context.userId,
-      metadata: { setId: navSet.id, key: navSet.key },
+      scopeId: projectId,
+      actorId: userId,
+      metadata: { setId: navSet.id, name: navSet.name, key: navSet.key },
     });
 
     return NextResponse.json({

@@ -79,7 +79,10 @@ export async function PATCH(
   if (context.status !== "PROJECT_VALID" || !context.projectId || !context.userId) {
     return NextResponse.json({ error: context.status }, { status: 403 });
   }
-  if (!await hasPermission(context.userId, "navigation.edit", context.projectId)) {
+  const projectId = context.projectId;
+  const userId = context.userId;
+
+  if (!await hasPermission(userId, "navigation.edit", projectId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -105,58 +108,71 @@ export async function PATCH(
       }
 
       const updatedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+        const set = await fetchSetWithItems(setId, projectId, tx);
         if (set.status === "ARCHIVED") {
           throw new Error("ARCHIVED_IMMUTABLE");
         }
 
+        const updateData: any = {};
+        if (body.name !== undefined) {
+          const cleanName = sanitizeLabel(body.name);
+          if (!cleanName) throw new Error("INVALID_NAME");
+          updateData.name = cleanName;
+        }
+        if (body.key !== undefined) {
+          const cleanKey = String(body.key).trim();
+          if (!cleanKey) throw new Error("INVALID_KEY");
+          updateData.key = cleanKey;
+        }
+        if (body.context !== undefined) {
+          if (!["HEADER", "FOOTER", "MOBILE", "PORTAL", "CUSTOM"].includes(body.context)) {
+            throw new Error("INVALID_CONTEXT");
+          }
+          updateData.context = body.context;
+        }
+        if (body.description !== undefined) {
+          updateData.description = body.description ? String(body.description).trim() : null;
+        }
+
+        updateData.version = { increment: 1 };
+
         const updateResult = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
             version: set.version,
             status: { not: "ARCHIVED" },
           },
-          data: {
-            name: body.name !== undefined ? String(body.name).trim() : set.name,
-            key: body.key !== undefined ? String(body.key).trim() : set.key,
-            description:
-              body.description !== undefined
-                ? body.description
-                  ? String(body.description).trim()
-                  : null
-                : set.description,
-            context: body.context !== undefined ? body.context : set.context,
-            version: { increment: 1 },
-          },
+          data: updateData,
         });
 
         if (updateResult.count !== 1) {
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
       });
 
-      await prisma.auditLog.create({
-        data: {
-          action: "NAVIGATION_SET_UPDATED",
-          scopeType: "PROJECT",
-          scopeId: context.projectId,
-          actorId: context.userId,
-          metadata: { setId, name: updatedSet.name, key: updatedSet.key },
+      await logAudit({
+        action: "NAVIGATION_SET_UPDATED",
+        scopeType: "PROJECT",
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
         },
       });
 
       return NextResponse.json(formatSetResponse(updatedSet));
     }
 
-    // 2. Update Item
+    // 2. Update Single Item
     if (action[0] === "items" && action.length === 2) {
       const itemId = action[1];
-
       const updatedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+        const set = await fetchSetWithItems(setId, projectId, tx);
         if (set.status === "ARCHIVED") {
           throw new Error("ARCHIVED_IMMUTABLE");
         }
@@ -164,63 +180,68 @@ export async function PATCH(
         const item = set.items.find((i: any) => i.id === itemId);
         if (!item) throw new Error("ITEM_NOT_FOUND");
 
-        const dataToUpdate: any = {};
-        const nextType = body.type !== undefined ? body.type : item.type;
-
-        if (body.label !== undefined) dataToUpdate.label = sanitizeLabel(body.label);
-        if (body.type !== undefined) dataToUpdate.type = body.type;
-
-        if (body.externalUrl !== undefined) {
-          if (nextType === "EXTERNAL_LINK" && body.externalUrl) {
-            const urlCheck = isSafeUrl(body.externalUrl);
-            if (!urlCheck.safe) throw new Error("INVALID_URL: " + urlCheck.reason);
-          }
-          dataToUpdate.externalUrl = nextType === "EXTERNAL_LINK" ? body.externalUrl : null;
+        const updateItemData: any = {};
+        if (body.label !== undefined) {
+          const cleanLabel = sanitizeLabel(body.label);
+          if (!cleanLabel) throw new Error("INVALID_LABEL");
+          updateItemData.label = cleanLabel;
         }
-
+        if (body.type !== undefined) {
+          if (!["PAGE", "EXTERNAL_LINK", "ANCHOR", "GROUP"].includes(body.type)) {
+            throw new Error("INVALID_TYPE");
+          }
+          updateItemData.type = body.type;
+        }
         if (body.pageId !== undefined) {
-          if (nextType === "PAGE" && body.pageId) {
-            const page = await tx.page.findUnique({ where: { id: body.pageId } });
-            if (!page || page.projectId !== context.projectId) {
-              throw new Error("PAGE_NOT_FOUND_OR_CROSS_PROJECT");
-            }
-          }
-          dataToUpdate.pageId = nextType === "PAGE" ? body.pageId : null;
+          updateItemData.pageId = body.pageId ? String(body.pageId).trim() : null;
         }
-
+        if (body.externalUrl !== undefined) {
+          if (body.externalUrl) {
+            const urlCheck = isSafeUrl(body.externalUrl);
+            if (!urlCheck.safe) throw new Error("INVALID_EXTERNAL_URL");
+            updateItemData.externalUrl = urlCheck.sanitizedUrl;
+          } else {
+            updateItemData.externalUrl = null;
+          }
+        }
         if (body.anchor !== undefined) {
-          if (nextType === "ANCHOR" && body.anchor) {
+          if (body.anchor) {
             if (!isValidAnchor(body.anchor)) throw new Error("INVALID_ANCHOR");
+            updateItemData.anchor = String(body.anchor).trim();
+          } else {
+            updateItemData.anchor = null;
           }
-          dataToUpdate.anchor = nextType === "ANCHOR" ? body.anchor : null;
         }
-
-        if (body.icon !== undefined) dataToUpdate.icon = body.icon;
-        if (body.visibility !== undefined) dataToUpdate.visibility = body.visibility;
-        if (body.openInNewTab !== undefined) dataToUpdate.openInNewTab = body.openInNewTab;
-
+        if (body.icon !== undefined) {
+          updateItemData.icon = body.icon ? String(body.icon).trim() : null;
+        }
+        if (body.visibility !== undefined) {
+          updateItemData.visibility = Boolean(body.visibility);
+        }
+        if (body.openInNewTab !== undefined) {
+          updateItemData.openInNewTab = Boolean(body.openInNewTab);
+        }
+        if (body.order !== undefined) {
+          updateItemData.order = Number(body.order);
+        }
         if (body.parentId !== undefined) {
-          if (body.parentId !== null && !set.items.some((i: any) => i.id === body.parentId)) {
-            throw new Error("PARENT_OUTSIDE_SET");
+          const newParentId = body.parentId ? String(body.parentId).trim() : null;
+          if (newParentId === itemId) throw new Error("SELF_PARENT");
+          if (newParentId && checkCycle(set.items, itemId, newParentId)) {
+            throw new Error("CYCLIC_HIERARCHY");
           }
-          if (body.parentId === itemId) {
-            throw new Error("SELF_PARENT");
-          }
-          if (checkCycle(set.items, itemId, body.parentId)) {
-            throw new Error("CYCLE_DETECTED");
-          }
-          dataToUpdate.parentId = body.parentId;
+          updateItemData.parentId = newParentId;
         }
 
         await tx.navigationItem.update({
           where: { id: itemId },
-          data: dataToUpdate,
+          data: updateItemData,
         });
 
         const vRes = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
             version: set.version,
             status: { not: "ARCHIVED" },
           },
@@ -231,7 +252,80 @@ export async function PATCH(
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
+      });
+
+      await logAudit({
+        action: "NAVIGATION_SET_UPDATED",
+        scopeType: "PROJECT",
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
+      });
+
+      return NextResponse.json(formatSetResponse(updatedSet));
+    }
+
+    // 3. Batch Reorder Items
+    if (action[0] === "items" && action[1] === "reorder") {
+      const itemsPayload: Array<{ id: string; order: number; parentId?: string | null }> =
+        body.items || [];
+
+      if (!Array.isArray(itemsPayload)) {
+        return NextResponse.json({ error: "Invalid items payload" }, { status: 400 });
+      }
+
+      const updatedSet = await prisma.$transaction(async (tx: any) => {
+        const set = await fetchSetWithItems(setId, projectId, tx);
+        if (set.status === "ARCHIVED") {
+          throw new Error("ARCHIVED_IMMUTABLE");
+        }
+
+        for (const item of itemsPayload) {
+          if (item.parentId === item.id) throw new Error("SELF_PARENT");
+          if (item.parentId && checkCycle(set.items, item.id, item.parentId)) {
+            throw new Error("CYCLIC_HIERARCHY");
+          }
+          await tx.navigationItem.update({
+            where: { id: item.id },
+            data: {
+              order: item.order,
+              ...(item.parentId !== undefined ? { parentId: item.parentId } : {}),
+            },
+          });
+        }
+
+        const vRes = await tx.navigationSet.updateMany({
+          where: {
+            id: setId,
+            projectId,
+            version: set.version,
+            status: { not: "ARCHIVED" },
+          },
+          data: { version: { increment: 1 } },
+        });
+
+        if (vRes.count !== 1) {
+          throw new Error("CONFLICT_CONCURRENT_MUTATION");
+        }
+
+        return fetchSetWithItems(setId, projectId, tx);
+      });
+
+      await logAudit({
+        action: "NAVIGATION_SET_UPDATED",
+        scopeType: "PROJECT",
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
       });
 
       return NextResponse.json(formatSetResponse(updatedSet));
@@ -246,13 +340,19 @@ export async function PATCH(
       return NextResponse.json({ error: "Archivovanou navigační sadu nelze upravovat." }, { status: 400 });
     }
     if (error.message === "CONFLICT_CONCURRENT_MUTATION") {
-      return NextResponse.json({ error: "Souběžná změna navigační sady (konflikt verzí)." }, { status: 409 });
+      return NextResponse.json(
+        { error: "Souběžná změna nebo neplatný stav navigační sady (konflikt verzí)." },
+        { status: 409 }
+      );
     }
-    if (error.message === "PAGE_NOT_FOUND_OR_CROSS_PROJECT") {
-      return NextResponse.json({ error: "Stránka nebyla nalezena nebo nepatří k tomuto projektu." }, { status: 400 });
+    if (error.message === "CYCLIC_HIERARCHY" || error.message === "SELF_PARENT") {
+      return NextResponse.json({ error: "Cyklická závislost v hierarchii navigace." }, { status: 400 });
+    }
+    if (error.message === "INVALID_EXTERNAL_URL") {
+      return NextResponse.json({ error: "Nebezpečná nebo neplatná externí URL." }, { status: 400 });
     }
     if (error.message === "INVALID_ANCHOR") {
-      return NextResponse.json({ error: "Kotva musí začínat znakem # a nesmí obsahovat mezery." }, { status: 400 });
+      return NextResponse.json({ error: "Neplatný formát kotvy." }, { status: 400 });
     }
     return NextResponse.json({ error: error.message || "Failed to update" }, { status: 500 });
   }
@@ -266,37 +366,36 @@ export async function POST(
   if (context.status !== "PROJECT_VALID" || !context.projectId || !context.userId) {
     return NextResponse.json({ error: context.status }, { status: 403 });
   }
+  const projectId = context.projectId;
+  const userId = context.userId;
 
   const { setId, action } = await params;
   const body = await req.json().catch(() => ({}));
 
   try {
-    // 1. Explicit PUBLISH Action
-    if (action?.[0] === "publish" && action.length === 1) {
-      if (!await hasPermission(context.userId, "navigation.publish", context.projectId)) {
-        return NextResponse.json({ error: "Forbidden: Missing navigation.publish permission" }, { status: 403 });
+    // 1. Publish Navigation Set
+    if (action?.[0] === "publish") {
+      if (!await hasPermission(userId, "navigation.publish", projectId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      const publishedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+      const updatedSet = await prisma.$transaction(async (tx: any) => {
+        const set = await fetchSetWithItems(setId, projectId, tx);
+
         if (set.status === "ARCHIVED") {
           throw new Error("ARCHIVED_IMMUTABLE");
         }
 
-        // Validate idempotent publish: check if already published with identical version & valid snapshot
-        if (set.status === "PUBLISHED" && set.publishedVersion === set.version && set.publishedSnapshot) {
-          const parsed = parsePublishedNavigationSnapshot(set.publishedSnapshot);
-          if (parsed) {
-            return set; // Idempotent return
-          }
+        const expectedVersion = body.expectedVersion !== undefined ? Number(body.expectedVersion) : set.version;
+        if (expectedVersion !== set.version) {
+          throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        // Fetch active project pages inside transaction
-        const pages = await tx.page.findMany({
-          where: { projectId: context.projectId },
+        const pages: Array<{ id: string }> = await tx.page.findMany({
+          where: { projectId },
           select: { id: true },
         });
-        const availablePageIds = new Set(pages.map((p: any) => p.id));
+        const availablePageIds = new Set<string>(pages.map((p) => p.id));
 
         const snapshotResult = buildPublishedNavigationSnapshot(
           {
@@ -304,7 +403,19 @@ export async function POST(
             name: set.name,
             context: set.context,
             description: set.description,
-            items: set.items as any,
+            items: set.items.map((i: any) => ({
+              id: i.id,
+              parentId: i.parentId,
+              type: i.type,
+              label: i.label,
+              pageId: i.pageId,
+              externalUrl: i.externalUrl,
+              anchor: i.anchor,
+              icon: i.icon,
+              visibility: i.visibility,
+              openInNewTab: i.openInNewTab,
+              order: i.order,
+            })),
           },
           { availablePageIds }
         );
@@ -319,7 +430,7 @@ export async function POST(
         const updateResult = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
             version: set.version,
             status: { not: "ARCHIVED" },
           },
@@ -335,39 +446,47 @@ export async function POST(
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
       });
 
       await logAudit({
-        action: "NAVIGATION_SET_PUBLISHED",
+        action: "NAVIGATION_SET_UPDATED",
         scopeType: "PROJECT",
-        scopeId: context.projectId,
-        actorId: context.userId,
-        metadata: { setId, publishedVersion: publishedSet.publishedVersion },
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
       });
 
-      return NextResponse.json(formatSetResponse(publishedSet));
+      return NextResponse.json(formatSetResponse(updatedSet));
     }
 
-    // 2. Explicit UNPUBLISH Action
-    if (action?.[0] === "unpublish" && action.length === 1) {
-      if (!await hasPermission(context.userId, "navigation.publish", context.projectId)) {
-        return NextResponse.json({ error: "Forbidden: Missing navigation.publish permission" }, { status: 403 });
+    // 2. Unpublish Navigation Set
+    if (action?.[0] === "unpublish") {
+      if (!await hasPermission(userId, "navigation.publish", projectId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      const unpublishedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+      const updatedSet = await prisma.$transaction(async (tx: any) => {
+        const set = await fetchSetWithItems(setId, projectId, tx);
+
         if (set.status === "ARCHIVED") {
           throw new Error("ARCHIVED_IMMUTABLE");
         }
-        if (set.status === "DRAFT") {
-          return set; // Idempotent
+
+        const expectedVersion = body.expectedVersion !== undefined ? Number(body.expectedVersion) : set.version;
+        if (expectedVersion !== set.version) {
+          throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
         const updateResult = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
+            version: set.version,
             status: "PUBLISHED",
           },
           data: {
@@ -379,39 +498,47 @@ export async function POST(
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
       });
 
       await logAudit({
-        action: "NAVIGATION_SET_UNPUBLISHED",
+        action: "NAVIGATION_SET_UPDATED",
         scopeType: "PROJECT",
-        scopeId: context.projectId,
-        actorId: context.userId,
-        metadata: { setId },
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
       });
 
-      return NextResponse.json(formatSetResponse(unpublishedSet));
+      return NextResponse.json(formatSetResponse(updatedSet));
     }
 
-    // 3. Explicit ARCHIVE Action
-    if (action?.[0] === "archive" && action.length === 1) {
-      if (!await hasPermission(context.userId, "navigation.publish", context.projectId)) {
-        return NextResponse.json({ error: "Forbidden: Missing navigation.publish permission" }, { status: 403 });
+    // 3. Archive Navigation Set
+    if (action?.[0] === "archive") {
+      if (!await hasPermission(userId, "navigation.delete", projectId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      const archivedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+      const updatedSet = await prisma.$transaction(async (tx: any) => {
+        const set = await fetchSetWithItems(setId, projectId, tx);
+
         if (set.status === "PUBLISHED") {
           throw new Error("CANNOT_ARCHIVE_PUBLISHED");
         }
-        if (set.status === "ARCHIVED") {
-          return set; // Idempotent
+
+        const expectedVersion = body.expectedVersion !== undefined ? Number(body.expectedVersion) : set.version;
+        if (expectedVersion !== set.version) {
+          throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
         const updateResult = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
+            version: set.version,
             status: "DRAFT",
           },
           data: {
@@ -423,72 +550,101 @@ export async function POST(
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
       });
 
       await logAudit({
-        action: "NAVIGATION_SET_ARCHIVED",
+        action: "NAVIGATION_SET_UPDATED",
         scopeType: "PROJECT",
-        scopeId: context.projectId,
-        actorId: context.userId,
-        metadata: { setId },
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
       });
 
-      return NextResponse.json(formatSetResponse(archivedSet));
+      return NextResponse.json(formatSetResponse(updatedSet));
     }
 
-    // Item management operations require navigation.edit
-    if (!await hasPermission(context.userId, "navigation.edit", context.projectId)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // 4. Create Item
+    // 4. Create Navigation Item
     if (action?.[0] === "items" && action.length === 1) {
+      if (!await hasPermission(userId, "navigation.edit", projectId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const {
+        parentId,
+        type,
+        label,
+        pageId,
+        externalUrl,
+        anchor,
+        icon,
+        visibility = true,
+        openInNewTab = false,
+      } = body;
+
+      const cleanLabel = sanitizeLabel(label);
+      if (!cleanLabel) {
+        return NextResponse.json({ error: "Neplatný název položky." }, { status: 400 });
+      }
+
+      if (!["PAGE", "EXTERNAL_LINK", "ANCHOR", "GROUP"].includes(type)) {
+        return NextResponse.json({ error: "Neplatný typ položky." }, { status: 400 });
+      }
+
+      let sanitizedUrl: string | null = null;
+      if (type === "EXTERNAL_LINK") {
+        if (!externalUrl) {
+          return NextResponse.json({ error: "Externí odkaz vyžaduje URL." }, { status: 400 });
+        }
+        const urlCheck = isSafeUrl(externalUrl);
+        if (!urlCheck.safe) {
+          return NextResponse.json({ error: "Nebezpečná nebo neplatná externí URL." }, { status: 400 });
+        }
+        sanitizedUrl = urlCheck.sanitizedUrl;
+      }
+
+      let sanitizedAnchor: string | null = null;
+      if (type === "ANCHOR") {
+        if (!isValidAnchor(anchor)) {
+          return NextResponse.json({ error: "Neplatný formát kotvy (očekáván tvar #sekce)." }, { status: 400 });
+        }
+        sanitizedAnchor = String(anchor).trim();
+      }
+
       const updatedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+        const set = await fetchSetWithItems(setId, projectId, tx);
         if (set.status === "ARCHIVED") {
           throw new Error("ARCHIVED_IMMUTABLE");
         }
 
-        if (body.type === "EXTERNAL_LINK" && body.externalUrl) {
-          const urlCheck = isSafeUrl(body.externalUrl);
-          if (!urlCheck.safe) throw new Error("INVALID_URL: " + urlCheck.reason);
-        }
-        if (body.pageId && body.type === "PAGE") {
-          const page = await tx.page.findUnique({ where: { id: body.pageId } });
-          if (!page || page.projectId !== context.projectId) {
-            throw new Error("PAGE_NOT_FOUND_OR_CROSS_PROJECT");
-          }
-        }
-        if (body.type === "ANCHOR" && body.anchor) {
-          if (!isValidAnchor(body.anchor)) throw new Error("INVALID_ANCHOR");
-        }
-        if (body.parentId && !set.items.some((i: any) => i.id === body.parentId)) {
-          throw new Error("PARENT_OUTSIDE_SET");
-        }
-
-        const order = set.items.filter((i: any) => i.parentId === (body.parentId || null)).length + 1;
+        const siblings = set.items.filter((i: any) => i.parentId === (parentId || null));
+        const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s: any) => s.order)) : 0;
+        const newOrder = maxOrder + 1;
 
         await tx.navigationItem.create({
           data: {
             setId,
-            parentId: body.parentId || null,
-            type: body.type,
-            label: sanitizeLabel(body.label),
-            pageId: body.type === "PAGE" ? body.pageId : null,
-            externalUrl: body.type === "EXTERNAL_LINK" ? body.externalUrl : null,
-            anchor: body.type === "ANCHOR" ? body.anchor : null,
-            icon: body.icon,
-            visibility: body.visibility ?? true,
-            openInNewTab: body.openInNewTab ?? false,
-            order,
+            parentId: parentId || null,
+            type,
+            label: cleanLabel,
+            pageId: type === "PAGE" ? pageId || null : null,
+            externalUrl: sanitizedUrl,
+            anchor: sanitizedAnchor,
+            icon: icon ? String(icon).trim() : null,
+            visibility: Boolean(visibility),
+            openInNewTab: Boolean(openInNewTab),
+            order: newOrder,
           },
         });
 
         const vRes = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
             version: set.version,
             status: { not: "ARCHIVED" },
           },
@@ -499,19 +655,35 @@ export async function POST(
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
+      });
+
+      await logAudit({
+        action: "NAVIGATION_SET_UPDATED",
+        scopeType: "PROJECT",
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
       });
 
       return NextResponse.json(formatSetResponse(updatedSet));
     }
 
-    // 5. Action on Item (move, indent, outdent, toggle-visibility)
+    // 5. Item Hierarchy Actions (indent, outdent, move)
     if (action?.[0] === "items" && action.length === 3) {
+      if (!await hasPermission(userId, "navigation.edit", projectId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
       const itemId = action[1];
       const itemAction = action[2];
 
       const updatedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+        const set = await fetchSetWithItems(setId, projectId, tx);
         if (set.status === "ARCHIVED") {
           throw new Error("ARCHIVED_IMMUTABLE");
         }
@@ -519,19 +691,10 @@ export async function POST(
         const item = set.items.find((i: any) => i.id === itemId);
         if (!item) throw new Error("ITEM_NOT_FOUND");
 
-        if (itemAction === "toggle-visibility") {
-          await tx.navigationItem.update({
-            where: { id: itemId },
-            data: { visibility: !item.visibility },
-          });
-        } else if (itemAction === "indent") {
-          const { flatItems } = flattenAndCalculateDepths(set.items as any);
-          const currentIndex = flatItems.findIndex((i: any) => i.id === itemId);
-          const currentItem = flatItems[currentIndex];
-          if (currentItem.depth! >= MAX_NAVIGATION_DEPTH) {
-            throw new Error("MAX_DEPTH_EXCEEDED");
-          }
-          const siblings = flatItems.filter((i: any) => i.parentId === currentItem.parentId);
+        if (itemAction === "indent") {
+          const siblings = set.items
+            .filter((i: any) => i.parentId === item.parentId)
+            .sort((a: any, b: any) => a.order - b.order);
           const siblingIndex = siblings.findIndex((i: any) => i.id === itemId);
           if (siblingIndex <= 0) {
             throw new Error("INDENT_NO_PREVIOUS_SIBLING");
@@ -556,6 +719,7 @@ export async function POST(
           const parentItem = set.items.find((i: any) => i.id === item.parentId);
           const newParentId = parentItem ? parentItem.parentId : null;
           const newOrder = (parentItem?.order || 0) + 1;
+
           await tx.navigationItem.update({
             where: { id: itemId },
             data: { parentId: newParentId, order: newOrder },
@@ -596,7 +760,7 @@ export async function POST(
         const vRes = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
             version: set.version,
             status: { not: "ARCHIVED" },
           },
@@ -607,7 +771,19 @@ export async function POST(
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
+      });
+
+      await logAudit({
+        action: "NAVIGATION_SET_UPDATED",
+        scopeType: "PROJECT",
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
       });
 
       return NextResponse.json(formatSetResponse(updatedSet));
@@ -654,19 +830,21 @@ export async function DELETE(
   if (context.status !== "PROJECT_VALID" || !context.projectId || !context.userId) {
     return NextResponse.json({ error: context.status }, { status: 403 });
   }
+  const projectId = context.projectId;
+  const userId = context.userId;
 
   const { setId, action } = await params;
 
   try {
     // 1. Delete Item requires navigation.edit
     if (action?.[0] === "items" && action.length === 2) {
-      if (!await hasPermission(context.userId, "navigation.edit", context.projectId)) {
+      if (!await hasPermission(userId, "navigation.edit", projectId)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-
       const itemId = action[1];
+
       const updatedSet = await prisma.$transaction(async (tx: any) => {
-        const set = await fetchSetWithItems(setId, context.projectId, tx);
+        const set = await fetchSetWithItems(setId, projectId, tx);
         if (set.status === "ARCHIVED") {
           throw new Error("ARCHIVED_IMMUTABLE");
         }
@@ -679,7 +857,7 @@ export async function DELETE(
         const vRes = await tx.navigationSet.updateMany({
           where: {
             id: setId,
-            projectId: context.projectId,
+            projectId,
             version: set.version,
             status: { not: "ARCHIVED" },
           },
@@ -690,7 +868,19 @@ export async function DELETE(
           throw new Error("CONFLICT_CONCURRENT_MUTATION");
         }
 
-        return fetchSetWithItems(setId, context.projectId, tx);
+        return fetchSetWithItems(setId, projectId, tx);
+      });
+
+      await logAudit({
+        action: "NAVIGATION_SET_UPDATED",
+        scopeType: "PROJECT",
+        scopeId: projectId,
+        actorId: userId,
+        metadata: {
+          setId: updatedSet.id,
+          name: updatedSet.name,
+          itemCount: updatedSet.items.length,
+        },
       });
 
       return NextResponse.json(formatSetResponse(updatedSet));
@@ -698,7 +888,7 @@ export async function DELETE(
 
     // 2. Delete Set requires navigation.delete
     if (!action || action.length === 0) {
-      if (!await hasPermission(context.userId, "navigation.delete", context.projectId)) {
+      if (!await hasPermission(userId, "navigation.delete", projectId)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
@@ -706,7 +896,7 @@ export async function DELETE(
       const delResult = await prisma.navigationSet.deleteMany({
         where: {
           id: setId,
-          projectId: context.projectId,
+          projectId,
           status: { in: ["DRAFT", "ARCHIVED"] },
         },
       });
@@ -714,7 +904,7 @@ export async function DELETE(
       if (delResult.count === 0) {
         // Check if set exists and is PUBLISHED
         const existingSet = await prisma.navigationSet.findUnique({
-          where: { id: setId, projectId: context.projectId },
+          where: { id: setId, projectId },
           select: { status: true },
         });
 
@@ -731,8 +921,8 @@ export async function DELETE(
       await logAudit({
         action: "NAVIGATION_SET_DELETED",
         scopeType: "PROJECT",
-        scopeId: context.projectId,
-        actorId: context.userId,
+        scopeId: projectId,
+        actorId: userId,
         metadata: { setId },
       });
 
