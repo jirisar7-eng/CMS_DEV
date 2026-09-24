@@ -366,6 +366,9 @@ export class MediaService {
     if (!asset) {
       throw new Error('Media asset not found in project');
     }
+    if ((asset.status as string).toUpperCase() === 'PUBLISHED') {
+      throw new Error('Cannot restore version of a PUBLISHED media asset');
+    }
     return this.repository.setCurrentVersion(assetId, versionId, projectId);
   }
 

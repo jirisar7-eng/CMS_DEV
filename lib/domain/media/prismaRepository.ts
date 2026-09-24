@@ -336,17 +336,33 @@ export class PrismaMediaRepository implements IMediaRepository {
   }
 
   async setCurrentVersion(assetId: string, versionId: string, projectId: string): Promise<MediaAsset | undefined> {
-    if (!projectId) return undefined;
-    const asset = await this.getById(assetId, projectId);
-    if (!asset) return undefined;
-
-    const version = await this.prisma.mediaAssetVersion.findFirst({
-      where: { id: versionId, assetId },
-    });
-    if (!version) return undefined;
+    if (!projectId) throw new Error('projectId is required for setCurrentVersion');
 
     return await this.prisma.$transaction(async (tx: any) => {
-      // 1. Snapshot current asset into a new MediaAssetVersion before switching
+      // 1. Authoritative lookup inside transaction scoped to assetId + projectId
+      const dbAsset = await tx.mediaAsset.findFirst({
+        where: { id: assetId, projectId },
+        include: { usageReferences: true },
+      });
+      if (!dbAsset) {
+        throw new Error(`Media asset not found in project ${projectId}`);
+      }
+      const asset = this.mapAsset(dbAsset);
+
+      // 2. Authoritative fail-closed guard against restoring on PUBLISHED asset
+      if ((asset.status as string).toUpperCase() === 'PUBLISHED') {
+        throw new Error('Cannot restore version of a PUBLISHED media asset');
+      }
+
+      // 3. Load target MediaAssetVersion belonging to assetId
+      const version = await tx.mediaAssetVersion.findFirst({
+        where: { id: versionId, assetId },
+      });
+      if (!version) {
+        throw new Error(`Target version ${versionId} not found for asset ${assetId}`);
+      }
+
+      // 4. Snapshot current asset into a new MediaAssetVersion before switching
       const aggregate = await tx.mediaAssetVersion.aggregate({
         where: { assetId },
         _max: { versionNumber: true },

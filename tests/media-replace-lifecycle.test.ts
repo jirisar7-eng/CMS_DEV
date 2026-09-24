@@ -57,6 +57,7 @@ import assert from 'node:assert';
 import crypto from 'crypto';
 
 import { MediaService } from '../lib/domain/media/service';
+import { PrismaMediaRepository } from '../lib/domain/media/prismaRepository';
 import {
   MediaAsset,
   MediaAssetVersion,
@@ -803,7 +804,11 @@ describe('SYN-MEDIA-002 Phase A1: Secure Media Replace & Version Safety Lifecycl
 
     // Publish current asset
     await service.changeStatus(asset.id, 'PUBLISHED', projectId);
-    assert.strictEqual((await service.getAsset(asset.id, projectId))?.status, 'PUBLISHED');
+    const publishedAsset = await service.getAsset(asset.id, projectId);
+    assert.strictEqual(publishedAsset?.status, 'PUBLISHED');
+    const originalStorageKey = publishedAsset?.storageKey;
+    const originalSecurity = JSON.stringify(publishedAsset?.security);
+    const initialVersions = await service.listVersions(asset.id, projectId);
 
     // Service-level reject
     await assert.rejects(
@@ -813,6 +818,10 @@ describe('SYN-MEDIA-002 Phase A1: Secure Media Replace & Version Safety Lifecycl
       /Cannot restore version of a PUBLISHED media asset/
     );
 
+    // Rejection created no new version snapshot
+    const versionsAfterServiceReject = await service.listVersions(asset.id, projectId);
+    assert.strictEqual(versionsAfterServiceReject.length, initialVersions.length);
+
     // Repository mutation path also directly rejects
     await assert.rejects(
       async () => {
@@ -820,6 +829,208 @@ describe('SYN-MEDIA-002 Phase A1: Secure Media Replace & Version Safety Lifecycl
       },
       /Cannot restore version of a PUBLISHED media asset/
     );
+
+    // Rejection created no new version snapshot
+    const versionsAfterRepoReject = await service.listVersions(asset.id, projectId);
+    assert.strictEqual(versionsAfterRepoReject.length, initialVersions.length);
+
+    // Asset bytes and security remain strictly unchanged
+    const assetAfter = await service.getAsset(asset.id, projectId);
+    assert.strictEqual(assetAfter?.storageKey, originalStorageKey);
+    assert.strictEqual(JSON.stringify(assetAfter?.security), originalSecurity);
+    assert.strictEqual(assetAfter?.status, 'PUBLISHED');
+  });
+
+  it('11b. PrismaMediaRepository transaction guard independently rejects PUBLISHED restore with no snapshots or mutations', async () => {
+    let transactionCreatedSnapshot = false;
+    let transactionUpdatedAsset = false;
+
+    const mockPrisma = {
+      $transaction: async (fn: any) => {
+        return fn({
+          mediaAsset: {
+            findFirst: async ({ where }: any) => {
+              if (where.id === 'ast-pub-1' && where.projectId === projectId) {
+                return {
+                  id: 'ast-pub-1',
+                  projectId,
+                  status: 'PUBLISHED',
+                  storageKey: 'original-pub-key',
+                  filename: 'pub.png',
+                  mimeType: 'image/png',
+                  mediaType: 'image',
+                  sizeBytes: 1000,
+                  security: { clean: true, scanned: true, contentVerified: true, scannerId: 'clamav', checksumSha256: 'abc' },
+                  usageReferences: [],
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                };
+              }
+              return null;
+            },
+            update: async () => {
+              transactionUpdatedAsset = true;
+              return {};
+            },
+          },
+          mediaAssetVersion: {
+            findFirst: async () => {
+              return {
+                id: 'ver-old',
+                assetId: 'ast-pub-1',
+                storageKey: 'old-key',
+                originalFilename: 'old.png',
+                mimeType: 'image/png',
+                sizeBytes: 800,
+                status: 'READY',
+                security: { clean: true, scanned: true, contentVerified: true, scannerId: 'clamav', checksumSha256: 'xyz' },
+              };
+            },
+            aggregate: async () => ({ _max: { versionNumber: 1 } }),
+            create: async () => {
+              transactionCreatedSnapshot = true;
+              return {};
+            },
+          },
+        });
+      },
+    };
+
+    const prismaRepo = new PrismaMediaRepository(mockPrisma);
+
+    // Direct repository invocation fails closed on PUBLISHED asset
+    await assert.rejects(
+      async () => {
+        await prismaRepo.setCurrentVersion('ast-pub-1', 'ver-old', projectId);
+      },
+      /Cannot restore version of a PUBLISHED media asset/
+    );
+
+    // Invariant: Guard executed before snapshot creation and update
+    assert.strictEqual(transactionCreatedSnapshot, false, 'No version snapshot should be created on rejected PUBLISHED restore');
+    assert.strictEqual(transactionUpdatedAsset, false, 'Asset must not be updated on rejected PUBLISHED restore');
+
+    // Cross-project isolation: fails closed if asset not found in project
+    await assert.rejects(
+      async () => {
+        await prismaRepo.setCurrentVersion('ast-pub-1', 'ver-old', 'wrong-project-xyz');
+      },
+      /Media asset not found in project wrong-project-xyz/
+    );
+  });
+
+  it('11c. Service-level guard fails closed before repository is even invoked on PUBLISHED asset', async () => {
+    let repoSetCurrentVersionCalled = false;
+    const dummyRepo = {
+      getById: async (id: string, projId: string) => {
+        if (id === 'ast-pub-service' && projId === projectId) {
+          return {
+            id,
+            projectId: projId,
+            status: 'PUBLISHED',
+            storageKey: 'pub-key',
+            filename: 'pub.png',
+            mimeType: 'image/png',
+            mediaType: 'image' as any,
+            sizeBytes: 1000,
+            security: { scanned: true, clean: true, contentVerified: true, checksumSha256: 'hash' },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return undefined;
+      },
+      setCurrentVersion: async () => {
+        repoSetCurrentVersionCalled = true;
+        return undefined;
+      },
+    } as any;
+
+    const storageProvider = new MockTrackingStorageProvider();
+    const service = new MediaService(dummyRepo, storageProvider);
+
+    await assert.rejects(
+      async () => {
+        await service.setCurrentVersion('ast-pub-service', 'ver-123', projectId);
+      },
+      /Cannot restore version of a PUBLISHED media asset/
+    );
+
+    assert.strictEqual(repoSetCurrentVersionCalled, false, 'Repository must not even be called when service guard triggers');
+  });
+
+  it('11d. PrismaMediaRepository transaction allows restore for non-PUBLISHED (READY) asset', async () => {
+    let snapshotCreated = false;
+    let updatedAssetData: any = null;
+
+    const mockPrisma = {
+      $transaction: async (fn: any) => {
+        return fn({
+          mediaAsset: {
+            findFirst: async ({ where }: any) => {
+              if (where.id === 'ast-ready-1' && where.projectId === projectId) {
+                return {
+                  id: 'ast-ready-1',
+                  projectId,
+                  status: 'READY',
+                  storageKey: 'current-key',
+                  filename: 'current.png',
+                  mimeType: 'image/png',
+                  mediaType: 'image',
+                  sizeBytes: 1000,
+                  security: { clean: true, scanned: true, contentVerified: true, scannerId: 'clamav', checksumSha256: 'abc' },
+                  usageReferences: [],
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                };
+              }
+              return null;
+            },
+            update: async ({ data }: any) => {
+              updatedAssetData = data;
+              return {
+                id: 'ast-ready-1',
+                projectId,
+                ...data,
+                usageReferences: [],
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+            },
+          },
+          mediaAssetVersion: {
+            findFirst: async ({ where }: any) => {
+              if (where.id === 'ver-target' && where.assetId === 'ast-ready-1') {
+                return {
+                  id: 'ver-target',
+                  assetId: 'ast-ready-1',
+                  storageKey: 'restored-target-key',
+                  originalFilename: 'target.png',
+                  mimeType: 'image/png',
+                  sizeBytes: 800,
+                  status: 'READY',
+                  security: { clean: true, scanned: true, contentVerified: true, scannerId: 'clamav', checksumSha256: 'xyz' },
+                };
+              }
+              return null;
+            },
+            aggregate: async () => ({ _max: { versionNumber: 2 } }),
+            create: async () => {
+              snapshotCreated = true;
+              return {};
+            },
+          },
+        });
+      },
+    };
+
+    const prismaRepo = new PrismaMediaRepository(mockPrisma);
+    const restored = await prismaRepo.setCurrentVersion('ast-ready-1', 'ver-target', projectId);
+
+    assert.ok(restored);
+    assert.strictEqual(snapshotCreated, true, 'Snapshot must be created on successful restore');
+    assert.strictEqual(updatedAssetData.storageKey, 'restored-target-key');
+    assert.strictEqual(updatedAssetData.status, 'READY');
   });
 
   it('12. Restoring version preserves canonical URL /api/media/<id> and no direct storage URL becomes canonical', async () => {
