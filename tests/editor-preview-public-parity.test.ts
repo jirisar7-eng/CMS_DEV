@@ -2,6 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { Render } from "@puckeditor/core";
 import { BlockRenderer, getColumnsLayoutInfo } from "@/components/admin/composer/BlockRenderer";
 import { CanonicalContentRenderer } from "@/lib/composer/render";
 import { puckConfig } from "@/lib/composer/puck.config";
@@ -265,7 +266,19 @@ describe("SYN-EDITOR-002 Step 1.1: Parity Test Hardening", () => {
         assert.equal(layoutInfo.gapClass, tc.expectedGap);
 
         // 2. Verify Puck render output carries exact shared classes
-        const renderedPuck = renderToStaticMarkup(columnsPuckComponent.render({ layout: tc.layout, gap: tc.gap }));
+        const renderedPuck = renderToStaticMarkup(
+          React.createElement(Render, {
+            config: puckConfig,
+            data: {
+              content: [
+                {
+                  type: "columns",
+                  props: { id: `col-${tc.layout}`, layout: tc.layout, gap: tc.gap }
+                }
+              ]
+            }
+          })
+        );
         assert.ok(renderedPuck.includes(tc.expectedGrid), `Puck columns must include ${tc.expectedGrid}`);
         assert.ok(renderedPuck.includes(tc.expectedGap), `Puck columns must include ${tc.expectedGap}`);
 
