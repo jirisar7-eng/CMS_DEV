@@ -174,7 +174,6 @@ export interface MediaFilterOptions {
   sort?: MediaSortOption;
 }
 
-
 /**
  * Generic Media Asset Version Lifecycle Types
  */
@@ -224,6 +223,20 @@ export interface IMediaRepository {
   createVersion(assetId: string, versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>, projectId: string): Promise<MediaAssetVersion> | MediaAssetVersion;
   listVersions(assetId: string, projectId: string): Promise<MediaAssetVersion[]> | MediaAssetVersion[];
   setCurrentVersion(assetId: string, versionId: string, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
+  replaceAsset?(
+    assetId: string,
+    newRecord: {
+      storageKey: string;
+      filename: string;
+      mimeType: string;
+      mediaType: MediaType;
+      sizeBytes: number;
+      status: MediaStatus;
+      security: MediaSecurityInfo;
+    },
+    versionToCreate: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>,
+    projectId: string
+  ): Promise<MediaAsset>;
   changeStatus(id: string, status: MediaStatus, projectId: string): Promise<MediaAsset | undefined> | MediaAsset | undefined;
   addUsageReference(assetId: string, reference: Omit<MediaUsageReference, 'id' | 'usedAt'>, projectId: string): Promise<MediaUsageReference> | MediaUsageReference;
   removeUsageReference(assetId: string, referenceId: string, projectId: string): Promise<void> | void;
