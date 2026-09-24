@@ -33,7 +33,8 @@
     "tests/navigation-lifecycle.test.ts",
     "tests/navigation-lifecycle-postgres.test.ts",
     "scripts/ci/test_manifest.mjs",
-    "tests/navigation-admin-lifecycle.test.ts"
+    "tests/navigation-admin-lifecycle.test.ts",
+    "tests/admin-capability-status.test.ts"
   ],
   "forbidden_paths": [
     ".env*",
