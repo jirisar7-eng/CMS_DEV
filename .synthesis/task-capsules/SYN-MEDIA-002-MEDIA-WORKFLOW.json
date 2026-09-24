@@ -1,0 +1,48 @@
+{
+  "version": "1.1.0",
+  "capsule_id": "CAP-SYN-MEDIA-002-20260924-001",
+  "task_id": "SYN-MEDIA-002",
+  "title": "Media Workflow Completion",
+  "environment": "CMS_DEV",
+  "base_sha": "82f45938ff89a2391843cb6f0cfa4cb483847eef",
+  "expected_branch": "task/SYN-MEDIA-002-MEDIA-WORKFLOW",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "created_at": "2026-09-24T00:00:00Z",
+  "parent_capsule_id": "CAP-SYN-GOV-EDITOR-002-20260923-001",
+  "supersedes_capsule_id": null,
+  "allowed_mutation_types": [
+    "GOVERNANCE",
+    "DOMAIN",
+    "ADMIN_UI",
+    "TEST"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "lib/domain/media/service.ts",
+    "lib/domain/media/types.ts",
+    "lib/domain/media/prismaRepository.ts",
+    "app/admin/media/actions.ts",
+    "components/admin/media/MediaReplaceModal.tsx",
+    "components/admin/media/MediaDetailDrawer.tsx",
+    "components/admin/media/MediaLibraryWorkspace.tsx",
+    "lib/domain/content/lifecycle/service.ts",
+    "lib/domain/content/lifecycle/store.ts",
+    "lib/domain/content/lifecycle/prisma-store.ts",
+    "app/api/admin/projects/[projectId]/pages/[pageId]/draft/route.ts",
+    "tests/media-admin-runtime.test.ts",
+    "tests/media-replace-lifecycle.test.ts",
+    "tests/media-usage-references.test.ts",
+    "scripts/ci/test_manifest.mjs"
+  ],
+  "forbidden_paths": [
+    ".env*",
+    "package.json",
+    "package-lock.json",
+    ".github/**",
+    "prisma/**",
+    "lib/auth/**",
+    "deployment/**",
+    "infra/**"
+  ]
+}

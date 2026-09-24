@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 47,
+  "total_capsules": 49,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -339,6 +339,20 @@
       "legacy": false
     },
     {
+      "capsule_id": "CAP-SYN-GOV-MEDIA-002-20260924-001",
+      "task_id": "SYN-GOV-MEDIA-002-CLOSEOUT",
+      "title": "Governance Closeout for SYN-MEDIA-002",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-MEDIA-002-CLOSEOUT.json",
+      "base_sha": "6e17f95056c91c22b35f67a267704a77c2011e45",
+      "expected_branch": "task/SYN-GOV-MEDIA-002-CLOSEOUT",
+      "sha256": "999cc079738f2aad1081bffb614f61fb2b4f3158187a1818ced14fadde0c1197",
+      "parent_capsule_id": "CAP-SYN-MEDIA-002-20260924-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
       "capsule_id": "CAP-LEGACY-SYN-INTEGRATE-001-PREPRISMA-CHECKPOINT",
       "task_id": "SYN-INTEGRATE-001-PREPRISMA-CHECKPOINT",
       "title": null,
@@ -379,6 +393,20 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-MEDIA-002-20260924-001",
+      "task_id": "SYN-MEDIA-002",
+      "title": "Media Workflow Completion",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-MEDIA-002-MEDIA-WORKFLOW.json",
+      "base_sha": "82f45938ff89a2391843cb6f0cfa4cb483847eef",
+      "expected_branch": "task/SYN-MEDIA-002-MEDIA-WORKFLOW",
+      "sha256": "e09ba43d37fb9d2175c780bb1c210b00aec4cfa9c73ea27e041d84d16dbcb948",
+      "parent_capsule_id": "CAP-SYN-GOV-EDITOR-002-20260923-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-LEGACY-SYN-NAV-001-NAVIGATION-FOUNDATION",
