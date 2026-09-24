@@ -18,7 +18,17 @@ class ApiNavigationRepository {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Request failed with status ${response.status}`);
+      let msg = errorData.error || `Request failed with status ${response.status}`;
+      if (Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+        const detailList = errorData.errors
+          .filter((e: unknown): e is string => typeof e === "string" && Boolean(e.trim()))
+          .slice(0, 5)
+          .join("; ");
+        if (detailList) {
+          msg = `${msg}: ${detailList}`;
+        }
+      }
+      throw new Error(msg);
     }
     return response.json();
   }

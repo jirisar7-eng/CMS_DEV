@@ -79,7 +79,7 @@ export const NavigationPreview: React.FC<NavigationPreviewProps> = ({
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 font-bold text-foreground">
             <Compass className="w-4 h-4 text-primary" />
-            <span>Živý náhled navigace</span>
+            <span>Náhled konceptu (Draft preview)</span>
           </div>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
             {currentSet.context} ({visibleItems.length} aktivních)
@@ -331,7 +331,7 @@ export const NavigationPreview: React.FC<NavigationPreviewProps> = ({
                 <span>© {new Date().getFullYear()} Synthesis — Jiří Šár. Všechna práva vyhrazena.</span>
                 <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Validovaná struktura patičky</span>
+                  <span>Validovaná struktura návrhu (Draft)</span>
                 </span>
               </div>
             </footer>
