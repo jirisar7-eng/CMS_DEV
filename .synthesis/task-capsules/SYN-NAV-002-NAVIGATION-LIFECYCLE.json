@@ -1,0 +1,49 @@
+{
+  "version": "1.1.0",
+  "capsule_id": "CAP-SYN-NAV-002-20260924-001",
+  "task_id": "SYN-NAV-002",
+  "title": "Navigation Lifecycle Completion",
+  "environment": "CMS_DEV",
+  "base_sha": "686982db38fbf493dfcc926ad51f22aaa192560c",
+  "expected_branch": "task/SYN-NAV-002-NAVIGATION-LIFECYCLE",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "created_at": "2026-09-24T18:00:00Z",
+  "parent_capsule_id": "CAP-SYN-GOV-MEDIA-002-20260924-001",
+  "supersedes_capsule_id": null,
+  "allowed_mutation_types": [
+    "GOVERNANCE",
+    "SCHEMA",
+    "DOMAIN",
+    "API",
+    "ADMIN_UI",
+    "TEST"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "prisma/schema.prisma",
+    "prisma/migrations/*",
+    "lib/domain/navigation/*",
+    "app/api/admin/navigation/*",
+    "app/api/public/navigation/*",
+    "components/admin/navigation/*",
+    "app/admin/navigation/*",
+    "lib/navigation/adminNav.ts",
+    "tests/navigation-foundation.test.ts",
+    "tests/navigation-lifecycle.test.ts",
+    "tests/navigation-lifecycle-postgres.test.ts",
+    "scripts/ci/test_manifest.mjs",
+    "tests/navigation-admin-lifecycle.test.ts",
+    "tests/admin-capability-status.test.ts"
+  ],
+  "forbidden_paths": [
+    ".env*",
+    "package.json",
+    "package-lock.json",
+    ".github/*",
+    "lib/auth/*",
+    "scripts/bootstrap-admin.ts",
+    "deployment/*",
+    "infra/*"
+  ]
+}
