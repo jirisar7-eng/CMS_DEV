@@ -577,24 +577,27 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
         }}
       />
 
-      <MediaReplaceModal
-        isOpen={isReplaceOpen}
-        asset={modalTargetAsset}
-        onClose={() => {
-          setIsReplaceOpen(false);
-          setModalTargetAsset(null);
-        }}
-        onReplaceSuccess={async (updated) => {
-          setSelectedAsset(updated);
-          await refreshAssets();
-          await loadVersions(updated.id);
-          showToast(`Soubor pro médium „${updated.metadata.title}“ byl úspěšně nahrazen.`);
-        }}
-        onReplaceFile={async (formData) => {
-          const res = await replaceMediaAsset(formData);
-          return { success: !res.error && !!res.data, asset: res.data, error: res.error };
-        }}
-      />
+      {isReplaceOpen && modalTargetAsset && (
+        <MediaReplaceModal
+          key={modalTargetAsset.id}
+          isOpen={isReplaceOpen}
+          asset={modalTargetAsset}
+          onClose={() => {
+            setIsReplaceOpen(false);
+            setModalTargetAsset(null);
+          }}
+          onReplaceSuccess={async (updated) => {
+            setSelectedAsset(updated);
+            await refreshAssets();
+            await loadVersions(updated.id);
+            showToast(`Soubor pro médium „${updated.metadata.title}“ byl úspěšně nahrazen.`);
+          }}
+          onReplaceFile={async (formData) => {
+            const res = await replaceMediaAsset(formData);
+            return { success: !res.error && !!res.data, asset: res.data, error: res.error };
+          }}
+        />
+      )}
 
       <MediaDeleteModal
         isOpen={isDeleteOpen}

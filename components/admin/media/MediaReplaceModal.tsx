@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { RefreshCw, X, AlertTriangle, Upload, CheckCircle2, File } from 'lucide-react';
 import { MediaAsset } from '@/lib/domain/media/types';
 import { formatBytes } from './MediaAssetCard';
@@ -26,17 +26,7 @@ export function MediaReplaceModal({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Clear state on open or target change
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedFile(null);
-      setError(null);
-      setIsSubmitting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, [isOpen, asset?.id]);
+
 
   if (!isOpen || !asset) return null;
 
