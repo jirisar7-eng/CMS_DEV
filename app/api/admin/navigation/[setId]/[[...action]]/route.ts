@@ -199,7 +199,7 @@ export async function PATCH(
           if (body.externalUrl) {
             const urlCheck = isSafeUrl(body.externalUrl);
             if (!urlCheck.safe) throw new Error("INVALID_EXTERNAL_URL");
-            updateItemData.externalUrl = urlCheck.sanitizedUrl;
+            updateItemData.externalUrl = String(body.externalUrl).trim();
           } else {
             updateItemData.externalUrl = null;
           }
@@ -604,7 +604,7 @@ export async function POST(
         if (!urlCheck.safe) {
           return NextResponse.json({ error: "Nebezpečná nebo neplatná externí URL." }, { status: 400 });
         }
-        sanitizedUrl = urlCheck.sanitizedUrl;
+        sanitizedUrl = String(externalUrl).trim();
       }
 
       let sanitizedAnchor: string | null = null;
