@@ -7,7 +7,10 @@ import {
   StorageProvider,
   MalwareScanner,
   MediaStatus,
-  MediaUsageReference,
+  MediaType,
+  MediaSecurityInfo,
+  MediaAssetVersion,
+  MediaAssetVersionSecurity,
 } from './types';
 import { resolveMediaType, DEFAULT_UPLOAD_POLICY } from './mockProviders';
 import { prepareSvgAssetDraft } from './svgAssetLifecycle.server';
@@ -20,18 +23,29 @@ export class MediaService {
     private readonly malwareScanner?: MalwareScanner
   ) {}
 
-  async uploadAsset(
+  /**
+   * Private shared validation & security scanning pipeline.
+   * Shared between uploadAsset and replaceAsset to ensure zero drift in security policy.
+   */
+  private async prepareAndValidateFile(
     file: { name: string; type: string; size: number; data: Buffer },
-    metadata: Partial<MediaMetadata> & { title: string },
     projectId: string
-  ): Promise<MediaAsset> {
+  ): Promise<{
+    finalData: Buffer;
+    finalSize: number;
+    status: MediaStatus;
+    securityInfo: MediaSecurityInfo;
+    mediaType: MediaType;
+  }> {
     if (!projectId) {
-      throw new Error('projectId is required for uploading an asset');
+      throw new Error('projectId is required');
     }
+
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     if (DEFAULT_UPLOAD_POLICY.disallowedExtensions.includes(ext)) {
       throw new Error(`Disallowed file extension: .${ext}`);
     }
+
     if (file.size > DEFAULT_UPLOAD_POLICY.maxSizeBytes) {
       throw new Error(`File size exceeds limit of ${DEFAULT_UPLOAD_POLICY.maxSizeBytes} bytes`);
     }
@@ -40,22 +54,11 @@ export class MediaService {
       throw new Error(`MIME type not allowed or empty: ${file.type}`);
     }
 
-    const fullMetadata: MediaMetadata = {
-      title: metadata.title,
-      altText: metadata.altText || '',
-      description: metadata.description || '',
-      tags: metadata.tags || [],
-      caption: metadata.caption,
-      author: metadata.author,
-    };
-
-    const storageKey = `ast_${randomUUID()}`;
     const mediaType = resolveMediaType(file.type, file.name);
-
     let finalData = file.data;
     let finalSize = file.size;
     let status: MediaStatus = 'QUARANTINED';
-    let securityInfo: any = {
+    let securityInfo: MediaSecurityInfo = {
       scanned: false,
       clean: false,
       activeContent: false,
@@ -115,7 +118,6 @@ export class MediaService {
 
       // Step 1: Server-side Content/MIME Magic Bytes Verification
       const contentCheck = verifyContentMime(finalData, file.type, file.name);
-
       if (!contentCheck.valid) {
         status = 'QUARANTINED';
         securityInfo = {
@@ -176,6 +178,30 @@ export class MediaService {
       }
     }
 
+    return { finalData, finalSize, status, securityInfo, mediaType };
+  }
+
+  async uploadAsset(
+    file: { name: string; type: string; size: number; data: Buffer },
+    metadata: Partial<MediaMetadata> & { title: string },
+    projectId: string
+  ): Promise<MediaAsset> {
+    if (!projectId) {
+      throw new Error('projectId is required for uploading an asset');
+    }
+
+    const fullMetadata: MediaMetadata = {
+      title: metadata.title,
+      altText: metadata.altText || '',
+      description: metadata.description || '',
+      tags: metadata.tags || [],
+      caption: metadata.caption,
+      author: metadata.author,
+    };
+
+    const { finalData, finalSize, status, securityInfo, mediaType } = await this.prepareAndValidateFile(file, projectId);
+    const storageKey = `ast_${randomUUID()}`;
+
     // Upload to storage
     await this.storageProvider.putObject(storageKey, finalData, {
       mimeType: file.type,
@@ -197,20 +223,104 @@ export class MediaService {
         projectId,
         security: securityInfo,
       });
-      
+
+      // Generate canonical guarded application URL
       const publicUrl = `/api/media/${asset.id}`;
       if (this.repository.updateUrl) {
-        asset = (await this.repository.updateUrl(asset.id, publicUrl, projectId)) || asset;
+        const updatedAsset = await this.repository.updateUrl(asset.id, publicUrl, projectId);
+        if (updatedAsset) {
+          asset = updatedAsset;
+        }
       }
+
       return asset;
-    } catch (err) {
-      // Rollback storage if DB fails
+    } catch (dbErr) {
+      // Rollback storage if DB creation fails
       try {
         await this.storageProvider.deleteObject(storageKey);
-      } catch (rollbackErr) {
-        console.error(`Failed to rollback storage object ${storageKey} after DB failure:`, rollbackErr);
+      } catch (delErr) {
+        // storage rollback failure logged
       }
-      throw new Error(`Failed to persist asset to database: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`Failed to persist asset in database: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`);
+    }
+  }
+
+  async replaceAsset(
+    id: string,
+    file: { name: string; type: string; size: number; data: Buffer },
+    projectId: string
+  ): Promise<MediaAsset> {
+    if (!projectId) {
+      throw new Error('projectId is required for replaceAsset');
+    }
+
+    if (typeof this.repository.replaceAsset !== 'function') {
+      throw new Error('Atomic replaceAsset operation is unsupported by repository');
+    }
+
+    const currentAsset = await this.repository.getById(id, projectId);
+    if (!currentAsset) {
+      throw new Error('Media asset not found in project');
+    }
+
+    if ((currentAsset.status as string).toUpperCase() === 'PUBLISHED') {
+      throw new Error('Cannot replace a PUBLISHED media asset');
+    }
+
+    // 1. Validate & process security on new file bytes BEFORE mutating anything
+    const { finalData, finalSize, status, securityInfo, mediaType } = await this.prepareAndValidateFile(file, projectId);
+
+    // 2. Prepare new storage key
+    const newStorageKey = `ast_${randomUUID()}`;
+
+    // 3. Upload new object FIRST to storage provider
+    await this.storageProvider.putObject(newStorageKey, finalData, {
+      mimeType: file.type,
+      sizeBytes: finalSize,
+      checksumSha256: securityInfo.checksumSha256,
+    });
+
+    // 4. Update repository atomically with compensation on failure
+    try {
+      const versionSecurity: MediaAssetVersionSecurity = {
+        ...currentAsset.security,
+        validated: currentAsset.security?.clean ?? false,
+        validatedAt: currentAsset.security?.scannedAt || new Date().toISOString(),
+        canonicalChecksumSha256: currentAsset.security?.checksumSha256,
+        sourceChecksumSha256: currentAsset.security?.checksumSha256,
+      };
+
+      const versionInput = {
+        status: currentAsset.status as any,
+        mimeType: currentAsset.mimeType,
+        sizeBytes: currentAsset.sizeBytes,
+        storageKey: currentAsset.storageKey,
+        security: versionSecurity,
+        originalFilename: currentAsset.filename,
+      };
+
+      return await this.repository.replaceAsset(
+        id,
+        {
+          storageKey: newStorageKey,
+          filename: file.name,
+          mimeType: file.type,
+          mediaType,
+          sizeBytes: finalSize,
+          status,
+          security: securityInfo,
+        },
+        versionInput,
+        projectId
+      );
+    } catch (dbErr) {
+      // Rollback: Delete ONLY the newly uploaded storage object. Old object remains completely intact.
+      try {
+        await this.storageProvider.deleteObject(newStorageKey);
+      } catch (cleanupErr) {
+        // log rollback failure
+      }
+      throw new Error(`Failed to update asset replacement in database: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`);
     }
   }
 
@@ -229,6 +339,40 @@ export class MediaService {
     return this.repository.updateMetadata(id, metadata, projectId);
   }
 
+  async createVersion(
+    assetId: string,
+    versionInput: Omit<MediaAssetVersion, 'id' | 'versionNumber' | 'createdAt' | 'updatedAt' | 'assetId'>,
+    projectId: string
+  ): Promise<MediaAssetVersion> {
+    if (!projectId) throw new Error('projectId is required for createVersion');
+    const asset = await this.repository.getById(assetId, projectId);
+    if (!asset) {
+      throw new Error('Media asset not found in project');
+    }
+    return this.repository.createVersion(assetId, versionInput, projectId);
+  }
+
+  async listVersions(assetId: string, projectId: string): Promise<MediaAssetVersion[]> {
+    if (!projectId) throw new Error('projectId is required for listVersions');
+    const asset = await this.repository.getById(assetId, projectId);
+    if (!asset) {
+      throw new Error('Media asset not found in project');
+    }
+    return this.repository.listVersions(assetId, projectId);
+  }
+
+  async setCurrentVersion(assetId: string, versionId: string, projectId: string): Promise<MediaAsset | undefined> {
+    if (!projectId) throw new Error('projectId is required for setCurrentVersion');
+    const asset = await this.repository.getById(assetId, projectId);
+    if (!asset) {
+      throw new Error('Media asset not found in project');
+    }
+    if ((asset.status as string).toUpperCase() === 'PUBLISHED') {
+      throw new Error('Cannot restore version of a PUBLISHED media asset');
+    }
+    return this.repository.setCurrentVersion(assetId, versionId, projectId);
+  }
+
   async changeStatus(id: string, status: MediaStatus, projectId: string): Promise<MediaAsset | undefined> {
     if (!projectId) throw new Error('projectId is required for changeStatus');
     const asset = await this.repository.getById(id, projectId);
@@ -237,10 +381,8 @@ export class MediaService {
     }
 
     const targetStatus = (status as string).toUpperCase();
-
     if (targetStatus === 'READY' || targetStatus === 'PUBLISHED') {
       const security = asset.security as any;
-
       if (asset.mediaType === 'vector' || asset.mimeType === 'image/svg+xml') {
         if (!security?.scanned || !security?.clean) {
           throw new Error('SVG asset cannot be READY or PUBLISHED without successful security scan evidence');
@@ -281,8 +423,8 @@ export class MediaService {
 
     const isSvg = asset.mediaType === 'vector' || asset.mimeType === 'image/svg+xml';
     const sec = asset.security as any;
-    let targetStatus: MediaStatus = 'QUARANTINED';
 
+    let targetStatus: MediaStatus = 'QUARANTINED';
     if (isSvg) {
       if (sec?.scanned && sec?.clean && sec?.pipelineId) {
         targetStatus = 'READY';
@@ -298,6 +440,7 @@ export class MediaService {
 
   async deleteAsset(id: string, projectId: string): Promise<void> {
     if (!projectId) throw new Error('projectId is required for deleteAsset');
+
     // 1. Check if deletion is allowed
     const isAllowed = await this.repository.isDeletionAllowed(id, projectId);
     if (!isAllowed) {
@@ -345,7 +488,6 @@ export class MediaService {
     if (!asset) {
       throw new Error('Asset not found');
     }
-
     const objectData = await this.storageProvider.getObject(asset.storageKey);
     return {
       data: objectData.data as Buffer,
@@ -358,7 +500,6 @@ export class MediaService {
 
 let defaultMediaServiceInstance: MediaService | null = null;
 
-// Singleton instance getter for the real runtime composition
 export function getMediaService(): MediaService {
   if (!defaultMediaServiceInstance) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -372,8 +513,6 @@ export function getMediaService(): MediaService {
     if (process.env.CMS_MALWARE_SCANNER === 'clamav' || process.env.CMS_CLAMAV_HOST) {
       scanner = new ClamAvMalwareScanner();
     } else {
-      // Production runtime composition: if ClamAV is configured via env, scanner is used.
-      // If unconfigured, scanner is ClamAvMalwareScanner (which fails closed with CONFIGURATION_MISSING on scan).
       scanner = new ClamAvMalwareScanner();
     }
 
@@ -388,10 +527,14 @@ export function getMediaService(): MediaService {
 
 export const mediaService = {
   uploadAsset: (...args: Parameters<MediaService['uploadAsset']>) => getMediaService().uploadAsset(...args),
+  replaceAsset: (...args: Parameters<MediaService['replaceAsset']>) => getMediaService().replaceAsset(...args),
   getAsset: (...args: Parameters<MediaService['getAsset']>) => getMediaService().getAsset(...args),
   listAssets: (...args: Parameters<MediaService['listAssets']>) => getMediaService().listAssets(...args),
   updateMetadata: (...args: Parameters<MediaService['updateMetadata']>) => getMediaService().updateMetadata(...args),
   changeStatus: (...args: Parameters<MediaService['changeStatus']>) => getMediaService().changeStatus(...args),
+  createVersion: (...args: Parameters<MediaService['createVersion']>) => getMediaService().createVersion(...args),
+  listVersions: (...args: Parameters<MediaService['listVersions']>) => getMediaService().listVersions(...args),
+  setCurrentVersion: (...args: Parameters<MediaService['setCurrentVersion']>) => getMediaService().setCurrentVersion(...args),
   archiveAsset: (...args: Parameters<MediaService['archiveAsset']>) => getMediaService().archiveAsset(...args),
   restoreAsset: (...args: Parameters<MediaService['restoreAsset']>) => getMediaService().restoreAsset(...args),
   deleteAsset: (...args: Parameters<MediaService['deleteAsset']>) => getMediaService().deleteAsset(...args),

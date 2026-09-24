@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import {
   MediaAsset,
+  MediaAssetVersion,
   MediaSortOption,
   MediaType,
 } from '@/lib/domain/media/types';
@@ -27,6 +28,8 @@ import {
   restoreMediaAsset,
   replaceMediaAsset,
   deleteMediaAsset,
+  listMediaAssetVersions,
+  restoreMediaAssetVersion,
 } from '@/app/admin/media/actions';
 import { MediaGrid } from './MediaGrid';
 import { MediaList } from './MediaList';
@@ -46,9 +49,13 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Versions state
+  const [versions, setVersions] = useState<MediaAssetVersion[]>([]);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [isRestoringVersion, setIsRestoringVersion] = useState(false);
 
   // Modals state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -89,6 +96,22 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
     }
   }, [showToast]);
 
+  const loadVersions = React.useCallback(async (assetId: string) => {
+    setIsLoadingVersions(true);
+    try {
+      const res = await listMediaAssetVersions(assetId);
+      if (res.data) {
+        setVersions(res.data);
+      } else {
+        setVersions([]);
+      }
+    } catch {
+      setVersions([]);
+    } finally {
+      setIsLoadingVersions(false);
+    }
+  }, []);
+
   React.useEffect(() => {
     let mounted = true;
     const initialLoad = async () => {
@@ -114,15 +137,12 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
   // Filtered and sorted assets
   const filteredAssets = useMemo(() => {
     let result = [...assets];
-
     if (!showArchived) {
       result = result.filter((a) => (a.status as string).toUpperCase() !== 'ARCHIVED');
     }
-
     if (selectedType !== 'all') {
       result = result.filter((a) => a.mediaType === selectedType);
     }
-
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(
@@ -175,7 +195,17 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
   // Handlers
   const handleOpenDetail = (asset: MediaAsset) => {
     setSelectedAsset(asset);
+    setVersions([]);
     setIsDetailOpen(true);
+    loadVersions(asset.id);
+  };
+
+  const handleSelectAsset = (asset: MediaAsset) => {
+    setSelectedAsset(asset);
+    setVersions([]);
+    if (isDetailOpen) {
+      loadVersions(asset.id);
+    }
   };
 
   const handleUpdateMetadata = async (assetId: string, metadata: Partial<MediaAsset['metadata']>) => {
@@ -193,7 +223,6 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
     const res = currentlyArchived
       ? await restoreMediaAsset(assetId)
       : await archiveMediaAsset(assetId);
-
     if (res.error) {
       showToast(res.error, 'error');
     } else if (res.data) {
@@ -220,123 +249,150 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
     } else {
       showToast('Médium bylo úspěšně smazáno.');
       setIsDeleteOpen(false);
-      setIsDetailOpen(false);
-      setSelectedAsset(null);
+      setModalTargetAsset(null);
+      if (selectedAsset?.id === assetId) {
+        setSelectedAsset(null);
+        setIsDetailOpen(false);
+        setVersions([]);
+      }
       refreshAssets();
     }
   };
 
   const handleArchiveInstead = async (assetId: string) => {
-    await handleToggleArchive(assetId, false);
     setIsDeleteOpen(false);
+    setModalTargetAsset(null);
+    await handleToggleArchive(assetId, false);
+  };
+
+  const handleRestoreVersion = async (versionId: string) => {
+    if (!selectedAsset) return;
+    setIsRestoringVersion(true);
+    try {
+      const res = await restoreMediaAssetVersion(selectedAsset.id, versionId);
+      if (res.error || !res.data) {
+        showToast(res.error || 'Chyba při obnově verze média.', 'error');
+        return;
+      }
+      setSelectedAsset(res.data);
+      await refreshAssets();
+      await loadVersions(selectedAsset.id);
+      showToast('Předchozí verze média byla úspěšně obnovena.');
+    } catch (err: any) {
+      showToast(err.message || 'Chyba při obnově verze média.', 'error');
+    } finally {
+      setIsRestoringVersion(false);
+    }
   };
 
   return (
-    <div id="media-library-workspace" className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-2xl shadow-lg border text-xs font-semibold flex items-center gap-2 animate-in slide-in-from-bottom-5 duration-200 ${
-            notification.type === 'success'
-              ? 'bg-emerald-500 text-white border-emerald-600'
-              : notification.type === 'error'
-              ? 'bg-destructive text-destructive-foreground border-destructive'
-              : 'bg-primary text-primary-foreground border-primary'
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-bottom duration-200 ${
+            notification.type === 'error'
+              ? 'bg-destructive text-destructive-foreground border-destructive/20'
+              : 'bg-card text-foreground border-border'
           }`}
         >
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          {notification.type === 'error' ? (
+            <AlertTriangle className="w-4 h-4 text-destructive-foreground shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+          )}
           <span>{notification.message}</span>
         </div>
       )}
 
-      {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="min-w-0">
+      {/* Header & Capability Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-              OBSAH
-            </span>
-            <CapabilityStatusBadge status="ZÁKLAD" size="sm" />
-          </div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
               Knihovna médií
             </h1>
+            <CapabilityStatusBadge status="ZÁKLAD" size="sm" />
             <HelpTrigger helpKey="media.library" />
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Správa obrázků, vektorové grafiky a dokumentů s ochranou referencí a kontrolou přístupnosti.
+          <p className="text-xs text-muted-foreground">
+            Správa obrázků, vektorů, dokumentů a assetů s bezpečným ukládáním, verzováním a sledováním vazeb.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <button
             type="button"
-            onClick={() => refreshAssets()}
+            onClick={refreshAssets}
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card text-foreground text-xs font-semibold hover:bg-muted transition-colors shadow-2xs"
-            title="Aktualizovat seznam"
+            className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
+            title="Obnovit seznam médií"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Obnovit</span>
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
             type="button"
             onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-xs"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-all shadow-sm"
           >
             <Upload className="w-4 h-4" />
-            <span>Nahrát médium</span>
+            <span>Nahrát soubor</span>
           </button>
         </div>
       </div>
 
-      {/* Auth Error Banner if present */}
+      {/* Auth / Permission Notice if active */}
       {authError && (
-        <div className="p-3.5 rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive text-xs flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <span className="font-bold block">Chyba přístupu k médiím</span>
-            <p className="text-[11px] leading-relaxed opacity-90">{authError}</p>
+        <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{authError}</span>
           </div>
+          <button
+            type="button"
+            onClick={refreshAssets}
+            className="px-3 py-1.5 rounded-xl bg-background text-foreground font-semibold text-xs border border-border hover:bg-muted transition-colors"
+          >
+            Zkusit znovu
+          </button>
         </div>
       )}
 
-      {/* Statistics Cards Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-3.5 sm:p-4 rounded-2xl border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-semibold">Celkem médií</span>
-            <ImageIcon className="w-4 h-4 text-primary" />
+      {/* KPI Stats Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-2xl border border-border bg-card">
+          <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>Celkem médií</span>
           </div>
-          <div className="text-lg sm:text-xl font-bold text-foreground font-mono">{stats.count}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">v knihovně projektu</div>
+          <div className="text-lg font-bold text-foreground mt-1 font-mono">{stats.count}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">ve vašem projektu</div>
         </div>
 
-        <div className="p-3.5 sm:p-4 rounded-2xl border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-semibold">Velikost úložiště</span>
-            <HardDrive className="w-4 h-4 text-sky-500" />
+        <div className="p-3.5 rounded-2xl border border-border bg-card">
+          <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>Využité místo</span>
           </div>
-          <div className="text-lg sm:text-xl font-bold text-foreground font-mono">{formatBytes(stats.totalBytes)}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">optimalizovaná data</div>
+          <div className="text-lg font-bold text-foreground mt-1 font-mono">{formatBytes(stats.totalBytes)}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">bezpečné úložiště</div>
         </div>
 
-        <div className="p-3.5 sm:p-4 rounded-2xl border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-semibold">Aktivní reference</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+        <div className="p-3.5 rounded-2xl border border-border bg-card">
+          <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Aktivní reference</span>
           </div>
-          <div className="text-lg sm:text-xl font-bold text-foreground font-mono">{stats.totalUsage}×</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">výskytů na stránkách</div>
+          <div className="text-lg font-bold text-foreground mt-1 font-mono">{stats.totalUsage}×</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">použití na stránkách</div>
         </div>
 
-        <div className="p-3.5 sm:p-4 rounded-2xl border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-semibold">Archivováno</span>
-            <Archive className="w-4 h-4 text-amber-500" />
+        <div className="p-3.5 rounded-2xl border border-border bg-card">
+          <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+            <Archive className="w-3.5 h-3.5" />
+            <span>V archivu</span>
           </div>
-          <div className="text-lg sm:text-xl font-bold text-foreground font-mono">{stats.archivedCount}</div>
+          <div className="text-lg font-bold text-foreground mt-1 font-mono">{stats.archivedCount}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5">vyřazených souborů</div>
         </div>
       </div>
@@ -472,7 +528,7 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
           <MediaGrid
             assets={filteredAssets}
             selectedAsset={selectedAsset}
-            onSelect={(asset) => setSelectedAsset(asset)}
+            onSelect={handleSelectAsset}
             onOpenDetail={handleOpenDetail}
             onOpenUpload={() => setIsUploadOpen(true)}
           />
@@ -480,7 +536,7 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
           <MediaList
             assets={filteredAssets}
             selectedAsset={selectedAsset}
-            onSelect={(asset) => setSelectedAsset(asset)}
+            onSelect={handleSelectAsset}
             onOpenDetail={handleOpenDetail}
           />
         )}
@@ -490,11 +546,18 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
       <MediaDetailDrawer
         asset={selectedAsset}
         isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setVersions([]);
+        }}
         onUpdateMetadata={handleUpdateMetadata}
         onOpenReplace={handleOpenReplace}
         onOpenDelete={handleOpenDelete}
         onToggleArchive={handleToggleArchive}
+        versions={versions}
+        isLoadingVersions={isLoadingVersions}
+        onRestoreVersion={handleRestoreVersion}
+        isRestoringVersion={isRestoringVersion}
       />
 
       <MediaUploadModal
@@ -504,6 +567,8 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
           refreshAssets();
           setSelectedAsset(newAsset);
           setIsDetailOpen(true);
+          setVersions([]);
+          loadVersions(newAsset.id);
           showToast(`Médium „${newAsset.metadata.title}“ bylo úspěšně nahráno.`);
         }}
         onUploadFile={async (formData) => {
@@ -512,23 +577,27 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
         }}
       />
 
-      <MediaReplaceModal
-        isOpen={isReplaceOpen}
-        asset={modalTargetAsset}
-        onClose={() => {
-          setIsReplaceOpen(false);
-          setModalTargetAsset(null);
-        }}
-        onReplaceSuccess={(updated) => {
-          refreshAssets();
-          setSelectedAsset(updated);
-          showToast(`Soubor pro médium „${updated.metadata.title}“ byl úspěšně nahrazen.`);
-        }}
-        onReplaceFile={async (formData) => {
-          const res = await replaceMediaAsset(formData);
-          return { success: !res.error && !!res.data, asset: res.data, error: res.error };
-        }}
-      />
+      {isReplaceOpen && modalTargetAsset && (
+        <MediaReplaceModal
+          key={modalTargetAsset.id}
+          isOpen={isReplaceOpen}
+          asset={modalTargetAsset}
+          onClose={() => {
+            setIsReplaceOpen(false);
+            setModalTargetAsset(null);
+          }}
+          onReplaceSuccess={async (updated) => {
+            setSelectedAsset(updated);
+            await refreshAssets();
+            await loadVersions(updated.id);
+            showToast(`Soubor pro médium „${updated.metadata.title}“ byl úspěšně nahrazen.`);
+          }}
+          onReplaceFile={async (formData) => {
+            const res = await replaceMediaAsset(formData);
+            return { success: !res.error && !!res.data, asset: res.data, error: res.error };
+          }}
+        />
+      )}
 
       <MediaDeleteModal
         isOpen={isDeleteOpen}

@@ -1,4 +1,4 @@
-import { ContentLifecycleStore } from './store';
+import { ContentLifecycleStore, hasMediaReferences } from './store';
 import {
   ContentLifecycleError,
   CreatePageDraftInput,
@@ -28,7 +28,7 @@ import {
 } from './types';
 import { validatePageContent, validateSlugSegment } from '../validation';
 import { PageContent } from '../contracts';
-import { PermissionKey } from '@/lib/auth/rbac';
+import type { PermissionKey } from '@/lib/auth/rbac';
 
 export type PermissionChecker = (
   actorId: string,
@@ -157,6 +157,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id, validatedContent);
       return { page, revision };
     });
   }
@@ -336,6 +337,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id, updateData.content as PageContent | undefined);
       return {
         page: touchedPage,
         revision: updateResult.revision,
@@ -845,6 +847,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id);
       return {
         page: pointerResult.page,
         revision: transitionResult.revision,
@@ -1008,6 +1011,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id);
       return {
         page: pointerResult.page,
         revision,
@@ -1154,6 +1158,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id);
       return {
         page: pointerResult.page,
       };
@@ -1356,6 +1361,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id);
       return {
         page: pointerResult.page,
         revision: transition.revision,
@@ -1508,6 +1514,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id);
       return {
         page: pointerResult.page,
         unpublishedRevision: publishedRevision,
@@ -1672,6 +1679,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id);
       return {
         page: pointerResult.page,
         fromRevision: currentRevision,
@@ -1798,6 +1806,7 @@ export class ContentLifecycleService {
         },
       });
 
+      await this.reconcileMediaUsage(txStore, projectId, page.id);
       return {
         page: pointerResult.page,
         publishedRevision: sourceRevision,
@@ -1848,4 +1857,38 @@ export class ContentLifecycleService {
     }
     return this.store.listProjectRevisions(projectId, pageId);
   }
+
+  private async reconcileMediaUsage(
+    txStore: ContentLifecycleStore,
+    projectId: string,
+    pageId: string,
+    contentToCheck?: PageContent
+  ): Promise<void> {
+    if (typeof txStore.reconcilePageMediaUsage === 'function') {
+      await txStore.reconcilePageMediaUsage(projectId, pageId);
+      return;
+    }
+
+    if (contentToCheck && hasMediaReferences(contentToCheck)) {
+      throw new ContentLifecycleError(
+        'POINTER_INTEGRITY_VIOLATION',
+        'Media usage reconciliation unsupported by store for content containing media references'
+      );
+    }
+
+    const page = await txStore.findPageById(projectId, pageId);
+    if (page) {
+      const activeIds = [page.publishedRevisionId, page.draftRevisionId, page.scheduledRevisionId].filter(Boolean) as string[];
+      for (const revId of activeIds) {
+        const rev = await txStore.findRevisionById(revId);
+        if (rev && hasMediaReferences(rev.content)) {
+          throw new ContentLifecycleError(
+            'POINTER_INTEGRITY_VIOLATION',
+            'Media usage reconciliation unsupported by store for content containing media references'
+          );
+        }
+      }
+    }
+  }
+
 }

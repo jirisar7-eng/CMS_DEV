@@ -218,4 +218,139 @@ export interface ContentLifecycleStore {
   }>>;
   listProjectRevisions?(projectId: string, pageId?: string): Promise<LifecycleRevisionReadProjection[]>;
   recordAudit(params: RecordLifecycleAuditParams): Promise<void>;
+  reconcilePageMediaUsage?(projectId: string, pageId: string): Promise<void>;
+}
+
+export interface ExtractedMediaReference {
+  assetId: string;
+  blockId?: string;
+  blockType?: string;
+  field?: string;
+}
+
+/**
+ * Canonical block-type to media-bearing field paths allowlist.
+ * Explicit and extensible for CMS 1.0 canonical component model.
+ * Speculative future fields MUST NOT be added here.
+ */
+export const CANONICAL_MEDIA_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  image: Object.freeze(["url"]),
+});
+
+/**
+ * Matches canonical media URL format: ^/api/media/<assetId>$
+ * Rejects query strings, extra path segments, external origins,
+ * protocol-relative URLs, substring matches, and surrounding prose.
+ */
+export function matchCanonicalMediaUrl(val: unknown): string | null {
+  if (typeof val !== "string") return null;
+  const trimmed = val.trim();
+  const match = trimmed.match(/^\/api\/media\/([a-zA-Z0-9_\-]+)$/);
+  return match ? match[1] : null;
+}
+
+function traverseBlocks(blocks: unknown, results: ExtractedMediaReference[]): void {
+  if (!Array.isArray(blocks)) return;
+
+  for (const block of blocks) {
+    if (!block || typeof block !== "object") continue;
+    const b = block as Record<string, unknown>;
+    const bId = typeof b.id === "string" ? b.id : undefined;
+    const bType = typeof b.type === "string" ? b.type : undefined;
+
+    // Check media-bearing fields for this block type
+    if (bType && CANONICAL_MEDIA_FIELDS[bType] && b.data && typeof b.data === "object") {
+      const data = b.data as Record<string, unknown>;
+      const allowedFields = CANONICAL_MEDIA_FIELDS[bType];
+      for (const field of allowedFields) {
+        const val = data[field];
+        const assetId = matchCanonicalMediaUrl(val);
+        if (assetId) {
+          results.push({
+            assetId,
+            blockId: bId,
+            blockType: bType,
+            field,
+          });
+        }
+      }
+    }
+
+    // Recursively discover nested blocks in:
+    // 1. block.children (standard canonical nested blocks)
+    if (Array.isArray(b.children)) {
+      traverseBlocks(b.children, results);
+    }
+
+    // 2. columns / nested slots (e.g. block.zones for Puck editor format)
+    if (b.zones && typeof b.zones === "object") {
+      for (const zone of Object.values(b.zones as Record<string, unknown>)) {
+        if (Array.isArray(zone)) {
+          traverseBlocks(zone, results);
+        }
+      }
+    }
+
+    // 3. nested slot/column structures inside block.data (e.g. data.children, data.slots, data.columns)
+    if (b.data && typeof b.data === "object") {
+      const d = b.data as Record<string, unknown>;
+      if (Array.isArray(d.children)) {
+        traverseBlocks(d.children, results);
+      }
+      if (d.slots && typeof d.slots === "object") {
+        if (Array.isArray(d.slots)) {
+          traverseBlocks(d.slots, results);
+        } else {
+          for (const slotItem of Object.values(d.slots as Record<string, unknown>)) {
+            if (Array.isArray(slotItem)) {
+              traverseBlocks(slotItem, results);
+            }
+          }
+        }
+      }
+      if (Array.isArray(d.columns)) {
+        for (const col of d.columns) {
+          if (Array.isArray(col)) {
+            traverseBlocks(col, results);
+          } else if (col && typeof col === "object") {
+            const colObj = col as Record<string, unknown>;
+            if (Array.isArray(colObj.blocks)) {
+              traverseBlocks(colObj.blocks, results);
+            } else if (Array.isArray(colObj.children)) {
+              traverseBlocks(colObj.children, results);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+export function extractMediaReferences(content: unknown): ExtractedMediaReference[] {
+  if (!content || typeof content !== "object") return [];
+
+  const rawResults: ExtractedMediaReference[] = [];
+  const c = content as Record<string, unknown>;
+
+  if (Array.isArray(c.blocks)) {
+    traverseBlocks(c.blocks, rawResults);
+  } else if (Array.isArray(content)) {
+    traverseBlocks(content, rawResults);
+  }
+
+  const seen = new Set<string>();
+  const deduplicated: ExtractedMediaReference[] = [];
+  for (const ref of rawResults) {
+    const key = `${ref.assetId}:::${ref.blockId || ""}:::${ref.field || ""}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(ref);
+    }
+  }
+
+  return deduplicated;
+}
+
+export function hasMediaReferences(content: unknown): boolean {
+  return extractMediaReferences(content).length > 0;
 }

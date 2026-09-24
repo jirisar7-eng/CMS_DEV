@@ -1,6 +1,6 @@
 'use server';
 
-import { MediaFilterOptions, MediaAsset, MediaMetadata } from '@/lib/domain/media/types';
+import { MediaFilterOptions, MediaAsset, MediaMetadata, MediaAssetVersion } from '@/lib/domain/media/types';
 import { mediaService } from '@/lib/domain/media/service';
 import { getActiveProjectContext } from '@/lib/domain/pages-client/server-context';
 import { hasPermission } from '@/lib/auth/rbac';
@@ -232,13 +232,114 @@ export async function restoreMediaAsset(id: string): Promise<ActionResponse<Medi
 }
 
 /**
- * Replaces media asset file (Disabled in this version - returns NOT_AVAILABLE without state mutation).
+ * Replaces media asset file with FormData (real file bytes) scoped to active project with media.edit check.
  */
-export async function replaceMediaAsset(_formData: FormData): Promise<ActionResponse<MediaAsset>> {
-  return {
-    error: 'Nahrazení souboru zatím není v této verzi bezpečně dostupné.',
-    code: 'INVALID_INPUT',
-  };
+export async function replaceMediaAsset(formData: FormData): Promise<ActionResponse<MediaAsset>> {
+  if (!isDatabaseConfigured()) {
+    return { error: 'Databáze není dostupná.', code: 'INTERNAL_ERROR' };
+  }
+  const context = await getActiveProjectContext();
+  if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
+    return { error: 'Přístup odepřen nebo chybí projektový kontext.', code: 'FORBIDDEN' };
+  }
+  const canReplace = await hasPermission(context.userId, 'media.edit', context.projectId);
+  if (!canReplace) {
+    return { error: 'Nedostatečná oprávnění: vyžadováno media.edit.', code: 'FORBIDDEN' };
+  }
+
+  const assetId = formData.get('assetId');
+  if (!assetId || typeof assetId !== 'string' || !assetId.trim()) {
+    return { error: 'Chybí platné ID média pro nahrazení.', code: 'INVALID_INPUT' };
+  }
+
+  const file = formData.get('file') as File | null;
+  if (!file || typeof file === 'string') {
+    return { error: 'Nebyl nahrán žádný platný soubor pro nahrazení.', code: 'INVALID_INPUT' };
+  }
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const asset = await mediaService.replaceAsset(
+      assetId.trim(),
+      {
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size,
+        data: buffer,
+      },
+      context.projectId
+    );
+    return { data: asset };
+  } catch (err: any) {
+    console.error('replaceMediaAsset error:', err);
+    return { error: err.message || 'Chyba při nahrazování média.', code: 'INTERNAL_ERROR' };
+  }
+}
+
+/**
+ * Lists version history of a media asset scoped to the active project with media.view check.
+ */
+export async function listMediaAssetVersions(
+  assetId: string
+): Promise<ActionResponse<MediaAssetVersion[]>> {
+  if (!isDatabaseConfigured()) {
+    return { error: 'Databáze není dostupná.', code: 'INTERNAL_ERROR' };
+  }
+  const context = await getActiveProjectContext();
+  if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
+    return { error: 'Přístup odepřen nebo chybí projektový kontext.', code: 'FORBIDDEN' };
+  }
+  const canView = await hasPermission(context.userId, 'media.view', context.projectId);
+  if (!canView) {
+    return { error: 'Nedostatečná oprávnění: vyžadováno media.view.', code: 'FORBIDDEN' };
+  }
+  if (!assetId || typeof assetId !== 'string' || !assetId.trim()) {
+    return { error: 'Chybí platné ID média.', code: 'INVALID_INPUT' };
+  }
+  try {
+    const versions = await mediaService.listVersions(assetId.trim(), context.projectId);
+    return { data: versions };
+  } catch (err: any) {
+    console.error('listMediaAssetVersions error:', err);
+    return { error: err.message || 'Chyba při načítání historie verzí.', code: 'INTERNAL_ERROR' };
+  }
+}
+
+/**
+ * Restores a historical media asset version scoped to the active project with media.edit check.
+ */
+export async function restoreMediaAssetVersion(
+  assetId: string,
+  versionId: string
+): Promise<ActionResponse<MediaAsset>> {
+  if (!isDatabaseConfigured()) {
+    return { error: 'Databáze není dostupná.', code: 'INTERNAL_ERROR' };
+  }
+  const context = await getActiveProjectContext();
+  if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
+    return { error: 'Přístup odepřen nebo chybí projektový kontext.', code: 'FORBIDDEN' };
+  }
+  const canReplace = await hasPermission(context.userId, 'media.edit', context.projectId);
+  if (!canReplace) {
+    return { error: 'Nedostatečná oprávnění: vyžadováno media.edit.', code: 'FORBIDDEN' };
+  }
+  if (!assetId || typeof assetId !== 'string' || !assetId.trim()) {
+    return { error: 'Chybí platné ID média.', code: 'INVALID_INPUT' };
+  }
+  if (!versionId || typeof versionId !== 'string' || !versionId.trim()) {
+    return { error: 'Chybí platné ID verze.', code: 'INVALID_INPUT' };
+  }
+  try {
+    const asset = await mediaService.setCurrentVersion(assetId.trim(), versionId.trim(), context.projectId);
+    if (!asset) {
+      return { error: 'Médium nebo verze nebyla nalezena.', code: 'NOT_FOUND' };
+    }
+    return { data: asset };
+  } catch (err: any) {
+    console.error('restoreMediaAssetVersion error:', err);
+    return { error: err.message || 'Chyba při obnově verze média.', code: 'INTERNAL_ERROR' };
+  }
 }
 
 /**
