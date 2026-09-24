@@ -62,7 +62,7 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
 
   async transaction<T>(fn: (txStore: ContentLifecycleStore) => Promise<T>): Promise<T> {
     if ('$transaction' in this.db && typeof (this.db as PrismaClient).$transaction === 'function') {
-      return (this.db as PrismaClient).$transaction(async (tx) => {
+      return (this.db as PrismaClient).$transaction(async (tx: any) => {
         const txStore = new PrismaContentLifecycleStore(tx);
         return fn(txStore);
       });
@@ -758,7 +758,7 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
       where: { id: pageId, projectId },
     });
     if (!page) {
-      throw new ContentLifecycleError('NOT_FOUND', `Page ${pageId} not found in project ${projectId}`);
+      throw new ContentLifecycleError('PAGE_NOT_FOUND', `Page ${pageId} not found in project ${projectId}`);
     }
 
     // 2. Resolve current active pointer union
@@ -777,7 +777,7 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
         where: { id: { in: uniqueRevisionIds } },
       });
       if (revisions.length !== uniqueRevisionIds.length) {
-        throw new ContentLifecycleError('NOT_FOUND', `One or more active revisions not found for page ${pageId}`);
+        throw new ContentLifecycleError('POINTER_INTEGRITY_VIOLATION', `One or more active revisions not found for page ${pageId}`);
       }
       for (const rev of revisions) {
         if (rev.pageId !== pageId) {
@@ -849,7 +849,7 @@ export class PrismaContentLifecycleStore implements ContentLifecycleStore {
       for (const assetId of referencedAssetIds) {
         const asset = foundAssetMap.get(assetId);
         if (!asset) {
-          throw new ContentLifecycleError('NOT_FOUND', `Media asset not found: ${assetId}`);
+          throw new ContentLifecycleError('INVALID_INPUT', `Media asset not found: ${assetId}`);
         }
         if (asset.projectId !== projectId) {
           throw new ContentLifecycleError('FORBIDDEN', `Media asset ${assetId} does not belong to project ${projectId}`);

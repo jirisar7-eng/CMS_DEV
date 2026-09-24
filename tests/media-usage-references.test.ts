@@ -696,7 +696,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       },
       (err: any) => {
         assert.ok(err instanceof ContentLifecycleError);
-        assert.strictEqual(err.code, "NOT_FOUND");
+        assert.strictEqual(err.code, "INVALID_INPUT");
         return true;
       }
     );
@@ -1361,7 +1361,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       },
       (err: any) => {
         assert.ok(err instanceof ContentLifecycleError);
-        assert.strictEqual(err.code, "NOT_FOUND");
+        assert.strictEqual(err.code, "INVALID_INPUT");
         return true;
       }
     );
@@ -1432,7 +1432,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       },
       (err: any) => {
         assert.ok(err instanceof ContentLifecycleError);
-        assert.strictEqual(err.code, "NOT_FOUND");
+        assert.strictEqual(err.code, "INVALID_INPUT");
         return true;
       }
     );
@@ -1479,7 +1479,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.ok(page.id);
     assert.ok(revision.id);
 
-    // 2. Content with internal /api/media/<id> must FAIL CLOSED with INTERNAL_ERROR
+    // 2. Content with internal /api/media/<id> must FAIL CLOSED with POINTER_INTEGRITY_VIOLATION
     await assert.rejects(
       async () => {
         await service.createPageDraft({
@@ -1498,7 +1498,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       },
       (err: any) => {
         assert.ok(err instanceof ContentLifecycleError);
-        assert.strictEqual(err.code, "INTERNAL_ERROR");
+        assert.strictEqual(err.code, "POINTER_INTEGRITY_VIOLATION");
         assert.match(err.message, /Media usage reconciliation unsupported by store/);
         return true;
       }

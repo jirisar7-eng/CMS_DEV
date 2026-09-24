@@ -37,11 +37,11 @@ describe('SYN-MEDIA-002 Phase C: Admin Media Workflow & Runtime Contracts', () =
     assert.doesNotMatch(actionsCode, /_formData:\s*FormData/);
   });
 
-  it('2. replace action requires media.replace permission', () => {
+  it('2. replace action requires media.edit permission', () => {
     assert.match(
       actionsCode,
-      /hasPermission\(\s*context\.userId\s*,\s*['"]media\.replace['"]\s*,\s*context\.projectId\s*\)/,
-      'replaceMediaAsset must strictly check media.replace with active projectId'
+      /hasPermission\(\s*context\.userId\s*,\s*['"]media\.edit['"]\s*,\s*context\.projectId\s*\)/,
+      'replaceMediaAsset must strictly check media.edit with active projectId'
     );
   });
 
@@ -102,11 +102,11 @@ describe('SYN-MEDIA-002 Phase C: Admin Media Workflow & Runtime Contracts', () =
     );
   });
 
-  it('13. restoreMediaAssetVersion requires media.replace', () => {
+  it('13. restoreMediaAssetVersion requires media.edit', () => {
     assert.match(actionsCode, /export async function restoreMediaAssetVersion/);
     assert.match(
       actionsCode,
-      /hasPermission\(\s*context\.userId\s*,\s*['"]media\.replace['"]\s*,\s*context\.projectId\s*\)/
+      /hasPermission\(\s*context\.userId\s*,\s*['"]media\.edit['"]\s*,\s*context\.projectId\s*\)/
     );
   });
 

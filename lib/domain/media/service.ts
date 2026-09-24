@@ -10,6 +10,7 @@ import {
   MediaType,
   MediaSecurityInfo,
   MediaAssetVersion,
+  MediaAssetVersionSecurity,
 } from './types';
 import { resolveMediaType, DEFAULT_UPLOAD_POLICY } from './mockProviders';
 import { prepareSvgAssetDraft } from './svgAssetLifecycle.server';

@@ -232,7 +232,7 @@ export async function restoreMediaAsset(id: string): Promise<ActionResponse<Medi
 }
 
 /**
- * Replaces media asset file with FormData (real file bytes) scoped to active project with media.replace check.
+ * Replaces media asset file with FormData (real file bytes) scoped to active project with media.edit check.
  */
 export async function replaceMediaAsset(formData: FormData): Promise<ActionResponse<MediaAsset>> {
   if (!isDatabaseConfigured()) {
@@ -242,9 +242,9 @@ export async function replaceMediaAsset(formData: FormData): Promise<ActionRespo
   if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
     return { error: 'Přístup odepřen nebo chybí projektový kontext.', code: 'FORBIDDEN' };
   }
-  const canReplace = await hasPermission(context.userId, 'media.replace', context.projectId);
+  const canReplace = await hasPermission(context.userId, 'media.edit', context.projectId);
   if (!canReplace) {
-    return { error: 'Nedostatečná oprávnění: vyžadováno media.replace.', code: 'FORBIDDEN' };
+    return { error: 'Nedostatečná oprávnění: vyžadováno media.edit.', code: 'FORBIDDEN' };
   }
 
   const assetId = formData.get('assetId');
@@ -307,7 +307,7 @@ export async function listMediaAssetVersions(
 }
 
 /**
- * Restores a historical media asset version scoped to the active project with media.replace check.
+ * Restores a historical media asset version scoped to the active project with media.edit check.
  */
 export async function restoreMediaAssetVersion(
   assetId: string,
@@ -320,9 +320,9 @@ export async function restoreMediaAssetVersion(
   if (context.status !== 'PROJECT_VALID' || !context.projectId || !context.userId) {
     return { error: 'Přístup odepřen nebo chybí projektový kontext.', code: 'FORBIDDEN' };
   }
-  const canReplace = await hasPermission(context.userId, 'media.replace', context.projectId);
+  const canReplace = await hasPermission(context.userId, 'media.edit', context.projectId);
   if (!canReplace) {
-    return { error: 'Nedostatečná oprávnění: vyžadováno media.replace.', code: 'FORBIDDEN' };
+    return { error: 'Nedostatečná oprávnění: vyžadováno media.edit.', code: 'FORBIDDEN' };
   }
   if (!assetId || typeof assetId !== 'string' || !assetId.trim()) {
     return { error: 'Chybí platné ID média.', code: 'INVALID_INPUT' };

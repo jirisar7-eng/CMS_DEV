@@ -1871,7 +1871,7 @@ export class ContentLifecycleService {
 
     if (contentToCheck && hasMediaReferences(contentToCheck)) {
       throw new ContentLifecycleError(
-        'INTERNAL_ERROR',
+        'POINTER_INTEGRITY_VIOLATION',
         'Media usage reconciliation unsupported by store for content containing media references'
       );
     }
@@ -1883,7 +1883,7 @@ export class ContentLifecycleService {
         const rev = await txStore.findRevisionById(revId);
         if (rev && hasMediaReferences(rev.content)) {
           throw new ContentLifecycleError(
-            'INTERNAL_ERROR',
+            'POINTER_INTEGRITY_VIOLATION',
             'Media usage reconciliation unsupported by store for content containing media references'
           );
         }

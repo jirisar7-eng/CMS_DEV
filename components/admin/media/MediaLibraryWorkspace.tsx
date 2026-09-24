@@ -312,7 +312,7 @@ export function MediaLibraryWorkspace({ initialProjectId }: MediaLibraryWorkspac
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
               Knihovna médií
             </h1>
-            <CapabilityStatusBadge capability="media" />
+            <CapabilityStatusBadge status="ZÁKLAD" size="sm" />
             <HelpTrigger helpKey="media.library" />
           </div>
           <p className="text-xs text-muted-foreground">

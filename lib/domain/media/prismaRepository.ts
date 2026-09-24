@@ -122,23 +122,14 @@ export class PrismaMediaRepository implements IMediaRepository {
     return this.mapAsset(dbAsset);
   }
 
-  async list(projectId: string, filters?: MediaFilterOptions): Promise<MediaAsset[]>;
-  async list(filters?: MediaFilterOptions, projectIdOrFilters?: string): Promise<MediaAsset[]>;
-  async list(projectIdOrFilters?: string | MediaFilterOptions, filtersArg?: MediaFilterOptions): Promise<MediaAsset[]> {
-    let projectId: string | undefined;
-    let filters: MediaFilterOptions | undefined;
-
-    if (typeof projectIdOrFilters === 'string') {
-      projectId = projectIdOrFilters;
-      filters = filtersArg;
-    } else {
-      filters = projectIdOrFilters;
+  async list(projectId: string, filters?: MediaFilterOptions): Promise<MediaAsset[]> {
+    if (!projectId || typeof projectId !== 'string' || !projectId.trim()) {
+      throw new Error('projectId is required for list operation');
     }
-
-    const where: Prisma.MediaAssetWhereInput = {};
-    if (projectId) {
-      where.projectId = projectId;
-    }
+    const cleanProjectId = projectId.trim();
+    const where: Prisma.MediaAssetWhereInput = {
+      projectId: cleanProjectId,
+    };
 
     if (filters) {
       if (filters.status && filters.status !== 'all') {
@@ -186,7 +177,7 @@ export class PrismaMediaRepository implements IMediaRepository {
         usageReferences: true,
       },
     });
-    return dbAssets.map(asset => this.mapAsset(asset));
+    return dbAssets.map((asset: any) => this.mapAsset(asset));
   }
 
   async updateUrl(id: string, url: string, projectId?: string): Promise<MediaAsset | undefined> {
@@ -269,7 +260,7 @@ export class PrismaMediaRepository implements IMediaRepository {
       where: { assetId },
       orderBy: { versionNumber: 'desc' },
     });
-    return dbVersions.map(v => this.mapVersion(v));
+    return dbVersions.map((v: any) => this.mapVersion(v));
   }
 
   async replaceAsset(
