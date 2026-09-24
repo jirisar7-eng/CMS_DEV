@@ -352,96 +352,90 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
   const actorId = "user-editor-1";
   const allowAllPermissions = async () => true;
 
-  // 1. exact /api/media/<id> image reference is extracted
-  it("1. exact /api/media/<id> image reference is extracted", () => {
+  // 1. image.data.url = /api/media/A -> reference created
+  it("1. image.data.url = /api/media/A -> reference created", () => {
     const content = makePageContent([
       {
-        id: "b1",
-        type: "HeroBlock",
+        id: "b-img",
+        type: "image",
         order: 0,
         data: {
-          imageUrl: "/api/media/ast-exact-1",
+          url: "/api/media/ast-exact-1",
+          alt: "Description",
+          caption: "Caption",
         },
       },
     ]);
     const extracted = extractMediaReferences(content);
     assert.strictEqual(extracted.length, 1);
     assert.strictEqual(extracted[0].assetId, "ast-exact-1");
-    assert.strictEqual(extracted[0].blockId, "b1");
-    assert.strictEqual(extracted[0].blockType, "HeroBlock");
-    assert.strictEqual(extracted[0].field, "imageUrl");
+    assert.strictEqual(extracted[0].blockId, "b-img");
+    assert.strictEqual(extracted[0].blockType, "image");
+    assert.strictEqual(extracted[0].field, "url");
   });
 
-  // 2. nested child reference is extracted
-  it("2. nested child reference is extracted", () => {
+  // 2. nested image block -> reference created
+  it("2. nested image block -> reference created", () => {
     const content = makePageContent([
       {
-        id: "parent-b",
-        type: "ContainerBlock",
+        id: "b-col",
+        type: "columns",
         order: 0,
-        data: {},
+        data: { layout: "1-1" },
         children: [
           {
-            id: "child-b",
-            type: "IconBlock",
+            id: "child-img",
+            type: "image",
             order: 0,
             data: {
-              sub: {
-                icon: "/api/media/ast-nested-2",
-              },
+              url: "/api/media/ast-nested-2",
             },
           },
         ],
       },
-    ]);
-    const extracted = extractMediaReferences(content);
-    assert.strictEqual(extracted.length, 1);
-    assert.strictEqual(extracted[0].assetId, "ast-nested-2");
-    assert.strictEqual(extracted[0].blockId, "child-b");
-    assert.strictEqual(extracted[0].blockType, "IconBlock");
-    assert.strictEqual(extracted[0].field, "sub.icon");
-  });
-
-  // 3. duplicate logical references deduplicate deterministically
-  it("3. duplicate logical references deduplicate deterministically", () => {
-    const content = makePageContent([
       {
-        id: "b-dupe",
-        type: "CardBlock",
-        order: 0,
-        data: {
-          imgA: "/api/media/ast-dupe",
-          imgB: "/api/media/ast-dupe", // different field -> distinct reference
-        },
-      },
-      {
-        id: "b-dupe",
-        type: "CardBlock",
+        id: "b-col-slot",
+        type: "columns",
         order: 1,
         data: {
-          imgA: "/api/media/ast-dupe", // same block and field -> deduplicated
+          columns: [
+            {
+              blocks: [
+                {
+                  id: "slot-img",
+                  type: "image",
+                  order: 0,
+                  data: {
+                    url: "/api/media/ast-slot-3",
+                  },
+                },
+              ],
+            },
+          ],
         },
       },
     ]);
     const extracted = extractMediaReferences(content);
-    // Should have 2 logical references: imgA on b-dupe, and imgB on b-dupe
     assert.strictEqual(extracted.length, 2);
-    assert.strictEqual(extracted.filter((r) => r.field === "imgA").length, 1);
-    assert.strictEqual(extracted.filter((r) => r.field === "imgB").length, 1);
+    assert.strictEqual(extracted[0].assetId, "ast-nested-2");
+    assert.strictEqual(extracted[0].blockId, "child-img");
+    assert.strictEqual(extracted[0].blockType, "image");
+    assert.strictEqual(extracted[0].field, "url");
+    assert.strictEqual(extracted[1].assetId, "ast-slot-3");
+    assert.strictEqual(extracted[1].blockId, "slot-img");
+    assert.strictEqual(extracted[1].blockType, "image");
+    assert.strictEqual(extracted[1].field, "url");
   });
 
-  // 4. external URL creates no media reference
-  it("4. external URL creates no media reference", () => {
+  // 3. paragraph.text = /api/media/A -> ignored
+  it("3. paragraph.text = /api/media/A -> ignored", () => {
     const content = makePageContent([
       {
-        id: "b-ext",
-        type: "LinkBlock",
+        id: "p1",
+        type: "paragraph",
         order: 0,
         data: {
-          url: "https://example.com/api/media/ast-external",
-          secUrl: "//cdn.domain.com/api/media/ast-external",
-          dataUri: "data:image/png;/api/media/ast-external",
-          jsUri: "javascript:alert('/api/media/ast-external')",
+          text: "/api/media/ast-paragraph",
         },
       },
     ]);
@@ -449,29 +443,195 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(extracted.length, 0);
   });
 
-  // 5. URL containing /api/media/ only as substring is ignored
-  it("5. URL containing /api/media/ only as substring is ignored", () => {
+  // 4. heading.text = /api/media/A -> ignored
+  it("4. heading.text = /api/media/A -> ignored", () => {
     const content = makePageContent([
       {
-        id: "b-sub",
-        type: "TextBlock",
+        id: "h1",
+        type: "heading",
         order: 0,
         data: {
-          prose: "Check out the documentation at /api/media/ast-something in the system",
-          multiline: "First line\n/api/media/ast-multiline\nThird line",
-          queryParam: "/api/media/ast-query?width=800&format=webp",
-          pathSuffix: "/api/media/ast-suffix/raw/image.png",
-          protocolRelative: "//cms.internal/api/media/ast-proto",
-          emptyId: "/api/media/",
+          text: "/api/media/ast-heading",
+          level: 2,
         },
       },
     ]);
     const extracted = extractMediaReferences(content);
-    assert.strictEqual(extracted.length, 0, "No non-canonical or substring references should be extracted");
+    assert.strictEqual(extracted.length, 0);
   });
 
-  // 6. cross-project asset reference fails closed
-  it("6. cross-project asset reference fails closed", async () => {
+  // 5. button.url = /api/media/A -> ignored
+  it("5. button.url = /api/media/A -> ignored", () => {
+    const content = makePageContent([
+      {
+        id: "btn1",
+        type: "button",
+        order: 0,
+        data: {
+          label: "Download",
+          url: "/api/media/ast-button",
+        },
+      },
+    ]);
+    const extracted = extractMediaReferences(content);
+    assert.strictEqual(extracted.length, 0);
+  });
+
+  // 6. module parameter = /api/media/A -> ignored
+  it("6. module parameter = /api/media/A -> ignored", () => {
+    const content = makePageContent([
+      {
+        id: "mod1",
+        type: "module_embed",
+        order: 0,
+        data: {
+          moduleId: "hero-slider",
+          schemaVersion: "v1",
+          parameters: {
+            slideImage: "/api/media/ast-module-param-1",
+            bgImage: "/api/media/ast-module-param-2",
+          },
+        },
+      },
+    ]);
+    const extracted = extractMediaReferences(content);
+    assert.strictEqual(extracted.length, 0);
+  });
+
+  // 7. prose containing /api/media/A -> ignored
+  it("7. prose containing /api/media/A -> ignored", () => {
+    const content = makePageContent([
+      {
+        id: "p-prose",
+        type: "paragraph",
+        order: 0,
+        data: {
+          text: "Check out the documentation at /api/media/ast-prose in the system",
+        },
+      },
+      {
+        id: "c-prose",
+        type: "callout",
+        order: 1,
+        data: {
+          text: "Note: /api/media/ast-callout is mentioned here",
+        },
+      },
+      {
+        id: "q-prose",
+        type: "quote",
+        order: 2,
+        data: {
+          quote: "Quoted /api/media/ast-quote reference",
+        },
+      },
+    ]);
+    const extracted = extractMediaReferences(content);
+    assert.strictEqual(extracted.length, 0);
+  });
+
+  // 8. external URL containing /api/media/A -> ignored
+  it("8. external URL containing /api/media/A -> ignored", () => {
+    const content = makePageContent([
+      {
+        id: "img-ext",
+        type: "image",
+        order: 0,
+        data: {
+          url: "https://example.com/api/media/ast-ext",
+        },
+      },
+      {
+        id: "img-proto",
+        type: "image",
+        order: 1,
+        data: {
+          url: "//cdn.domain.com/api/media/ast-proto",
+        },
+      },
+      {
+        id: "img-data",
+        type: "image",
+        order: 2,
+        data: {
+          url: "data:image/png;/api/media/ast-data",
+        },
+      },
+    ]);
+    const extracted = extractMediaReferences(content);
+    assert.strictEqual(extracted.length, 0);
+  });
+
+  // 9. /api/media/A?x=1 -> ignored
+  it("9. /api/media/A?x=1 -> ignored", () => {
+    const content = makePageContent([
+      {
+        id: "img-query",
+        type: "image",
+        order: 0,
+        data: {
+          url: "/api/media/ast-query?x=1&width=800",
+        },
+      },
+    ]);
+    const extracted = extractMediaReferences(content);
+    assert.strictEqual(extracted.length, 0);
+  });
+
+  // 10. /api/media/A/extra -> ignored
+  it("10. /api/media/A/extra -> ignored", () => {
+    const content = makePageContent([
+      {
+        id: "img-extra",
+        type: "image",
+        order: 0,
+        data: {
+          url: "/api/media/ast-extra/raw/download.png",
+        },
+      },
+    ]);
+    const extracted = extractMediaReferences(content);
+    assert.strictEqual(extracted.length, 0);
+  });
+
+  // 11. duplicate canonical image reference handling remains deterministic
+  it("11. duplicate canonical image reference handling remains deterministic", () => {
+    const content = makePageContent([
+      {
+        id: "img-dupe-1",
+        type: "image",
+        order: 0,
+        data: {
+          url: "/api/media/ast-dupe",
+        },
+      },
+      {
+        id: "img-dupe-1", // same blockId and field -> deduplicated
+        type: "image",
+        order: 1,
+        data: {
+          url: "/api/media/ast-dupe",
+        },
+      },
+      {
+        id: "img-dupe-2", // distinct blockId -> distinct logical reference
+        type: "image",
+        order: 2,
+        data: {
+          url: "/api/media/ast-dupe",
+        },
+      },
+    ]);
+    const extracted = extractMediaReferences(content);
+    assert.strictEqual(extracted.length, 2);
+    assert.strictEqual(extracted[0].blockId, "img-dupe-1");
+    assert.strictEqual(extracted[0].field, "url");
+    assert.strictEqual(extracted[1].blockId, "img-dupe-2");
+    assert.strictEqual(extracted[1].field, "url");
+  });
+
+  // 12. cross-project asset reference fails closed
+  it("12. cross-project asset reference fails closed", async () => {
     const db = new InMemoryPrismaDatabase();
     // Asset belongs to foreignProjectId
     db.mediaAssets.set("ast-foreign", {
@@ -496,7 +656,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
           description: null,
           visibility: "PUBLIC",
           content: makePageContent([
-            { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-foreign" } },
+            { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-foreign" } },
           ]),
         });
       },
@@ -512,8 +672,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaUsageReferences.size, 0);
   });
 
-  // 7. missing asset fails closed
-  it("7. missing asset fails closed", async () => {
+  // 13. missing asset fails closed
+  it("13. missing asset fails closed", async () => {
     const db = new InMemoryPrismaDatabase();
     const store = new PrismaContentLifecycleStore(db.asClient());
     const service = new ContentLifecycleService({ store, hasPermission: allowAllPermissions });
@@ -530,7 +690,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
           description: null,
           visibility: "PUBLIC",
           content: makePageContent([
-            { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-non-existent" } },
+            { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-non-existent" } },
           ]),
         });
       },
@@ -546,8 +706,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaUsageReferences.size, 0);
   });
 
-  // 8. initial draft creates usage
-  it("8. initial draft creates usage", async () => {
+  // 14. initial draft creates usage
+  it("14. initial draft creates usage", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-1", {
       id: "ast-1",
@@ -569,7 +729,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-1" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-1" } },
       ]),
     });
 
@@ -581,14 +741,14 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(ref.pageTitle, "Initial Page");
     assert.strictEqual(ref.pageSlug, "initial-page");
     assert.strictEqual(ref.blockId, "b1");
-    assert.strictEqual(ref.field, "img");
+    assert.strictEqual(ref.field, "url");
 
     const asset = db.mediaAssets.get("ast-1");
     assert.strictEqual(asset.usageCount, 1);
   });
 
-  // 9. draft edit updates usage
-  it("9. draft edit updates usage", async () => {
+  // 15. draft edit updates usage
+  it("15. draft edit updates usage", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-1", { id: "ast-1", projectId, status: "READY", usageCount: 0 });
     db.mediaAssets.set("ast-2", { id: "ast-2", projectId, status: "READY", usageCount: 0 });
@@ -606,7 +766,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-1" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-1" } },
       ]),
     });
 
@@ -620,7 +780,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       pageId: page.id,
       expectedLockVersion: revision.lockVersion,
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-2" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-2" } },
       ]),
     });
 
@@ -631,8 +791,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(ref.assetId, "ast-2");
   });
 
-  // 10. removing draft reference removes it when no published/scheduled pointer uses it
-  it("10. removing draft reference removes it when no published/scheduled pointer uses it", async () => {
+  // 16. removing draft reference removes it when no published/scheduled pointer uses it
+  it("16. removing draft reference removes it when no published/scheduled pointer uses it", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-1", { id: "ast-1", projectId, status: "READY", usageCount: 0 });
 
@@ -649,7 +809,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-1" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-1" } },
       ]),
     });
 
@@ -668,8 +828,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaUsageReferences.size, 0);
   });
 
-  // 11. published reference survives when draft removes it
-  it("11. published reference survives when draft removes it", async () => {
+  // 17. published reference survives when draft removes it
+  it("17. published reference survives when draft removes it", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-pub", { id: "ast-pub", projectId, status: "READY", usageCount: 0 });
     db.mediaAssets.set("ast-new", { id: "ast-new", projectId, status: "READY", usageCount: 0 });
@@ -688,7 +848,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-pub" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-pub" } },
       ]),
     });
 
@@ -714,7 +874,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       pageId: page.id,
       expectedLockVersion: newDraft.lockVersion,
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-new" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-new" } },
       ]),
     });
 
@@ -724,8 +884,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaUsageReferences.size, 2);
   });
 
-  // 12. scheduled reference remains protected
-  it("12. scheduled reference remains protected", async () => {
+  // 18. scheduled reference remains protected
+  it("18. scheduled reference remains protected", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-sched", { id: "ast-sched", projectId, status: "READY", usageCount: 0 });
 
@@ -742,7 +902,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-sched" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-sched" } },
       ]),
     });
 
@@ -763,8 +923,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaAssets.get("ast-sched").usageCount, 1);
   });
 
-  // 13. publishing new content reconciles old published reference away
-  it("13. publishing new content reconciles old published reference away", async () => {
+  // 19. publishing new content reconciles old published reference away
+  it("19. publishing new content reconciles old published reference away", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-v1", { id: "ast-v1", projectId, status: "READY", usageCount: 0 });
     db.mediaAssets.set("ast-v2", { id: "ast-v2", projectId, status: "READY", usageCount: 0 });
@@ -783,7 +943,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-v1" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-v1" } },
       ]),
     });
 
@@ -800,7 +960,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       pageId: page.id,
       expectedLockVersion: d2.lockVersion,
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-v2" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-v2" } },
       ]),
     });
 
@@ -816,8 +976,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(Array.from(db.mediaUsageReferences.values())[0].assetId, "ast-v2");
   });
 
-  // 14. cancel schedule reconciles union correctly
-  it("14. cancel schedule reconciles union correctly", async () => {
+  // 20. cancel schedule reconciles union correctly
+  it("20. cancel schedule reconciles union correctly", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-draft-keep", { id: "ast-draft-keep", projectId, status: "READY", usageCount: 0 });
     db.mediaAssets.set("ast-sched-cancel", { id: "ast-sched-cancel", projectId, status: "READY", usageCount: 0 });
@@ -834,7 +994,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-draft-keep" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-draft-keep" } },
       ]),
     });
 
@@ -850,7 +1010,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
         lockVersion: 1,
         createdById: actorId,
         content: makePageContent([
-          { id: "b2", type: "image", order: 0, data: { img: "/api/media/ast-sched-cancel" } },
+          { id: "b2", type: "image", order: 0, data: { url: "/api/media/ast-sched-cancel" } },
         ]),
       },
     });
@@ -890,8 +1050,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaUsageReferences.size, 1);
   });
 
-  // 15. rollback reconciles target published revision
-  it("15. rollback reconciles target published revision", async () => {
+  // 21. rollback reconciles target published revision
+  it("21. rollback reconciles target published revision", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-r1", { id: "ast-r1", projectId, status: "READY", usageCount: 0 });
     db.mediaAssets.set("ast-r2", { id: "ast-r2", projectId, status: "READY", usageCount: 0 });
@@ -910,7 +1070,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-r1" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-r1" } },
       ]),
     });
     const r1Sub = (await service.submitForReview({ projectId, actorId, pageId: page.id, revisionId: r1.id, expectedLockVersion: r1.lockVersion })).revision;
@@ -925,7 +1085,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       pageId: page.id,
       expectedLockVersion: r2Draft.lockVersion,
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-r2" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-r2" } },
       ]),
     });
     const r2Sub = (await service.submitForReview({ projectId, actorId, pageId: page.id, revisionId: r2Updated.id, expectedLockVersion: r2Updated.lockVersion })).revision;
@@ -947,8 +1107,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaAssets.get("ast-r2").usageCount, 0, "Rolled-back revision assets must be removed from active usage");
   });
 
-  // 16. unpublish reconciles active pointer union
-  it("16. unpublish reconciles active pointer union", async () => {
+  // 22. unpublish reconciles active pointer union
+  it("22. unpublish reconciles active pointer union", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-unpub", { id: "ast-unpub", projectId, status: "READY", usageCount: 0 });
 
@@ -965,7 +1125,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-unpub" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-unpub" } },
       ]),
     });
 
@@ -988,12 +1148,11 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaUsageReferences.size, 1);
   });
 
-  // 17. nested references work
-  it("17. nested references work", async () => {
+  // 23. nested references work
+  it("23. nested references work", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-nested-1", { id: "ast-nested-1", projectId, status: "READY", usageCount: 0 });
     db.mediaAssets.set("ast-nested-2", { id: "ast-nested-2", projectId, status: "READY", usageCount: 0 });
-
     const store = new PrismaContentLifecycleStore(db.asClient());
     const service = new ContentLifecycleService({ store, hasPermission: allowAllPermissions });
 
@@ -1011,16 +1170,23 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
           id: "root-section",
           type: "columns",
           order: 0,
-          data: { bg: "/api/media/ast-nested-1" },
+          data: { layout: "1-1", bg: "/api/media/ast-ignored-bg" },
           children: [
             {
-              id: "child-card",
+              id: "child-card-1",
               type: "image",
               order: 0,
               data: {
-                meta: {
-                  avatar: "/api/media/ast-nested-2",
-                },
+                url: "/api/media/ast-nested-1",
+                alt: "/api/media/ast-ignored-alt",
+              },
+            },
+            {
+              id: "child-card-2",
+              type: "image",
+              order: 1,
+              data: {
+                url: "/api/media/ast-nested-2",
               },
             },
           ],
@@ -1031,10 +1197,11 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaAssets.get("ast-nested-1").usageCount, 1);
     assert.strictEqual(db.mediaAssets.get("ast-nested-2").usageCount, 1);
     assert.strictEqual(db.mediaUsageReferences.size, 2);
+    assert.strictEqual(Array.from(db.mediaUsageReferences.values()).some((r) => r.assetId === "ast-ignored-bg"), false);
   });
 
-  // 18. usageCount equals actual MediaUsageReference row count
-  it("18. usageCount equals actual MediaUsageReference row count", async () => {
+  // 24. usageCount equals actual MediaUsageReference row count
+  it("24. usageCount equals actual MediaUsageReference row count", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-multi", { id: "ast-multi", projectId, status: "READY", usageCount: 0 });
 
@@ -1052,7 +1219,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-multi" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-multi" } },
       ]),
     });
 
@@ -1067,7 +1234,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b2", type: "image", order: 0, data: { img: "/api/media/ast-multi" } },
+        { id: "b2", type: "image", order: 0, data: { url: "/api/media/ast-multi" } },
       ]),
     });
 
@@ -1079,8 +1246,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaAssets.get("ast-multi").usageCount, actualRowCount);
   });
 
-  // 19. stale usageCount cannot permit deletion
-  it("19. stale usageCount cannot permit deletion", async () => {
+  // 25. stale usageCount cannot permit deletion
+  it("25. stale usageCount cannot permit deletion", async () => {
     const db = new InMemoryPrismaDatabase();
     // Asset has actual row in mediaUsageReferences, but usageCount is staled to 0
     db.mediaAssets.set("ast-stale", {
@@ -1102,8 +1269,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(isAllowed, false, "Disagreement between stored usageCount and actual rows MUST fail closed");
   });
 
-  // 20. referenced asset cannot be deleted
-  it("20. referenced asset cannot be deleted", async () => {
+  // 26. referenced asset cannot be deleted
+  it("26. referenced asset cannot be deleted", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-referenced", {
       id: "ast-referenced",
@@ -1131,8 +1298,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     );
   });
 
-  // 21. unreferenced non-PUBLISHED asset is deletion-eligible
-  it("21. unreferenced non-PUBLISHED asset is deletion-eligible", async () => {
+  // 27. unreferenced non-PUBLISHED asset is deletion-eligible
+  it("27. unreferenced non-PUBLISHED asset is deletion-eligible", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-free", {
       id: "ast-free",
@@ -1149,8 +1316,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.mediaAssets.has("ast-free"), false);
   });
 
-  // 22. transaction failure leaves content and reference state unchanged
-  it("22. transaction failure leaves content and reference state unchanged", async () => {
+  // 28. transaction failure leaves content and reference state unchanged
+  it("28. transaction failure leaves content and reference state unchanged", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-valid", {
       id: "ast-valid",
@@ -1172,7 +1339,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-valid" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-valid" } },
       ]),
     });
 
@@ -1188,7 +1355,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
           pageId: page.id,
           expectedLockVersion: revision.lockVersion,
           content: makePageContent([
-            { id: "b1", type: "image", order: 0, data: { img: "/api/media/missing-asset-xyz" } },
+            { id: "b1", type: "image", order: 0, data: { url: "/api/media/missing-asset-xyz" } },
           ]),
         });
       },
@@ -1208,8 +1375,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(Array.from(db.mediaUsageReferences.values())[0].assetId, "ast-valid");
   });
 
-  // 23. reconciliation failure rolls back pointer mutation
-  it("23. reconciliation failure rolls back pointer mutation", async () => {
+  // 29. reconciliation failure rolls back pointer mutation
+  it("29. reconciliation failure rolls back pointer mutation", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-valid-ptr", {
       id: "ast-valid-ptr",
@@ -1230,7 +1397,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-valid-ptr" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-valid-ptr" } },
       ]),
     });
 
@@ -1282,8 +1449,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     assert.strictEqual(db.contentReleaseItems.size, 0, "No release item should be created on failure");
   });
 
-  // 24. fake store without reconciliation fails closed on internal media and succeeds without internal media
-  it("24. fake store without reconciliation fails closed on internal media and succeeds without internal media", async () => {
+  // 30. fake store without reconciliation fails closed on internal media and succeeds without internal media
+  it("30. fake store without reconciliation fails closed on internal media and succeeds without internal media", async () => {
     const db = new InMemoryPrismaDatabase();
     class FakeStoreWithoutReconciliation extends PrismaContentLifecycleStore {
       reconcilePageMediaUsage = undefined as any;
@@ -1325,7 +1492,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
           description: null,
           visibility: "PUBLIC",
           content: makePageContent([
-            { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-unsupported" } },
+            { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-unsupported" } },
           ]),
         });
       },
@@ -1338,8 +1505,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
     );
   });
 
-  // 25. createDraftFromPublished correctly maintains active pointer union
-  it("25. createDraftFromPublished correctly maintains active pointer union", async () => {
+  // 31. createDraftFromPublished correctly maintains active pointer union
+  it("31. createDraftFromPublished correctly maintains active pointer union", async () => {
     const db = new InMemoryPrismaDatabase();
     db.mediaAssets.set("ast-pub1", { id: "ast-pub1", projectId, status: "READY", usageCount: 0 });
     db.mediaAssets.set("ast-draft2", { id: "ast-draft2", projectId, status: "READY", usageCount: 0 });
@@ -1357,7 +1524,7 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       description: null,
       visibility: "PUBLIC",
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-pub1" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-pub1" } },
       ]),
     });
 
@@ -1407,8 +1574,8 @@ describe("SYN-MEDIA-002 Phase B: Authoritative Media Usage References", () => {
       pageId: page.id,
       expectedLockVersion: reopenedDraft.lockVersion,
       content: makePageContent([
-        { id: "b1", type: "image", order: 0, data: { img: "/api/media/ast-pub1" } },
-        { id: "b2", type: "image", order: 1, data: { img: "/api/media/ast-draft2" } },
+        { id: "b1", type: "image", order: 0, data: { url: "/api/media/ast-pub1" } },
+        { id: "b2", type: "image", order: 1, data: { url: "/api/media/ast-draft2" } },
       ]),
     });
 
