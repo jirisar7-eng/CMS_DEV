@@ -11,8 +11,8 @@ export const puckConfig: Config = {
 
 Object.keys(COMPONENT_REGISTRY).forEach((type) => {
   const def = COMPONENT_REGISTRY[type];
-
   const puckFields: Record<string, any> = {};
+
   if (def.fields) {
     Object.keys(def.fields).forEach((key) => {
       const fieldDef = def.fields![key];
@@ -38,14 +38,11 @@ Object.keys(COMPONENT_REGISTRY).forEach((type) => {
     render: (props: any) => {
       // Special handling for columns block which supports nesting via DropZone in Puck editor
       if (type === "columns") {
-        const { gapClass, gridClass } = getColumnsLayoutInfo(props.layout, props.gap);
-        return (
-          <div className={`grid ${gridClass} ${gapClass} w-full my-2`}>
-            <div className="col-span-full">
-              <DropZone zone="default" />
-            </div>
-          </div>
-        );
+        const { gapClass, gridClass, childSpanClass } = getColumnsLayoutInfo(props.layout, props.gap);
+        const className = ["grid", gridClass, gapClass, childSpanClass, "w-full", "my-2"]
+          .filter(Boolean)
+          .join(" ");
+        return <DropZone zone="default" className={className} />;
       }
 
       const block: ContentBlock = {

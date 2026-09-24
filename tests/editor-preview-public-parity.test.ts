@@ -226,23 +226,27 @@ describe("SYN-EDITOR-002 Step 1.1: Parity Test Hardening", () => {
       const layout11 = getColumnsLayoutInfo("1-1", "sm");
       assert.equal(layout11.gapClass, "gap-3");
       assert.equal(layout11.gridClass, "grid-cols-1 md:grid-cols-2");
+      assert.equal(layout11.childSpanClass, "");
       assert.equal(layout11.getColumnSpanClass(0), "md:col-span-1");
       assert.equal(layout11.getColumnSpanClass(1), "md:col-span-1");
 
       const layout12 = getColumnsLayoutInfo("1-2", "md");
       assert.equal(layout12.gapClass, "gap-5");
       assert.equal(layout12.gridClass, "grid-cols-1 md:grid-cols-3");
+      assert.equal(layout12.childSpanClass, "[&>*:nth-child(2)]:md:col-span-2");
       assert.equal(layout12.getColumnSpanClass(0), "md:col-span-1");
       assert.equal(layout12.getColumnSpanClass(1), "md:col-span-2");
 
       const layout21 = getColumnsLayoutInfo("2-1", "lg");
       assert.equal(layout21.gapClass, "gap-8");
       assert.equal(layout21.gridClass, "grid-cols-1 md:grid-cols-3");
+      assert.equal(layout21.childSpanClass, "[&>*:nth-child(1)]:md:col-span-2");
       assert.equal(layout21.getColumnSpanClass(0), "md:col-span-2");
       assert.equal(layout21.getColumnSpanClass(1), "md:col-span-1");
 
       const layout111 = getColumnsLayoutInfo("1-1-1", "md");
       assert.equal(layout111.gridClass, "grid-cols-1 md:grid-cols-3");
+      assert.equal(layout111.childSpanClass, "");
       assert.equal(layout111.getColumnSpanClass(0), "md:col-span-1");
       assert.equal(layout111.getColumnSpanClass(1), "md:col-span-1");
       assert.equal(layout111.getColumnSpanClass(2), "md:col-span-1");
@@ -250,10 +254,10 @@ describe("SYN-EDITOR-002 Step 1.1: Parity Test Hardening", () => {
 
     test("Puck columns and public columns derive layout and gap from the same shared contract across all layouts", () => {
       const testCases = [
-        { layout: "1-1", gap: "sm", expectedGrid: "grid-cols-1 md:grid-cols-2", expectedGap: "gap-3" },
-        { layout: "1-2", gap: "md", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-5" },
-        { layout: "2-1", gap: "lg", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-8" },
-        { layout: "1-1-1", gap: "md", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-5" }
+        { layout: "1-1", gap: "sm", expectedGrid: "grid-cols-1 md:grid-cols-2", expectedGap: "gap-3", expectedChildSpan: "" },
+        { layout: "1-2", gap: "md", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-5", expectedChildSpan: "[&>*:nth-child(2)]:md:col-span-2" },
+        { layout: "2-1", gap: "lg", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-8", expectedChildSpan: "[&>*:nth-child(1)]:md:col-span-2" },
+        { layout: "1-1-1", gap: "md", expectedGrid: "grid-cols-1 md:grid-cols-3", expectedGap: "gap-5", expectedChildSpan: "" }
       ] as const;
 
       const columnsPuckComponent = puckConfig.components["columns"];
@@ -264,9 +268,10 @@ describe("SYN-EDITOR-002 Step 1.1: Parity Test Hardening", () => {
         const layoutInfo = getColumnsLayoutInfo(tc.layout, tc.gap);
         assert.equal(layoutInfo.gridClass, tc.expectedGrid);
         assert.equal(layoutInfo.gapClass, tc.expectedGap);
+        assert.equal(layoutInfo.childSpanClass, tc.expectedChildSpan);
 
-        // 2. Verify Puck render output carries exact shared classes
-        const renderedPuck = renderToStaticMarkup(
+        // 2. Verify Puck render output carries exact shared classes directly on DropZone grid container
+        const renderedPuckEmpty = renderToStaticMarkup(
           React.createElement(Render, {
             config: puckConfig,
             data: {
@@ -279,10 +284,44 @@ describe("SYN-EDITOR-002 Step 1.1: Parity Test Hardening", () => {
             }
           })
         );
-        assert.ok(renderedPuck.includes(tc.expectedGrid), `Puck columns must include ${tc.expectedGrid}`);
-        assert.ok(renderedPuck.includes(tc.expectedGap), `Puck columns must include ${tc.expectedGap}`);
+        assert.ok(renderedPuckEmpty.includes(tc.expectedGrid), `Puck columns must include ${tc.expectedGrid}`);
+        assert.ok(renderedPuckEmpty.includes(tc.expectedGap), `Puck columns must include ${tc.expectedGap}`);
+        assert.ok(!renderedPuckEmpty.includes("col-span-full"), "Puck columns must not wrap DropZone in col-span-full");
 
-        // 3. Verify public BlockRenderer output carries exact shared classes and column spans
+        // 3. Verify nested Puck children are rendered directly within the grid container receiving effective span classes
+        const renderedPuckNested = renderToStaticMarkup(
+          React.createElement(Render, {
+            config: puckConfig,
+            data: {
+              content: [
+                {
+                  type: "columns",
+                  props: { id: `col-${tc.layout}`, layout: tc.layout, gap: tc.gap }
+                }
+              ],
+              zones: {
+                [`col-${tc.layout}:default`]: [
+                  { type: "paragraph", props: { id: "child-1", text: "Left Child Content" } },
+                  { type: "paragraph", props: { id: "child-2", text: "Right Child Content" } }
+                ]
+              }
+            }
+          })
+        );
+        assert.ok(renderedPuckNested.includes(tc.expectedGrid), `Nested Puck columns must include ${tc.expectedGrid}`);
+        assert.ok(renderedPuckNested.includes(tc.expectedGap), `Nested Puck columns must include ${tc.expectedGap}`);
+        if (tc.expectedChildSpan) {
+          const htmlEscaped = tc.expectedChildSpan.replace(/&/g, "&amp;").replace(/>/g, "&gt;");
+          assert.ok(
+            renderedPuckNested.includes(tc.expectedChildSpan) || renderedPuckNested.includes(htmlEscaped),
+            `Nested Puck columns must include child span class ${tc.expectedChildSpan}`
+          );
+        }
+        assert.ok(renderedPuckNested.includes("Left Child Content"), "Puck render must include nested left child");
+        assert.ok(renderedPuckNested.includes("Right Child Content"), "Puck render must include nested right child");
+        assert.ok(!renderedPuckNested.includes("col-span-full"), "Nested Puck output must not have intermediate col-span-full wrapper");
+
+        // 4. Verify public BlockRenderer output carries exact shared classes and column spans
         const colBlock: ContentBlock = {
           id: `col-${tc.layout}`,
           type: "columns",

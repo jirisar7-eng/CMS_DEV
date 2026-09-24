@@ -26,6 +26,7 @@ import {
 export interface ColumnsLayoutInfo {
   gapClass: string;
   gridClass: string;
+  childSpanClass: string;
   getColumnSpanClass: (index: number) => string;
 }
 
@@ -40,6 +41,13 @@ export function getColumnsLayoutInfo(layout?: string, gap?: string): ColumnsLayo
       ? "grid-cols-1 md:grid-cols-3"
       : "grid-cols-1 md:grid-cols-2";
 
+  const childSpanClass =
+    layout === "1-2"
+      ? "[&>*:nth-child(2)]:md:col-span-2"
+      : layout === "2-1"
+      ? "[&>*:nth-child(1)]:md:col-span-2"
+      : "";
+
   const getColumnSpanClass = (index: number): string => {
     if (layout === "1-2") {
       return index === 1 ? "md:col-span-2" : "md:col-span-1";
@@ -50,7 +58,7 @@ export function getColumnsLayoutInfo(layout?: string, gap?: string): ColumnsLayo
     return "md:col-span-1";
   };
 
-  return { gapClass, gridClass, getColumnSpanClass };
+  return { gapClass, gridClass, childSpanClass, getColumnSpanClass };
 }
 
 interface BlockRendererProps {
