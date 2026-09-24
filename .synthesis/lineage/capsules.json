@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 49,
+  "total_capsules": 51,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -353,6 +353,20 @@
       "legacy": false
     },
     {
+      "capsule_id": "CAP-SYN-GOV-NAV-002-20260924-001",
+      "task_id": "SYN-GOV-NAV-002-CLOSEOUT",
+      "title": "Governance Closeout for SYN-NAV-002",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-NAV-002-CLOSEOUT.json",
+      "base_sha": "efd3ce5f689bba979b23975d5121c705d2c15399",
+      "expected_branch": "task/SYN-GOV-NAV-002-CLOSEOUT",
+      "sha256": "f6823c79c8eada82cd7ea59a07db3fa432f2d8370230fd724ce2b2f14d0ef224",
+      "parent_capsule_id": "CAP-SYN-NAV-002-20260924-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
       "capsule_id": "CAP-LEGACY-SYN-INTEGRATE-001-PREPRISMA-CHECKPOINT",
       "task_id": "SYN-INTEGRATE-001-PREPRISMA-CHECKPOINT",
       "title": null,
@@ -421,6 +435,20 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-NAV-002-20260924-001",
+      "task_id": "SYN-NAV-002",
+      "title": "Navigation Lifecycle Completion",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-NAV-002-NAVIGATION-LIFECYCLE.json",
+      "base_sha": "686982db38fbf493dfcc926ad51f22aaa192560c",
+      "expected_branch": "task/SYN-NAV-002-NAVIGATION-LIFECYCLE",
+      "sha256": "55d9f029003f90f459416a33ff2bc3dc2444435e25d6ab990455491352965ab0",
+      "parent_capsule_id": "CAP-SYN-GOV-MEDIA-002-20260924-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-LEGACY-SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION",
