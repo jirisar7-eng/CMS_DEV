@@ -2,7 +2,7 @@ import React from "react";
 import type { Config } from "@puckeditor/core";
 import { DropZone } from "@puckeditor/core";
 import { COMPONENT_REGISTRY } from "./registry";
-import { BlockRenderer } from "@/components/admin/composer/BlockRenderer";
+import { BlockRenderer, getColumnsLayoutInfo } from "@/components/admin/composer/BlockRenderer";
 import { ContentBlock } from "@/lib/domain/pages";
 
 export const puckConfig: Config = {
@@ -11,8 +11,8 @@ export const puckConfig: Config = {
 
 Object.keys(COMPONENT_REGISTRY).forEach((type) => {
   const def = COMPONENT_REGISTRY[type];
-  
   const puckFields: Record<string, any> = {};
+
   if (def.fields) {
     Object.keys(def.fields).forEach((key) => {
       const fieldDef = def.fields![key];
@@ -36,35 +36,23 @@ Object.keys(COMPONENT_REGISTRY).forEach((type) => {
     fields: puckFields,
     defaultProps: def.createDefaultData(),
     render: (props: any) => {
-      // Special handling for columns block which supports nesting via DropZone
+      // Special handling for columns block which supports nesting via DropZone in Puck editor
       if (type === "columns") {
-        const gapClass = props.gap === 'sm' ? 'gap-3' : props.gap === 'lg' ? 'gap-8' : 'gap-5';
-        const gridClass =
-          props.layout === '1-2'
-            ? 'grid-cols-1 md:grid-cols-3'
-            : props.layout === '2-1'
-            ? 'grid-cols-1 md:grid-cols-3'
-            : props.layout === '1-1-1'
-            ? 'grid-cols-1 md:grid-cols-3'
-            : 'grid-cols-1 md:grid-cols-2';
-
-        return (
-          <div className={`grid ${gridClass} ${gapClass} w-full my-2`}>
-            <div className="col-span-full">
-              <DropZone zone="default" />
-            </div>
-          </div>
-        );
+        const { gapClass, gridClass, childSpanClass } = getColumnsLayoutInfo(props.layout, props.gap);
+        const className = ["grid", gridClass, gapClass, childSpanClass, "w-full", "my-2"]
+          .filter(Boolean)
+          .join(" ");
+        return <DropZone zone="default" className={className} />;
       }
 
       const block: ContentBlock = {
-        id: props.id || 'preview',
+        id: props.id || "preview",
         type: type as any,
         order: 0,
         data: props
       };
-      
-      return <BlockRenderer block={block} isPreview={false} />;
+
+      return <BlockRenderer block={block} isPreview={true} />;
     }
   };
 });

@@ -44,6 +44,8 @@ export const DETERMINISTIC_TESTS = [
   "tests/content-rbac-foundation.test.ts",
   "tests/content-schema-foundation.test.ts",
   "tests/editor-foundation.test.ts",
+  "tests/editor-mobile-ux.test.ts",
+  "tests/editor-preview-public-parity.test.ts",
   "tests/lineage-registry.test.ts",
   "tests/media-admin-runtime.test.ts",
   "tests/media-clamav-security.test.ts",

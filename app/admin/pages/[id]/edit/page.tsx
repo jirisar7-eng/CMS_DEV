@@ -24,10 +24,10 @@ export default async function PageComposerRoute({ params, searchParams }: PagePr
 
   if (projectContext.status !== 'PROJECT_VALID' || !projectContext.projectId) {
     return (
-      <div className="p-8 max-w-md mx-auto mt-12 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-center flex flex-col items-center gap-3">
-        <AlertCircle className="w-8 h-8" />
-        <h2 className="text-lg font-bold">Aktivní projekt nebylo možné ověřit</h2>
-        <p className="text-sm text-muted-foreground">
+      <div data-testid="fail-closed-server-project-context" className="p-4 sm:p-8 max-w-md mx-auto mt-8 sm:mt-12 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-center flex flex-col items-center gap-3 w-full max-w-full min-w-0">
+        <AlertCircle className="w-8 h-8 shrink-0" />
+        <h2 className="text-lg font-bold break-words">Aktivní projekt nebylo možné ověřit</h2>
+        <p className="text-sm text-muted-foreground break-words">
           {projectContext.status === 'PROJECT_INACTIVE' && 'Vybraný projekt je neaktivní.'}
           {projectContext.status === 'PROJECT_FORBIDDEN' && 'Nemáte oprávnění k přístupu k tomuto projektu.'}
           {projectContext.status === 'PROJECT_NOT_FOUND' && 'Vybraný projekt neexistuje.'}
