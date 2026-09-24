@@ -54,6 +54,8 @@ export const DETERMINISTIC_TESTS = [
   "tests/media-replace-lifecycle.test.ts",
   "tests/media-usage-references.test.ts",
   "tests/navigation-foundation.test.ts",
+  "tests/navigation-lifecycle.test.ts",
+  "tests/navigation-admin-lifecycle.test.ts",
   "tests/plugin-lifecycle-persistence.test.ts",
   "tests/plugin-registry.test.ts",
   "tests/project-context-security.test.ts",
@@ -79,5 +81,6 @@ export const POSTGRES_TESTS = [
   "tests/session-security-postgres.test.ts",
   "tests/audit-admin-postgres.test.ts",
   "tests/publishing-revisions-postgres.test.ts",
-  "tests/content-lifecycle-schedule-unpublish-postgres.test.ts"
+  "tests/content-lifecycle-schedule-unpublish-postgres.test.ts",
+  "tests/navigation-lifecycle-postgres.test.ts"
 ];

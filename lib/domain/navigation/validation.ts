@@ -1,9 +1,9 @@
 /**
  * SYNTHESIS CMS — NAVIGATION SECURITY & TREE VALIDATION
- * Pure functions for URL sanitization, label safety, cyclic tree prevention, and max nesting guards.
+ * Pure functions for URL sanitization, label safety, anchor validity, cyclic tree prevention, and max nesting guards.
  */
 
-import { NavigationItem, NavigationValidationResult } from './types';
+import { NavigationItem, NavigationValidationResult } from "./types";
 
 export const MAX_NAVIGATION_DEPTH = 3; // 0 = root, 1 = sub, 2 = sub-sub, 3 = max
 
@@ -12,39 +12,37 @@ export const MAX_NAVIGATION_DEPTH = 3; // 0 = root, 1 = sub, 2 = sub-sub, 3 = ma
  * Forbids javascript:, data:, vbscript:, and relative script vectors.
  */
 export function isSafeUrl(url: string | null | undefined): { safe: boolean; reason?: string } {
-  if (!url || typeof url !== 'string') {
+  if (!url || typeof url !== "string") {
     return { safe: true };
   }
-
   const trimmed = url.trim();
   if (!trimmed) {
     return { safe: true };
   }
 
   // Check for dangerous protocols (case-insensitive, handling encoded spaces/control characters)
-  const normalized = trimmed.toLowerCase().replace(/[\x00-\x1F\x7F\s]+/g, '');
-
+  const normalized = trimmed.toLowerCase().replace(/[\x00-\x1F\x7F\s]+/g, "");
   if (
-    normalized.startsWith('javascript:') ||
-    normalized.startsWith('data:') ||
-    normalized.startsWith('vbscript:') ||
-    normalized.startsWith('file:') ||
-    normalized.startsWith('blob:')
+    normalized.startsWith("javascript:") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("vbscript:") ||
+    normalized.startsWith("file:") ||
+    normalized.startsWith("blob:")
   ) {
     return {
       safe: false,
-      reason: 'Protokoly javascript:, data:, vbscript: a lokální souborová schémata jsou z bezpečnostních důvodů zakázána.',
+      reason: "Protokoly javascript:, data:, vbscript: a lokální souborová schémata jsou z bezpečnostních důvodů zakázána.",
     };
   }
 
   // Safe schemes
   if (
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('mailto:') ||
-    trimmed.startsWith('tel:') ||
-    trimmed.startsWith('/') ||
-    trimmed.startsWith('#')
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("mailto:") ||
+    trimmed.startsWith("tel:") ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("#")
   ) {
     return { safe: true };
   }
@@ -52,17 +50,27 @@ export function isSafeUrl(url: string | null | undefined): { safe: boolean; reas
   // Default warning if no recognized scheme is present
   return {
     safe: false,
-    reason: 'URL musí začínat https://, http://, mailto:, tel:, lomítkem (/) nebo mřížkou (#).',
+    reason: "URL musí začínat https://, http://, mailto:, tel:, lomítkem (/) nebo mřížkou (#).",
   };
+}
+
+/**
+ * Validates anchor string: must start with #, non-empty after #, and have no spaces or control chars.
+ */
+export function isValidAnchor(anchor: unknown): boolean {
+  if (typeof anchor !== "string") return false;
+  const trimmed = anchor.trim();
+  if (!trimmed || !trimmed.startsWith("#") || trimmed.length <= 1) return false;
+  if (/[\x00-\x1F\x7F\s]/.test(trimmed)) return false;
+  return true;
 }
 
 /**
  * Sanitizes navigation label by stripping HTML tags and trimming.
  */
 export function sanitizeLabel(label: string | null | undefined): string {
-  if (!label || typeof label !== 'string') return '';
-  // Strip HTML tags and normalize whitespace
-  const stripped = label.replace(/<[^>]*>?/gm, '').trim();
+  if (!label || typeof label !== "string") return "";
+  const stripped = label.replace(/<[^>]*>?/gm, "").trim();
   return stripped;
 }
 
@@ -78,8 +86,7 @@ export function flattenAndCalculateDepths(
   const cycleErrors: string[] = [];
 
   // Sort by order initially
-  const sorted = [...items].sort((a, b) => a.order - b.order);
-
+  const sorted = [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   sorted.forEach((item) => {
     itemMap.set(item.id, { ...item });
     const pId = item.parentId || null;
@@ -102,14 +109,12 @@ export function flattenAndCalculateDepths(
       if (visited.has(child.id)) {
         continue;
       }
-
       visited.add(child.id);
       const effectiveDepth = Math.min(depth, maxDepth);
       result.push({
         ...child,
         depth: effectiveDepth,
       });
-
       traverse(child.id, effectiveDepth + 1, [...path, child.id]);
     }
   }
@@ -165,30 +170,27 @@ export function validateNavigationTree(items: NavigationItem[]): NavigationValid
   }
 
   items.forEach((item) => {
-    // 1. Duplicate ID check
     if (idSet.has(item.id)) {
       errors.push(`Duplicitní identifikátor položky: ${item.id}`);
     }
     idSet.add(item.id);
 
-    // 2. Empty label check
     if (!item.label || sanitizeLabel(item.label).length === 0) {
       errors.push(`Položka (${item.id}) musí mít neprázdný název.`);
     }
 
-    // 3. Type-specific validation
-    if (item.type === 'EXTERNAL_LINK') {
+    if (item.type === "EXTERNAL_LINK") {
       const urlCheck = isSafeUrl(item.externalUrl);
       if (!urlCheck.safe) {
         errors.push(`Položka „${item.label}“: ${urlCheck.reason}`);
       }
-    } else if (item.type === 'PAGE') {
+    } else if (item.type === "PAGE") {
       if (!item.pageId) {
         errors.push(`Položka typu Stránka „${item.label}“ nemá vybranou cílovou stránku.`);
       }
-    } else if (item.type === 'ANCHOR') {
-      if (!item.anchor || !item.anchor.startsWith('#')) {
-        warnings.push(`Položka typu Kotva „${item.label}“ by měla začínat znakem # (např. #kontakt).`);
+    } else if (item.type === "ANCHOR") {
+      if (!isValidAnchor(item.anchor)) {
+        errors.push(`Položka typu Kotva „${item.label}“ musí začínat znakem # a mít platný název kotvy bez mezer.`);
       }
     }
   });
@@ -221,15 +223,9 @@ export interface PublicNavigationSet {
   items: PublicNavigationItem[];
 }
 
-/**
- * Transforms raw DB navigation sets into public format:
- * - only PUBLISHED sets
- * - only visible items
- * - NO admin metadata (no projectId, status, version, createdAt, updatedAt, audit fields)
- */
 export function formatPublicNavigation(navSets: any[]): PublicNavigationSet[] {
   return navSets
-    .filter(set => set.status === 'PUBLISHED')
+    .filter(set => set.status === "PUBLISHED")
     .map(set => ({
       key: set.key,
       name: set.name,
