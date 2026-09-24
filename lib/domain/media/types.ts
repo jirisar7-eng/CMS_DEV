@@ -189,12 +189,22 @@ export type MediaAssetVersionStatus =
   | 'rejected';
 
 export interface MediaAssetVersionSecurity {
-  validated: boolean;
-  pipelineId: string;
-  validatedAt: string;
+  validated?: boolean;
+  pipelineId?: string;
+  validatedAt?: string;
   reasonCode?: string;
-  sourceChecksumSha256: string;
-  canonicalChecksumSha256: string;
+  sourceChecksumSha256?: string;
+  canonicalChecksumSha256?: string;
+  // Extended exact security evidence preserved across lifecycle:
+  scanned?: boolean;
+  clean?: boolean;
+  threat?: string;
+  activeContent?: boolean;
+  contentVerified?: boolean;
+  scannerId?: string;
+  scannerReason?: string;
+  checksumSha256?: string;
+  scannedAt?: string;
 }
 
 export interface MediaAssetVersion {

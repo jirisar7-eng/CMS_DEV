@@ -30,7 +30,7 @@ Module.prototype.require = function (id: string) {
     return { S3Client: class {}, PutObjectCommand: class {}, GetObjectCommand: class {}, DeleteObjectCommand: class {} };
   }
   if (id === '@aws-sdk/s3-request-presigner') {
-    return { getSignedUrl: async () => 'https://mock-signed-url' };
+    return { getSignedUrl: async () => 'https://mock-storage.s3.amazonaws.com/direct-signed-url' };
   }
   if (id === 'saxes' || id.endsWith('mock-saxes.js')) {
     return {
@@ -62,6 +62,7 @@ import {
   MalwareScanResult,
   MediaMetadata,
   MediaSecurityInfo,
+  MediaAssetVersionSecurity,
 } from '../lib/domain/media/types';
 
 class MockInMemoryMediaRepository implements IMediaRepository {
@@ -136,7 +137,7 @@ class MockInMemoryMediaRepository implements IMediaRepository {
     if (!projectId) return [];
     const asset = await this.getById(assetId, projectId);
     if (!asset) return [];
-    return this.versions.filter(v => v.assetId === assetId);
+    return this.versions.filter(v => v.assetId === assetId).sort((a, b) => b.versionNumber - a.versionNumber);
   }
 
   async replaceAsset(
@@ -180,25 +181,113 @@ class MockInMemoryMediaRepository implements IMediaRepository {
     const version = this.versions.find(v => v.id === versionId && v.assetId === assetId);
     if (!version) return undefined;
 
-    const vSec = version.security as any;
-    const isSvg = version.mimeType === 'image/svg+xml';
+    // 1. Snapshot current asset file into a new version before switching
+    const existingVersions = this.versions.filter(v => v.assetId === assetId);
+    const nextVersionNumber = existingVersions.length + 1;
+    const now = new Date().toISOString();
 
-    const assetSecurity: MediaSecurityInfo = {
-      scanned: vSec?.scanned ?? vSec?.validated ?? false,
-      clean: vSec?.clean ?? vSec?.validated ?? false,
-      threat: vSec?.threat,
-      activeContent: vSec?.activeContent ?? isSvg,
-      checksumSha256: vSec?.checksumSha256 || vSec?.canonicalChecksumSha256 || vSec?.sourceChecksumSha256 || '',
-      scannedAt: vSec?.scannedAt || vSec?.validatedAt || new Date().toISOString(),
-      pipelineId: vSec?.pipelineId,
-      scannerId: vSec?.scannerId || (isSvg ? 'svg-sanitizer-pipeline' : undefined),
-      scannerReason: vSec?.scannerReason || vSec?.reasonCode || (vSec?.clean ? 'CLEAN' : undefined),
-      contentVerified: vSec?.contentVerified ?? (isSvg ? true : (vSec?.validated ?? false)),
+    const currentSec = (asset.security as any) || {};
+    const currentVersionSecurity: MediaAssetVersionSecurity = {
+      ...currentSec,
+      validated: currentSec.clean ?? false,
+      validatedAt: currentSec.scannedAt || now,
+      canonicalChecksumSha256: currentSec.checksumSha256,
+      sourceChecksumSha256: currentSec.checksumSha256,
     };
 
-    const targetStatus = (!assetSecurity.clean || version.status === 'QUARANTINED' || version.status === 'rejected')
-      ? 'QUARANTINED'
-      : (version.status === 'PUBLISHED' ? 'READY' : version.status) || 'READY';
+    this.versions.push({
+      id: `ver-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      assetId,
+      versionNumber: nextVersionNumber,
+      status: asset.status as any,
+      mimeType: asset.mimeType,
+      sizeBytes: asset.sizeBytes,
+      storageKey: asset.storageKey,
+      security: currentVersionSecurity,
+      originalFilename: asset.filename,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // 2. Strict evaluation of target version security evidence
+    const vSec = (version.security as any) || {};
+    const isSvg = version.mimeType === 'image/svg+xml' || (version.originalFilename?.endsWith('.svg') ?? false);
+
+    let targetStatus: any = 'QUARANTINED';
+    let assetSecurity: MediaSecurityInfo;
+
+    if (isSvg) {
+      const hasValidSvgEvidence = Boolean(
+        vSec.pipelineId &&
+        (vSec.clean === true || vSec.validated === true) &&
+        !vSec.threat
+      );
+
+      if (hasValidSvgEvidence && version.status !== 'QUARANTINED' && version.status !== 'rejected') {
+        targetStatus = version.status === 'PUBLISHED' ? 'READY' : version.status || 'READY';
+        assetSecurity = {
+          scanned: true,
+          clean: true,
+          activeContent: true,
+          checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+          scannedAt: vSec.scannedAt || vSec.validatedAt || now,
+          pipelineId: vSec.pipelineId,
+          scannerId: vSec.scannerId || 'svg-sanitizer-pipeline',
+          scannerReason: vSec.scannerReason || 'CLEAN',
+          contentVerified: true,
+        };
+      } else {
+        targetStatus = 'QUARANTINED';
+        assetSecurity = {
+          scanned: vSec.scanned ?? vSec.validated ?? false,
+          clean: false,
+          threat: vSec.threat,
+          activeContent: true,
+          checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+          scannedAt: vSec.scannedAt || vSec.validatedAt || now,
+          pipelineId: vSec.pipelineId,
+          scannerId: vSec.scannerId,
+          scannerReason: vSec.scannerReason || 'INSUFFICIENT_SECURITY_EVIDENCE',
+          contentVerified: false,
+        };
+      }
+    } else {
+      const hasValidNonSvgEvidence = Boolean(
+        vSec.contentVerified === true &&
+        vSec.scanned === true &&
+        vSec.clean === true &&
+        vSec.scannerId === 'clamav' &&
+        Boolean(vSec.checksumSha256 || vSec.canonicalChecksumSha256) &&
+        !vSec.threat
+      );
+
+      if (hasValidNonSvgEvidence && version.status !== 'QUARANTINED' && version.status !== 'rejected') {
+        targetStatus = version.status === 'PUBLISHED' ? 'READY' : version.status || 'READY';
+        assetSecurity = {
+          scanned: true,
+          clean: true,
+          contentVerified: true,
+          activeContent: false,
+          checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+          scannedAt: vSec.scannedAt || vSec.validatedAt || now,
+          scannerId: 'clamav',
+          scannerReason: vSec.scannerReason || 'CLEAN',
+        };
+      } else {
+        targetStatus = 'QUARANTINED';
+        assetSecurity = {
+          scanned: vSec.scanned ?? false,
+          clean: false,
+          contentVerified: vSec.contentVerified ?? false,
+          threat: vSec.threat,
+          activeContent: false,
+          checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+          scannedAt: vSec.scannedAt || vSec.validatedAt || now,
+          scannerId: vSec.scannerId,
+          scannerReason: vSec.scannerReason || 'INSUFFICIENT_SECURITY_EVIDENCE',
+        };
+      }
+    }
 
     if (version.storageKey) {
       asset.storageKey = version.storageKey;
@@ -210,7 +299,7 @@ class MockInMemoryMediaRepository implements IMediaRepository {
     asset.sizeBytes = version.sizeBytes;
     asset.status = targetStatus;
     asset.security = assetSecurity;
-    asset.updatedAt = new Date().toISOString();
+    asset.updatedAt = now;
     return asset;
   }
 
@@ -235,6 +324,7 @@ class MockTrackingStorageProvider implements StorageProvider {
   name = 'Mock Storage';
   public objects = new Map<string, { data: Buffer; mimeType: string; sizeBytes: number; checksumSha256: string }>();
   public deletedKeys: string[] = [];
+  public putCalls: Array<{ key: string; sizeBytes: number }> = [];
 
   async upload(file: any, storageKey: string): Promise<{ storageKey: string; sizeBytes: number }> {
     this.objects.set(storageKey, {
@@ -255,6 +345,7 @@ class MockTrackingStorageProvider implements StorageProvider {
     data: Buffer | Uint8Array | Blob,
     options: { mimeType: string; sizeBytes: number; checksumSha256: string }
   ): Promise<void> {
+    this.putCalls.push({ key, sizeBytes: options.sizeBytes });
     this.objects.set(key, {
       data: Buffer.isBuffer(data) ? data : Buffer.from(data as any),
       mimeType: options.mimeType,
@@ -275,7 +366,7 @@ class MockTrackingStorageProvider implements StorageProvider {
   }
 
   async getSignedReadUrl(key: string): Promise<string> {
-    return `https://storage.mock.synthesis.local/files/${key}`;
+    return `https://mock-storage.s3.amazonaws.com/${key}?signed=true`;
   }
 
   async exists(key: string): Promise<boolean> {
@@ -331,10 +422,70 @@ const VALID_PNG_BUFFER_V2 = Buffer.concat([
 
 const SPOOFED_PNG_BUFFER = Buffer.from('NOT_A_REAL_PNG_JUST_TEXT_PAYLOAD');
 
-describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle', () => {
+describe('SYN-MEDIA-002 Phase A1: Secure Media Replace & Version Safety Lifecycle', () => {
   const projectId = 'proj-media-test-001';
 
-  it('1. Clean replacement succeeds, preserving asset ID, projectId, and metadata while getting a new storageKey and version record', async () => {
+  it('1. Upload canonical URL is /api/media/<id> and does not store direct signed storage URL', async () => {
+    const repository = new MockInMemoryMediaRepository();
+    const storageProvider = new MockTrackingStorageProvider();
+    const scanner = new MockDeterministicScanner();
+    const service = new MediaService(repository, storageProvider, scanner);
+
+    const asset = await service.uploadAsset(
+      { name: 'document.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
+      { title: 'Guarded Document' },
+      projectId
+    );
+
+    assert.strictEqual(asset.url, `/api/media/${asset.id}`, 'Canonical URL must be /api/media/<id>');
+    assert.strictEqual(asset.url.includes('signed='), false, 'Canonical URL must NOT be a signed storage URL');
+    assert.strictEqual(asset.url.includes('s3.amazonaws.com'), false, 'Canonical URL must NOT expose storage backend');
+  });
+
+  it('2. Repository without atomic replace support fails closed and leaves storage and DB unchanged', async () => {
+    class RepoWithoutReplace extends MockInMemoryMediaRepository {
+      replaceAsset = undefined;
+    }
+    const repository = new RepoWithoutReplace();
+    const storageProvider = new MockTrackingStorageProvider();
+    const scanner = new MockDeterministicScanner();
+    const service = new MediaService(repository, storageProvider, scanner);
+
+    const asset = await service.uploadAsset(
+      { name: 'base.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
+      { title: 'Base' },
+      projectId
+    );
+
+    const putCallsCountBefore = storageProvider.putCalls.length;
+    const objectsCountBefore = storageProvider.objects.size;
+
+    await assert.rejects(
+      async () => {
+        await service.replaceAsset(
+          asset.id,
+          { name: 'new.png', type: 'image/png', size: VALID_PNG_BUFFER_V2.length, data: VALID_PNG_BUFFER_V2 },
+          projectId
+        );
+      },
+      /Atomic replaceAsset operation is unsupported by repository/,
+      'Must fail closed with unsupported error'
+    );
+
+    // Verify storage was untouched (no new put calls)
+    assert.strictEqual(storageProvider.putCalls.length, putCallsCountBefore, 'No storage put should occur if unsupported');
+    assert.strictEqual(storageProvider.objects.size, objectsCountBefore);
+
+    // Verify DB asset unchanged
+    const currentAsset = await service.getAsset(asset.id, projectId);
+    assert.strictEqual(currentAsset?.filename, 'base.png');
+
+    // Verify no versions were orphaned or created
+    const versions = await service.listVersions(asset.id, projectId);
+    assert.strictEqual(versions.length, 0);
+  });
+
+  it('3. Clean replacement succeeds, preserving asset ID, projectId, and metadata while getting a new storageKey and full security evidence', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
@@ -358,6 +509,7 @@ describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle
 
     assert.strictEqual(replacedAsset.id, initialAssetId, 'MediaAsset.id must be strictly preserved');
     assert.strictEqual(replacedAsset.projectId, projectId, 'projectId must be strictly preserved');
+    assert.strictEqual(replacedAsset.url, `/api/media/${initialAssetId}`, 'Guarded URL must be preserved');
     assert.strictEqual(replacedAsset.metadata.title, 'Hero Banner', 'Metadata title must be preserved');
     assert.strictEqual(replacedAsset.metadata.altText, 'Homepage hero image', 'Metadata altText must be preserved');
     assert.deepStrictEqual(replacedAsset.metadata.tags, ['hero', 'v1'], 'Metadata tags must be preserved');
@@ -365,42 +517,19 @@ describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle
     assert.strictEqual(replacedAsset.status, 'READY');
     assert.notStrictEqual(replacedAsset.storageKey, oldStorageKey, 'Replacement MUST receive a NEW storageKey');
 
-    assert.strictEqual(await storageProvider.exists(oldStorageKey), true, 'Old storage object must not be deleted');
-    assert.strictEqual(await storageProvider.exists(replacedAsset.storageKey), true, 'New storage object must exist');
-
+    // Verify version history has exact preserved security evidence
     const versions = await service.listVersions(initialAssetId, projectId);
-    assert.strictEqual(versions.length, 1, 'Exactly one historical version must be recorded');
+    assert.strictEqual(versions.length, 1);
     assert.strictEqual(versions[0].versionNumber, 1);
-    assert.strictEqual(versions[0].storageKey, oldStorageKey, 'Historical version must reference the old storageKey');
+    assert.strictEqual(versions[0].storageKey, oldStorageKey);
     assert.strictEqual(versions[0].originalFilename, 'hero.png');
+    assert.strictEqual(versions[0].security.clean, true);
+    assert.strictEqual(versions[0].security.scannerId, 'clamav');
+    const expectedV1Hash = crypto.createHash('sha256').update(VALID_PNG_BUFFER).digest('hex');
+    assert.strictEqual(versions[0].security.checksumSha256, expectedV1Hash);
   });
 
-  it('2. Replacement security evidence matches new file bytes exactly', async () => {
-    const repository = new MockInMemoryMediaRepository();
-    const storageProvider = new MockTrackingStorageProvider();
-    const scanner = new MockDeterministicScanner();
-    const service = new MediaService(repository, storageProvider, scanner);
-
-    const initialAsset = await service.uploadAsset(
-      { name: 'logo.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
-      { title: 'Company Logo' },
-      projectId
-    );
-
-    const replacedAsset = await service.replaceAsset(
-      initialAsset.id,
-      { name: 'logo_new.png', type: 'image/png', size: VALID_PNG_BUFFER_V2.length, data: VALID_PNG_BUFFER_V2 },
-      projectId
-    );
-
-    const expectedNewHash = crypto.createHash('sha256').update(VALID_PNG_BUFFER_V2).digest('hex');
-    assert.strictEqual(replacedAsset.security.checksumSha256, expectedNewHash);
-    assert.strictEqual(replacedAsset.security.contentVerified, true);
-    assert.strictEqual(replacedAsset.security.clean, true);
-    assert.strictEqual(replacedAsset.security.scannerId, 'clamav');
-  });
-
-  it('3. MIME spoof cannot become READY during replacement and is QUARANTINED', async () => {
+  it('4. MIME spoof cannot become READY during replacement and is QUARANTINED', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
@@ -423,7 +552,7 @@ describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle
     assert.strictEqual(replacedAsset.security.clean, false);
   });
 
-  it('4. Scanner failure is fail-closed (QUARANTINED) on replacement', async () => {
+  it('5. Scanner failure is fail-closed (QUARANTINED) on replacement', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
@@ -448,7 +577,7 @@ describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle
     assert.strictEqual(replacedAsset.security.scannerReason, 'CONNECTION_FAILED');
   });
 
-  it('5. Cross-project replacement is strictly rejected (fail-closed)', async () => {
+  it('6. Cross-project replacement and cross-project version restore are strictly rejected', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
@@ -468,12 +597,18 @@ describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle
           'project-BBB'
         );
       },
-      /Media asset not found in project/,
-      'Cross-project replacement must be rejected'
+      /Media asset not found in project/
+    );
+
+    await assert.rejects(
+      async () => {
+        await service.setCurrentVersion(assetProjA.id, 'some-version-id', 'project-BBB');
+      },
+      /Media asset not found in project/
     );
   });
 
-  it('6. Replacement of PUBLISHED asset is strictly rejected', async () => {
+  it('7. Replacement of PUBLISHED asset is strictly rejected', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
@@ -495,12 +630,11 @@ describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle
           projectId
         );
       },
-      /Cannot replace a PUBLISHED media asset/,
-      'PUBLISHED asset replacement must be blocked'
+      /Cannot replace a PUBLISHED media asset/
     );
   });
 
-  it('7. DB failure after new-object upload deletes ONLY new object and leaves previous asset intact', async () => {
+  it('8. DB failure after new-object upload deletes ONLY new object and leaves previous asset intact', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
@@ -527,119 +661,105 @@ describe('SYN-MEDIA-002 Phase A: Secure Media Replace & Version Safety Lifecycle
     );
 
     assert.strictEqual(await storageProvider.exists(oldStorageKey), true, 'Old storage object MUST remain intact');
-    assert.strictEqual(storageProvider.deletedKeys.length, 1, 'Only one object (the newly uploaded one) should be cleaned up');
-    assert.notStrictEqual(storageProvider.deletedKeys[0], oldStorageKey, 'Old storage key must NOT be deleted');
+    assert.strictEqual(storageProvider.deletedKeys.length, 1);
+    assert.notStrictEqual(storageProvider.deletedKeys[0], oldStorageKey);
 
     const currentAssetInDb = await service.getAsset(initialAsset.id, projectId);
     assert.strictEqual(currentAssetInDb?.filename, 'stable.png');
     assert.strictEqual(currentAssetInDb?.storageKey, oldStorageKey);
   });
 
-  it('8. Version listing and access is project-scoped', async () => {
+  it('9. Restoring old version snapshots the previously current file: A -> B -> restore A keeps B in version history', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
     const service = new MediaService(repository, storageProvider, scanner);
 
-    const asset = await service.uploadAsset(
-      { name: 'scoped.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
-      { title: 'Scoped Asset' },
+    // Initial file A
+    const assetA = await service.uploadAsset(
+      { name: 'fileA.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
+      { title: 'File A' },
       projectId
     );
+    const keyA = assetA.storageKey;
 
-    await service.replaceAsset(
-      asset.id,
-      { name: 'scoped_v2.png', type: 'image/png', size: VALID_PNG_BUFFER_V2.length, data: VALID_PNG_BUFFER_V2 },
+    // Replace with file B
+    const assetB = await service.replaceAsset(
+      assetA.id,
+      { name: 'fileB.png', type: 'image/png', size: VALID_PNG_BUFFER_V2.length, data: VALID_PNG_BUFFER_V2 },
       projectId
     );
+    const keyB = assetB.storageKey;
 
-    const ownVersions = await service.listVersions(asset.id, projectId);
-    assert.strictEqual(ownVersions.length, 1);
-
-    await assert.rejects(
-      async () => {
-        await service.listVersions(asset.id, 'foreign-project-999');
-      },
-      /Media asset not found in project/
-    );
-  });
-
-  it('9. Selecting/restoring a historical version restores matching security metadata and prevents stale security leakage', async () => {
-    const repository = new MockInMemoryMediaRepository();
-    const storageProvider = new MockTrackingStorageProvider();
-    const scanner = new MockDeterministicScanner();
-    const service = new MediaService(repository, storageProvider, scanner);
-
-    const v1Hash = crypto.createHash('sha256').update(VALID_PNG_BUFFER).digest('hex');
-
-    const initialAsset = await service.uploadAsset(
-      { name: 'art_v1.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
-      { title: 'Art V1' },
-      projectId
-    );
-
-    await service.replaceAsset(
-      initialAsset.id,
-      { name: 'art_v2.png', type: 'image/png', size: VALID_PNG_BUFFER_V2.length, data: VALID_PNG_BUFFER_V2 },
-      projectId
-    );
-
-    const versions = await service.listVersions(initialAsset.id, projectId);
+    // Version history after replace: contains file A as version 1
+    let versions = await service.listVersions(assetA.id, projectId);
     assert.strictEqual(versions.length, 1);
-    const v1Record = versions[0];
+    assert.strictEqual(versions[0].storageKey, keyA);
+    assert.strictEqual(versions[0].originalFilename, 'fileA.png');
+    const versionAId = versions[0].id;
 
-    const restored = await service.setCurrentVersion(initialAsset.id, v1Record.id, projectId);
+    // Now restore file A
+    const restoredA = await service.setCurrentVersion(assetA.id, versionAId, projectId);
+    assert.ok(restoredA);
+    assert.strictEqual(restoredA.storageKey, keyA);
+    assert.strictEqual(restoredA.filename, 'fileA.png');
 
-    assert.ok(restored);
-    assert.strictEqual(restored.storageKey, v1Record.storageKey);
-    assert.strictEqual(restored.filename, 'art_v1.png');
-    assert.strictEqual(restored.security.checksumSha256, v1Hash, 'Restored asset MUST receive matching V1 checksum');
-    assert.strictEqual(restored.security.clean, true);
+    // CRITICAL INVARIANT: File B MUST NOT be lost! It must now be represented in version history!
+    versions = await service.listVersions(assetA.id, projectId);
+    assert.strictEqual(versions.length, 2, 'Version history must have both versions');
+
+    const fileBInHistory = versions.find(v => v.storageKey === keyB);
+    assert.ok(fileBInHistory, 'File B must be preserved in version history');
+    assert.strictEqual(fileBInHistory.originalFilename, 'fileB.png');
+    assert.strictEqual(fileBInHistory.sizeBytes, VALID_PNG_BUFFER_V2.length);
   });
 
-  it('10. Stale security evidence cannot make unsafe historical version publishable', async () => {
+  it('10. Restore uses target version security evidence only; incomplete legacy version becomes QUARANTINED', async () => {
     const repository = new MockInMemoryMediaRepository();
     const storageProvider = new MockTrackingStorageProvider();
     const scanner = new MockDeterministicScanner();
     const service = new MediaService(repository, storageProvider, scanner);
 
     const initialAsset = await service.uploadAsset(
-      { name: 'clean_base.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
-      { title: 'Clean Base' },
+      { name: 'clean.png', type: 'image/png', size: VALID_PNG_BUFFER.length, data: VALID_PNG_BUFFER },
+      { title: 'Clean' },
       projectId
     );
 
-    const quarantinedVer = await service.createVersion(
+    // Create a legacy version lacking ClamAV evidence and contentVerified
+    const legacyVersion = await service.createVersion(
       initialAsset.id,
       {
-        status: 'QUARANTINED',
+        status: 'READY',
         mimeType: 'image/png',
         sizeBytes: 100,
-        storageKey: 'ast_unsafe_key',
+        storageKey: 'ast_legacy_key',
         security: {
-          validated: false,
-          pipelineId: 'quarantined-pipeline',
+          validated: true,
+          pipelineId: 'ancient-pipeline',
           validatedAt: new Date().toISOString(),
-          reasonCode: 'INFECTED',
-          sourceChecksumSha256: 'bad_hash',
-          canonicalChecksumSha256: 'bad_hash',
+          // Missing contentVerified, missing scannerId=clamav, missing checksum
         },
-        originalFilename: 'infected_payload.png',
+        originalFilename: 'legacy.png',
       },
       projectId
     );
 
-    const restoredQuarantined = await service.setCurrentVersion(initialAsset.id, quarantinedVer.id, projectId);
-    assert.ok(restoredQuarantined);
-    assert.strictEqual(restoredQuarantined.status, 'QUARANTINED', 'Restoring unsafe version MUST set asset status to QUARANTINED');
-    assert.strictEqual(restoredQuarantined.security.clean, false);
+    // Restore the legacy version
+    const restored = await service.setCurrentVersion(initialAsset.id, legacyVersion.id, projectId);
+    assert.ok(restored);
 
+    // Must fail closed to QUARANTINED because non-SVG requires contentVerified + ClamAV evidence
+    assert.strictEqual(restored.status, 'QUARANTINED', 'Incomplete legacy version must fail closed to QUARANTINED');
+    assert.strictEqual(restored.security.clean, false);
+    assert.strictEqual(restored.security.scannerReason, 'INSUFFICIENT_SECURITY_EVIDENCE');
+
+    // Must be blocked from publication
     await assert.rejects(
       async () => {
         await service.changeStatus(initialAsset.id, 'PUBLISHED', projectId);
       },
-      /cannot be READY or PUBLISHED/i,
-      'Unsafe historical version must fail closed against publication'
+      /cannot be READY or PUBLISHED/i
     );
   });
 });

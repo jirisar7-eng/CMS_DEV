@@ -223,11 +223,13 @@ export class MediaService {
         security: securityInfo,
       });
 
-      // Generate signed URL
-      const signedUrl = await this.storageProvider.getSignedReadUrl(storageKey);
-      const updatedAsset = await this.repository.updateUrl(asset.id, signedUrl, projectId);
-      if (updatedAsset) {
-        asset = updatedAsset;
+      // Generate canonical guarded application URL
+      const publicUrl = `/api/media/${asset.id}`;
+      if (this.repository.updateUrl) {
+        const updatedAsset = await this.repository.updateUrl(asset.id, publicUrl, projectId);
+        if (updatedAsset) {
+          asset = updatedAsset;
+        }
       }
 
       return asset;
@@ -249,6 +251,10 @@ export class MediaService {
   ): Promise<MediaAsset> {
     if (!projectId) {
       throw new Error('projectId is required for replaceAsset');
+    }
+
+    if (typeof this.repository.replaceAsset !== 'function') {
+      throw new Error('Atomic replaceAsset operation is unsupported by repository');
     }
 
     const currentAsset = await this.repository.getById(id, projectId);
@@ -273,45 +279,39 @@ export class MediaService {
       checksumSha256: securityInfo.checksumSha256,
     });
 
-    // 4. Update repository (version history + current asset update) with compensation on failure
+    // 4. Update repository atomically with compensation on failure
     try {
+      const versionSecurity: MediaAssetVersionSecurity = {
+        ...currentAsset.security,
+        validated: currentAsset.security?.clean ?? false,
+        validatedAt: currentAsset.security?.scannedAt || new Date().toISOString(),
+        canonicalChecksumSha256: currentAsset.security?.checksumSha256,
+        sourceChecksumSha256: currentAsset.security?.checksumSha256,
+      };
+
       const versionInput = {
         status: currentAsset.status as any,
         mimeType: currentAsset.mimeType,
         sizeBytes: currentAsset.sizeBytes,
         storageKey: currentAsset.storageKey,
-        security: {
-          validated: currentAsset.security?.clean || false,
-          pipelineId: (currentAsset.security as any)?.pipelineId || 'legacy-pipeline',
-          validatedAt: (currentAsset.security as any)?.scannedAt || new Date().toISOString(),
-          reasonCode: (currentAsset.security as any)?.scannerReason || undefined,
-          sourceChecksumSha256: currentAsset.security?.checksumSha256 || '',
-          canonicalChecksumSha256: currentAsset.security?.checksumSha256 || '',
-        },
+        security: versionSecurity,
         originalFilename: currentAsset.filename,
       };
 
-      if (this.repository.replaceAsset) {
-        return await this.repository.replaceAsset(
-          id,
-          {
-            storageKey: newStorageKey,
-            filename: file.name,
-            mimeType: file.type,
-            mediaType,
-            sizeBytes: finalSize,
-            status,
-            security: securityInfo,
-          },
-          versionInput,
-          projectId
-        );
-      } else {
-        await this.repository.createVersion(id, versionInput, projectId);
-        // If repo does not have replaceAsset, update metadata or return updated
-        const updated = await this.repository.getById(id, projectId);
-        return updated!;
-      }
+      return await this.repository.replaceAsset(
+        id,
+        {
+          storageKey: newStorageKey,
+          filename: file.name,
+          mimeType: file.type,
+          mediaType,
+          sizeBytes: finalSize,
+          status,
+          security: securityInfo,
+        },
+        versionInput,
+        projectId
+      );
     } catch (dbErr) {
       // Rollback: Delete ONLY the newly uploaded storage object. Old object remains completely intact.
       try {

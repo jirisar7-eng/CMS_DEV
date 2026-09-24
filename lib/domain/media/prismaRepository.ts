@@ -332,43 +332,135 @@ export class PrismaMediaRepository implements IMediaRepository {
     });
     if (!version) return undefined;
 
-    const vSec = (version.security as any) || {};
-    const isSvg = version.mimeType === 'image/svg+xml' || (version.originalFilename?.endsWith('.svg') ?? false);
+    return await this.prisma.$transaction(async (tx: any) => {
+      // 1. Snapshot current asset into a new MediaAssetVersion before switching
+      const aggregate = await tx.mediaAssetVersion.aggregate({
+        where: { assetId },
+        _max: { versionNumber: true },
+      });
+      const nextVersion = (aggregate._max.versionNumber ?? 0) + 1;
 
-    const assetSecurity: MediaSecurityInfo = {
-      scanned: vSec.scanned ?? vSec.validated ?? false,
-      clean: vSec.clean ?? vSec.validated ?? false,
-      threat: vSec.threat,
-      activeContent: vSec.activeContent ?? isSvg,
-      checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || vSec.sourceChecksumSha256 || '',
-      scannedAt: vSec.scannedAt || vSec.validatedAt || new Date().toISOString(),
-      pipelineId: vSec.pipelineId,
-      scannerId: vSec.scannerId || (isSvg ? 'svg-sanitizer-pipeline' : undefined),
-      scannerReason: vSec.scannerReason || vSec.reasonCode || (vSec.clean || vSec.validated ? 'CLEAN' : undefined),
-      contentVerified: vSec.contentVerified ?? (isSvg ? true : (vSec.validated ?? false)),
-    };
+      const currentSec = (asset.security as any) || {};
+      const currentVersionSecurity: MediaAssetVersionSecurity = {
+        ...currentSec,
+        validated: currentSec.clean ?? false,
+        validatedAt: currentSec.scannedAt || new Date().toISOString(),
+        canonicalChecksumSha256: currentSec.checksumSha256,
+        sourceChecksumSha256: currentSec.checksumSha256,
+      };
 
-    const targetStatus: MediaStatus = (!assetSecurity.clean || version.status === 'QUARANTINED' || version.status === 'rejected')
-      ? 'QUARANTINED'
-      : (version.status === 'PUBLISHED' ? 'READY' : (version.status as MediaStatus)) || 'READY';
+      await tx.mediaAssetVersion.create({
+        data: {
+          assetId,
+          versionNumber: nextVersion,
+          status: asset.status,
+          mimeType: asset.mimeType,
+          sizeBytes: asset.sizeBytes,
+          storageKey: asset.storageKey || null,
+          security: currentVersionSecurity as any,
+          originalFilename: asset.filename || null,
+        },
+      });
 
-    const updated = await this.prisma.mediaAsset.update({
-      where: { id: assetId },
-      data: {
-        storageKey: version.storageKey || undefined,
-        filename: version.originalFilename || asset.filename,
-        mimeType: version.mimeType,
-        mediaType: resolveMediaType(version.mimeType, version.originalFilename || asset.filename),
-        sizeBytes: version.sizeBytes,
-        status: targetStatus,
-        security: assetSecurity as any,
-        updatedAt: new Date(),
-      },
-      include: {
-        usageReferences: true,
-      },
+      // 2. Strict evaluation of target version security evidence
+      const vSec = (version.security as any) || {};
+      const isSvg = version.mimeType === 'image/svg+xml' || (version.originalFilename?.endsWith('.svg') ?? false);
+
+      let targetStatus: MediaStatus = 'QUARANTINED';
+      let assetSecurity: MediaSecurityInfo;
+
+      if (isSvg) {
+        const hasValidSvgEvidence = Boolean(
+          vSec.pipelineId &&
+          (vSec.clean === true || vSec.validated === true) &&
+          !vSec.threat
+        );
+
+        if (hasValidSvgEvidence && version.status !== 'QUARANTINED' && version.status !== 'rejected') {
+          targetStatus = version.status === 'PUBLISHED' ? 'READY' : (version.status as MediaStatus) || 'READY';
+          assetSecurity = {
+            scanned: true,
+            clean: true,
+            activeContent: true,
+            checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+            scannedAt: vSec.scannedAt || vSec.validatedAt || new Date().toISOString(),
+            pipelineId: vSec.pipelineId,
+            scannerId: vSec.scannerId || 'svg-sanitizer-pipeline',
+            scannerReason: vSec.scannerReason || 'CLEAN',
+            contentVerified: true,
+          };
+        } else {
+          targetStatus = 'QUARANTINED';
+          assetSecurity = {
+            scanned: vSec.scanned ?? vSec.validated ?? false,
+            clean: false,
+            threat: vSec.threat,
+            activeContent: true,
+            checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+            scannedAt: vSec.scannedAt || vSec.validatedAt || new Date().toISOString(),
+            pipelineId: vSec.pipelineId,
+            scannerId: vSec.scannerId,
+            scannerReason: vSec.scannerReason || 'INSUFFICIENT_SECURITY_EVIDENCE',
+            contentVerified: false,
+          };
+        }
+      } else {
+        const hasValidNonSvgEvidence = Boolean(
+          vSec.contentVerified === true &&
+          vSec.scanned === true &&
+          vSec.clean === true &&
+          vSec.scannerId === 'clamav' &&
+          Boolean(vSec.checksumSha256 || vSec.canonicalChecksumSha256) &&
+          !vSec.threat
+        );
+
+        if (hasValidNonSvgEvidence && version.status !== 'QUARANTINED' && version.status !== 'rejected') {
+          targetStatus = version.status === 'PUBLISHED' ? 'READY' : (version.status as MediaStatus) || 'READY';
+          assetSecurity = {
+            scanned: true,
+            clean: true,
+            contentVerified: true,
+            activeContent: false,
+            checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+            scannedAt: vSec.scannedAt || vSec.validatedAt || new Date().toISOString(),
+            scannerId: 'clamav',
+            scannerReason: vSec.scannerReason || 'CLEAN',
+          };
+        } else {
+          targetStatus = 'QUARANTINED';
+          assetSecurity = {
+            scanned: vSec.scanned ?? false,
+            clean: false,
+            contentVerified: vSec.contentVerified ?? false,
+            threat: vSec.threat,
+            activeContent: false,
+            checksumSha256: vSec.checksumSha256 || vSec.canonicalChecksumSha256 || '',
+            scannedAt: vSec.scannedAt || vSec.validatedAt || new Date().toISOString(),
+            scannerId: vSec.scannerId,
+            scannerReason: vSec.scannerReason || 'INSUFFICIENT_SECURITY_EVIDENCE',
+          };
+        }
+      }
+
+      const updated = await tx.mediaAsset.update({
+        where: { id: assetId },
+        data: {
+          storageKey: version.storageKey || undefined,
+          filename: version.originalFilename || asset.filename,
+          mimeType: version.mimeType,
+          mediaType: resolveMediaType(version.mimeType, version.originalFilename || asset.filename),
+          sizeBytes: version.sizeBytes,
+          status: targetStatus,
+          security: assetSecurity as any,
+          updatedAt: new Date(),
+        },
+        include: {
+          usageReferences: true,
+        },
+      });
+
+      return this.mapAsset(updated);
     });
-    return this.mapAsset(updated);
   }
 
   async changeStatus(id: string, status: MediaStatus, projectId: string): Promise<MediaAsset | undefined> {
