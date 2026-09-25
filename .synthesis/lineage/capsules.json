@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 66,
+  "total_capsules": 67,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -434,6 +434,20 @@
       "sha256": "973521b602fc1bebec1c0bce704a442235cfcda0c5c7f48a2b0e582240ba7bf0",
       "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002-20260925-001",
       "supersedes_capsule_id": "CAP-SYN-GOV-LINEAGE-002-20260925-001",
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-002B-20260925-001",
+      "task_id": "SYN-GOV-LINEAGE-002B-CAPSULE-LEGACY-TEST-REPAIR",
+      "title": "Capsule Legacy Registry Test Regression Repair",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-002B-CAPSULE-LEGACY-TEST-REPAIR.json",
+      "base_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
+      "expected_branch": "task/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
+      "sha256": "5db152e88a3fc4ef890a310d66c146a5b861d61f8c721e046284f7d8c933f057",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002A-20260925-001",
+      "supersedes_capsule_id": null,
       "legacy": false
     },
     {
