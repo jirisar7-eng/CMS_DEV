@@ -1,0 +1,32 @@
+{
+  "version": "1.1.0",
+  "capsule_id": "CAP-SYN-OPS-002-20260922-001",
+  "task_id": "SYN-OPS-002",
+  "title": "Liveness & Readiness Contract",
+  "environment": "CMS_DEV",
+  "base_sha": "c8c3fa32eb0ce0d09c4443e927c506dcad6af8f4",
+  "expected_branch": "task/SYN-OPS-002-LIVENESS-READINESS",
+  "owner": "CHATGPT",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-09-22T00:00:00Z",
+  "parent_capsule_id": "CAP-SYN-SEC-010-20260922-001",
+  "supersedes_capsule_id": null,
+  "allowed_mutation_types": [
+    "CODE",
+    "CONFIG",
+    "TEST",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "app/api/health/live/route.ts",
+    "app/api/health/ready/route.ts",
+    "deploy/cms-dev/compose.yml",
+    "scripts/ci/test_manifest.mjs",
+    "tests/health-contract.test.ts"
+  ],
+  "forbidden_paths": [
+    ".env*",
+    "docs/environment/ENV-LEGACY-*"
+  ]
+}

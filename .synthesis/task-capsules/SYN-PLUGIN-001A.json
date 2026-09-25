@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-PLUGIN-001A",
+  "environment": "CMS_DEV",
+  "base_sha": "1cfdf81b29be8f93f03710590c71a72705ac8038",
+  "expected_branch": "task/SYN-PLUGIN-001A-PLUGIN-REGISTRY-SYSTEM-MAP-LINEAGE-DELTA",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "GOVERNANCE",
+    "TEST"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    ".synthesis/lineage/capabilities.json",
+    "scripts/lineage/validate.mjs",
+    "tests/lineage-registry.test.ts",
+    "tests/system-map-resolver.test.ts"
+  ]
+}

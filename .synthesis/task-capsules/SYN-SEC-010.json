@@ -1,0 +1,29 @@
+{
+  "version": "1.1.0",
+  "capsule_id": "CAP-SYN-SEC-010-20260922-001",
+  "task_id": "SYN-SEC-010",
+  "title": "HTTP security headers",
+  "environment": "CMS_DEV",
+  "base_sha": "4d8cda538ddef8626e0dcbbfe9cfffd90cbb7edd",
+  "expected_branch": "task/SYN-SEC-010-HTTP-SECURITY-HEADERS",
+  "owner": "AI_STUDIO",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-09-22T00:00:00Z",
+  "parent_capsule_id": "CAP-SYN-SEC-009-20260922-001",
+  "supersedes_capsule_id": null,
+  "allowed_mutation_types": [
+    "SECURITY",
+    "TEST",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "next.config.ts",
+    "scripts/ci/test_manifest.mjs",
+    "tests/security-headers.test.ts"
+  ],
+  "forbidden_paths": [
+    ".env*",
+    "docs/environment/ENV-LEGACY-*"
+  ]
+}
