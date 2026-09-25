@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 72,
+  "total_capsules": 73,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -601,6 +601,20 @@
       "expected_branch": "task/SYN-MEDIA-002-MEDIA-WORKFLOW",
       "sha256": "e09ba43d37fb9d2175c780bb1c210b00aec4cfa9c73ea27e041d84d16dbcb948",
       "parent_capsule_id": "CAP-SYN-GOV-EDITOR-002-20260923-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
+      "task_id": "SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
+      "title": "MediaPermission Domain Type Contract Parity Alignment",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT.json",
+      "base_sha": "a9e3dc7a89f9728af8b00c349d7198729bc320a2",
+      "expected_branch": "task/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
+      "sha256": "f6983fd39312a086f9dc05d426825deae09c0a71390348bd73eb658f145f9b58",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-D-20260925-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
