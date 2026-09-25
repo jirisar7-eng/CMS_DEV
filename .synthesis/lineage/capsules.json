@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 64,
+  "total_capsules": 65,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -407,6 +407,20 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-002-20260925-001",
+      "task_id": "SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
+      "title": "Live Lineage Drift Repair",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR.json",
+      "base_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
+      "expected_branch": "task/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
+      "sha256": "6a61ad9128bff55782cde2b14a0f361626f9ef754ac32c53322ce6b7ed02b8e8",
+      "parent_capsule_id": "CAP-SYN-SEO-002-20260924-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-SYN-GOV-MEDIA-002-20260924-001",
