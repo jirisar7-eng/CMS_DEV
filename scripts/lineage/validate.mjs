@@ -124,36 +124,64 @@ export function validateLineage(options = {}) {
     }
   }
 
-  const registeredTaskIds = new Set([
-    'SYN-PLUGIN-001'
-  ]);
+  // Load Capsule Registry for task_id -> archive mapping
+  let capsulesData = options.capsulesData;
+  if (!capsulesData) {
+    const capsulesPath = path.join(repoRoot, '.synthesis/lineage/capsules.json');
+    if (!fs.existsSync(capsulesPath)) {
+      errors.push('Missing capsule registry at ' + capsulesPath);
+    } else {
+      try {
+        capsulesData = JSON.parse(fs.readFileSync(capsulesPath, 'utf8'));
+      } catch (e) {
+        errors.push('Invalid JSON in capsules.json: ' + e.message);
+      }
+    }
+  }
+
+  const capsuleRegistryMap = new Map();
+  if (capsulesData) {
+    const capsList = Array.isArray(capsulesData.capsules) ? capsulesData.capsules : [];
+    for (const capRec of capsList) {
+      if (capRec.task_id) {
+        if (capsuleRegistryMap.has(capRec.task_id)) {
+          errors.push("Duplicate task_id in capsule registry: '" + capRec.task_id + "'");
+        } else {
+          capsuleRegistryMap.set(capRec.task_id, capRec);
+        }
+      }
+    }
+  }
+
+  const registeredTaskIds = new Set();
   const seenPrNumbers = new Set();
-  const validMergeShas = new Set([
-    '1cfdf81b29be8f93f03710590c71a72705ac8038'
-  ]);
+  const validMergeShas = new Set();
+  let lastPrNumber = 0;
 
   if (tasksData) {
     if (tasksData.registry_version !== '1.0.0') {
       errors.push("Unsupported registry version: expected '1.0.0', got '" + tasksData.registry_version + "'");
     }
-
     const tasksList = Array.isArray(tasksData.tasks) ? tasksData.tasks : [];
     if (!Array.isArray(tasksData.tasks)) {
       errors.push("tasks.json 'tasks' field must be an array");
     }
 
-    const capsulesDir = options.capsulesDir || path.join(repoRoot, '.synthesis/task-capsules');
+    if (tasksData.total_tasks !== tasksList.length) {
+      errors.push("tasks.json 'total_tasks' (" + tasksData.total_tasks + ") does not match tasks array length (" + tasksList.length + ")");
+    }
 
     for (const task of tasksList) {
-      // PR number validation - baseline 1..34
-      if (typeof task.pr_number !== 'number' || !Number.isInteger(task.pr_number)) {
+      // PR number validation
+      if (typeof task.pr_number !== 'number' || !Number.isInteger(task.pr_number) || task.pr_number < 1) {
         errors.push("Invalid pr_number '" + task.pr_number + "'");
-      } else if (task.pr_number < 1 || task.pr_number > 34) {
-        errors.push('PR #' + task.pr_number + ' is outside expected baseline range 1..34');
       } else if (seenPrNumbers.has(task.pr_number)) {
         errors.push('Duplicate PR number detected: #' + task.pr_number);
+      } else if (task.pr_number <= lastPrNumber) {
+        errors.push('PR #' + task.pr_number + ' is not in strictly ascending order (previous: #' + lastPrNumber + ')');
       } else {
         seenPrNumbers.add(task.pr_number);
+        lastPrNumber = task.pr_number;
       }
 
       // task_id uniqueness (where non-null)
@@ -174,7 +202,6 @@ export function validateLineage(options = {}) {
           errors.push('PR #' + task.pr_number + " has malformed SHA in '" + shaField + "': '" + val + "'");
         }
       }
-
       if (task.merge_sha && SHA1_REGEX.test(task.merge_sha)) {
         validMergeShas.add(task.merge_sha);
       }
@@ -187,19 +214,35 @@ export function validateLineage(options = {}) {
           if (!task.capsule_sha256 || !SHA256_REGEX.test(task.capsule_sha256)) {
             errors.push('PR #' + task.pr_number + ' (' + task.task_id + ") has malformed capsule_sha256: '" + task.capsule_sha256 + "'");
           }
-
-          const capsuleFile = path.join(capsulesDir, task.task_id + '.json');
-          if (!fs.existsSync(capsuleFile)) {
-            errors.push('PR #' + task.pr_number + ' declares capsule_present=true but archive file is missing: ' + capsuleFile);
+          const capRecord = capsuleRegistryMap.get(task.task_id);
+          if (!capRecord) {
+            errors.push('PR #' + task.pr_number + " ('" + task.task_id + "') has no matching record in capsule registry");
           } else {
-            try {
-              const rawContent = fs.readFileSync(capsuleFile, 'utf8');
-              const actualSha256 = crypto.createHash('sha256').update(rawContent, 'utf8').digest('hex');
-              if (actualSha256 !== task.capsule_sha256) {
-                errors.push('PR #' + task.pr_number + ' (' + task.task_id + ') capsule SHA-256 mismatch: expected ' + task.capsule_sha256 + ', calculated ' + actualSha256);
+            if (task.capsule_sha256 !== capRecord.sha256) {
+              errors.push('PR #' + task.pr_number + " ('" + task.task_id + "') capsule_sha256 mismatch with capsule registry: task has '" + task.capsule_sha256 + "', registry has '" + capRecord.sha256 + "'");
+            }
+            const archivePath = path.join(repoRoot, capRecord.archive_path);
+            if (!fs.existsSync(archivePath)) {
+              errors.push('PR #' + task.pr_number + ' declares capsule_present=true but archive file is missing: ' + capRecord.archive_path);
+            } else {
+              try {
+                const rawContent = fs.readFileSync(archivePath, 'utf8');
+                const actualSha256 = crypto.createHash('sha256').update(rawContent, 'utf8').digest('hex');
+                if (actualSha256 !== task.capsule_sha256) {
+                  errors.push('PR #' + task.pr_number + ' (' + task.task_id + ') capsule SHA-256 mismatch: expected ' + task.capsule_sha256 + ', calculated ' + actualSha256);
+                }
+                let parsedArchive;
+                try {
+                  parsedArchive = JSON.parse(rawContent);
+                } catch (e) {
+                  errors.push('PR #' + task.pr_number + " ('" + task.task_id + "') failed to parse archive JSON: " + e.message);
+                }
+                if (parsedArchive && parsedArchive.task_id && parsedArchive.task_id !== task.task_id) {
+                  errors.push('PR #' + task.pr_number + " parsed archive task_id mismatch: task has '" + task.task_id + "', archive has '" + parsedArchive.task_id + "'");
+                }
+              } catch (err) {
+                errors.push('PR #' + task.pr_number + ' (' + task.task_id + ') failed to read archive capsule: ' + err.message);
               }
-            } catch (err) {
-              errors.push('PR #' + task.pr_number + ' (' + task.task_id + ') failed to read archive capsule: ' + err.message);
             }
           }
         }
@@ -245,9 +288,6 @@ export function validateLineage(options = {}) {
       if (!seenPrNumbers.has(i)) {
         errors.push('Missing required PR #' + i + ' from baseline range 1..34');
       }
-    }
-    if (tasksList.length !== 34) {
-      errors.push('Expected exactly 34 tasks in baseline range 1..34, found ' + tasksList.length);
     }
   }
 

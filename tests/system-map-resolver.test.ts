@@ -199,8 +199,8 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const tasks = loadTasksRegistry(rootDir);
       assert.strictEqual(typeof tasks.registry_version, 'string');
       assert.strictEqual(typeof tasks.total_tasks, 'number');
-      assert.strictEqual(tasks.total_tasks, 34);
-      assert.strictEqual(tasks.tasks.length, 34);
+      assert.strictEqual(tasks.total_tasks, 65);
+      assert.strictEqual(tasks.tasks.length, 65);
     });
 
     it('fails closed with SystemMapRegistryError when capabilities registry is missing', () => {
@@ -290,8 +290,8 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(internalMap.view, 'internal');
       assert.strictEqual(internalMap.total_capabilities, 14);
       assert.strictEqual(internalMap.capabilities.length, 14);
-      assert.strictEqual(internalMap.total_tasks, 34);
-      assert.strictEqual(internalMap.tasks.length, 34);
+      assert.strictEqual(internalMap.total_tasks, 65);
+      assert.strictEqual(internalMap.tasks.length, 65);
 
       const identityCap = internalMap.capabilities.find((c) => c.capability_id === 'identity_rbac');
       assert.ok(identityCap);
@@ -308,6 +308,9 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const pr34 = internalMap.tasks.find((t) => t.pr_number === 34);
       assert.ok(pr34);
       assert.strictEqual(pr34.task_id, 'SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER');
+      const pr66 = internalMap.tasks.find((t) => t.pr_number === 66);
+      assert.ok(pr66);
+      assert.strictEqual(pr66.task_id, 'SYN-SEO-002');
     });
 
     it('unified resolver correctly dispatches between basic and internal', () => {
@@ -317,7 +320,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
 
       const internal = resolveSystemMap({ accessLevel: 'internal', customRoot: rootDir });
       assert.strictEqual(internal.view, 'internal');
-      assert.strictEqual((internal as any).tasks.length, 34);
+      assert.strictEqual((internal as any).tasks.length, 65);
     });
   });
 
@@ -486,8 +489,8 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const data = await res.json();
       assert.strictEqual(data.view, 'internal');
       assert.strictEqual(data.total_capabilities, 14);
-      assert.strictEqual(data.total_tasks, 34);
-      assert.strictEqual(data.tasks.length, 34);
+      assert.strictEqual(data.total_tasks, 65);
+      assert.strictEqual(data.tasks.length, 65);
     });
 
     it('returns 400 when invalid view parameter is passed', async () => {

@@ -1,200 +1,259 @@
 // @ts-nocheck
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
-import { validateLineage, resolveRepoRoot, matchesOwnerPath } from '../scripts/lineage/validate.mjs';
+import { describe, it } from "node:test";
+import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { validateLineage, resolveRepoRoot, matchesOwnerPath } from "../scripts/lineage/validate.mjs";
 
 const repoRoot = resolveRepoRoot();
-const tasksPath = path.join(repoRoot, '.synthesis/lineage/tasks.json');
-const capabilitiesPath = path.join(repoRoot, '.synthesis/lineage/capabilities.json');
-const capsulesDir = path.join(repoRoot, '.synthesis/task-capsules');
+const tasksPath = path.join(repoRoot, ".synthesis/lineage/tasks.json");
+const capabilitiesPath = path.join(repoRoot, ".synthesis/lineage/capabilities.json");
+const capsulesPath = path.join(repoRoot, ".synthesis/lineage/capsules.json");
+const capsulesDir = path.join(repoRoot, ".synthesis/task-capsules");
 
-describe('SYN-GOV-LINEAGE-001: Authoritative Implementation Lineage & Capability Registry', () => {
-  const rawTasks = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
-  const rawCapabilities = JSON.parse(fs.readFileSync(capabilitiesPath, 'utf8'));
+describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementation Lineage & Capability Registry", () => {
+  const rawTasks = JSON.parse(fs.readFileSync(tasksPath, "utf8"));
+  const rawCapabilities = JSON.parse(fs.readFileSync(capabilitiesPath, "utf8"));
+  const rawCapsules = JSON.parse(fs.readFileSync(capsulesPath, "utf8"));
 
-  it('1. Validates current production graph deterministically with zero errors', () => {
+  it("1. Validates current production graph deterministically with zero errors", () => {
     const res = validateLineage({ repoRoot });
-    assert.strictEqual(res.valid, true, `Expected valid lineage, got errors: ${res.errors.join(', ')}`);
+    assert.strictEqual(res.valid, true, `Expected valid lineage, got errors: ${res.errors.join(", ")}`);
     assert.strictEqual(res.errors.length, 0);
-    assert.strictEqual(res.summary.tasksCount, 34);
+    assert.strictEqual(res.summary.tasksCount, 65);
     assert.strictEqual(res.summary.capabilitiesCount, 14);
   });
 
-  it('2. PR #1 bootstrap record without capsule is valid and explicitly recorded', () => {
+  it("2. PR #1 bootstrap record without capsule is valid and explicitly recorded", () => {
     const pr1 = rawTasks.tasks.find((t: any) => t.pr_number === 1);
-    assert.ok(pr1, 'PR #1 record must exist');
-    assert.strictEqual(pr1.capsule_present, false, 'PR #1 capsule_present must be false');
-    assert.strictEqual(pr1.task_id, null, 'PR #1 task_id must be null');
-    assert.strictEqual(pr1.capsule_sha256, null, 'PR #1 capsule_sha256 must be null');
-    assert.strictEqual(pr1.derived_status, 'MERGED', 'PR #1 derived_status must be MERGED');
+    assert.ok(pr1, "PR #1 record must exist");
+    assert.strictEqual(pr1.capsule_present, false, "PR #1 capsule_present must be false");
+    assert.strictEqual(pr1.task_id, null, "PR #1 task_id must be null");
+    assert.strictEqual(pr1.capsule_sha256, null, "PR #1 capsule_sha256 must be null");
+    assert.strictEqual(pr1.derived_status, "MERGED", "PR #1 derived_status must be MERGED");
     assert.ok(Array.isArray(pr1.actual_changed_files) && pr1.actual_changed_files.length > 0);
   });
 
-  it('3. PR #1 through #34 are all represented exactly once without gaps or duplicates', () => {
-    assert.strictEqual(rawTasks.tasks.length, 34);
-    const prNumbers = rawTasks.tasks.map((t: any) => t.pr_number).sort((a: number, b: number) => a - b);
-    const expected = Array.from({ length: 34 }, (_, i) => i + 1);
+  it("3. Historical baseline PR #1-#34 and live PR range are all represented without gaps or duplicates", () => {
+    assert.strictEqual(rawTasks.tasks.length, 65);
+    const prNumbers = rawTasks.tasks.map((t: any) => t.pr_number);
+    // Historical baseline 1..34 must all exist
+    for (let i = 1; i <= 34; i++) {
+      assert.ok(prNumbers.includes(i), `Historical baseline PR #${i} must exist`);
+    }
+    // Expected PR numbers: 1..57, 59..66 (65 total)
+    const expected = [];
+    for (let i = 1; i <= 66; i++) {
+      if (i !== 58) expected.push(i);
+    }
     assert.deepStrictEqual(prNumbers, expected);
-  });
-
-  it('4. Non-null task IDs are strictly unique across all historical tasks', () => {
-    const nonNullTaskIds = rawTasks.tasks.filter((t: any) => t.task_id !== null).map((t: any) => t.task_id);
-    assert.strictEqual(nonNullTaskIds.length, 33);
-    const uniqueTaskIds = new Set(nonNullTaskIds);
-    assert.strictEqual(uniqueTaskIds.size, 33, 'Expected 33 unique task IDs');
-  });
-
-  it('5. Historical IN_PROGRESS capsule + derived MERGED is valid evidence', () => {
-    const inProgressTasks = rawTasks.tasks.filter((t: any) => t.capsule_declared_status === 'IN_PROGRESS');
-    assert.ok(inProgressTasks.length > 0, 'Expected historical tasks with declared status IN_PROGRESS');
-    for (const t of inProgressTasks) {
-      assert.strictEqual(t.derived_status, 'MERGED', `Task ${t.task_id} derived status must be MERGED`);
-      const capsuleFile = path.join(capsulesDir, `${t.task_id}.json`);
-      assert.ok(fs.existsSync(capsuleFile), `Archived capsule must exist for ${t.task_id}`);
-      const raw = JSON.parse(fs.readFileSync(capsuleFile, 'utf8'));
-      assert.strictEqual(raw.status, 'IN_PROGRESS', 'Raw archive must preserve historical IN_PROGRESS status');
+    assert.strictEqual(prNumbers.includes(58), false, "PR #58 must be absent");
+    // Verify ascending order
+    for (let i = 1; i < prNumbers.length; i++) {
+      assert.ok(prNumbers[i] > prNumbers[i - 1], "PR numbers must be strictly ascending");
     }
   });
 
-  it('6. Archived capsule SHA-256 integrity holds for all 33 historical capsules', () => {
+  it("4. Non-null task IDs are strictly unique across all historical tasks", () => {
+    const nonNullTaskIds = rawTasks.tasks.filter((t: any) => t.task_id !== null).map((t: any) => t.task_id);
+    assert.strictEqual(nonNullTaskIds.length, 64);
+    const uniqueTaskIds = new Set(nonNullTaskIds);
+    assert.strictEqual(uniqueTaskIds.size, 64, "Expected 64 unique task IDs");
+  });
+
+  it("5. Historical IN_PROGRESS capsule + derived MERGED is valid evidence", () => {
+    const inProgressTasks = rawTasks.tasks.slice(0, 34).filter((t: any) => t.capsule_declared_status === "IN_PROGRESS");
+    assert.ok(inProgressTasks.length > 0, "Expected historical tasks with declared status IN_PROGRESS");
+    for (const t of inProgressTasks) {
+      assert.strictEqual(t.derived_status, "MERGED", `Task ${t.task_id} derived status must be MERGED`);
+      const capRecord = rawCapsules.capsules.find((c: any) => c.task_id === t.task_id);
+      assert.ok(capRecord, `Capsule record must exist for ${t.task_id}`);
+      const capsuleFile = path.join(repoRoot, capRecord.archive_path);
+      assert.ok(fs.existsSync(capsuleFile), `Archived capsule must exist for ${t.task_id}`);
+      const raw = JSON.parse(fs.readFileSync(capsuleFile, "utf8"));
+      assert.strictEqual(raw.status, "IN_PROGRESS", "Raw archive must preserve historical IN_PROGRESS status");
+    }
+  });
+
+  it("6. Archived capsule SHA-256 integrity holds for all 64 historical capsules", () => {
     const capsuleTasks = rawTasks.tasks.filter((t: any) => t.capsule_present === true);
-    assert.strictEqual(capsuleTasks.length, 33);
+    assert.strictEqual(capsuleTasks.length, 64);
     for (const t of capsuleTasks) {
-      const capsuleFile = path.join(capsulesDir, `${t.task_id}.json`);
+      const capRecord = rawCapsules.capsules.find((c: any) => c.task_id === t.task_id);
+      assert.ok(capRecord, `Capsule record missing for ${t.task_id}`);
+      const capsuleFile = path.join(repoRoot, capRecord.archive_path);
       assert.ok(fs.existsSync(capsuleFile), `Archived file missing: ${capsuleFile}`);
-      const rawContent = fs.readFileSync(capsuleFile, 'utf8');
-      const hash = crypto.createHash('sha256').update(rawContent, 'utf8').digest('hex');
+      const rawContent = fs.readFileSync(capsuleFile, "utf8");
+      const hash = crypto.createHash("sha256").update(rawContent, "utf8").digest("hex");
       assert.strictEqual(hash, t.capsule_sha256, `SHA-256 mismatch for task ${t.task_id}`);
     }
   });
 
-  it('7. Fails closed when duplicate task ID is introduced', () => {
+  it("7. Fails closed when duplicate task ID is introduced", () => {
     const mutated = JSON.parse(JSON.stringify(rawTasks));
     mutated.tasks[2].task_id = mutated.tasks[1].task_id; // introduce duplicate
     const res = validateLineage({ repoRoot, tasksData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('Duplicate task_id detected')));
+    assert.ok(res.errors.some((e: string) => e.includes("Duplicate task_id detected")));
   });
 
-  it('8. Fails closed when malformed SHA is introduced', () => {
+  it("8. Fails closed when malformed SHA is introduced", () => {
     const mutated = JSON.parse(JSON.stringify(rawTasks));
-    mutated.tasks[5].base_sha = 'not-a-valid-sha';
+    mutated.tasks[5].base_sha = "not-a-valid-sha";
     const res = validateLineage({ repoRoot, tasksData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('malformed SHA')));
+    assert.ok(res.errors.some((e: string) => e.includes("malformed SHA")));
   });
 
-  it('9. Fails closed when archive capsule file is missing', () => {
+  it("9. Fails closed when archive capsule file or registry mapping is missing", () => {
     const mutated = JSON.parse(JSON.stringify(rawTasks));
-    mutated.tasks[10].task_id = 'SYN-NON-EXISTENT-TASK-999';
+    mutated.tasks[10].task_id = "SYN-NON-EXISTENT-TASK-999";
     const res = validateLineage({ repoRoot, tasksData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('archive file is missing')));
+    assert.ok(res.errors.some((e: string) => e.includes("no matching record in capsule registry") || e.includes("archive file is missing")));
   });
 
-  it('10. Fails closed when unknown capability dependency is declared', () => {
+  it("10. Fails closed when unknown capability dependency is declared", () => {
     const mutated = JSON.parse(JSON.stringify(rawCapabilities));
-    mutated.capabilities[0].depends_on_capabilities.push('phantom_capability');
+    mutated.capabilities[0].depends_on_capabilities.push("phantom_capability");
     const res = validateLineage({ repoRoot, capabilitiesData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('unknown capability dependency')));
+    assert.ok(res.errors.some((e: string) => e.includes("unknown capability dependency")));
   });
 
-  it('11. Fails closed when capability dependency cycle is introduced', () => {
+  it("11. Fails closed when capability dependency cycle is introduced", () => {
     const mutated = JSON.parse(JSON.stringify(rawCapabilities));
-    const capA = mutated.capabilities.find((c: any) => c.capability_id === 'identity_rbac');
-    const capB = mutated.capabilities.find((c: any) => c.capability_id === 'project_context');
+    const capA = mutated.capabilities.find((c: any) => c.capability_id === "identity_rbac");
+    const capB = mutated.capabilities.find((c: any) => c.capability_id === "project_context");
     assert.ok(capA && capB);
-    // capB already depends on capA ('identity_rbac')
-    // Introduce reverse dependency: capA -> capB
-    capA.depends_on_capabilities.push('project_context');
+    capA.depends_on_capabilities.push("project_context");
     const res = validateLineage({ repoRoot, capabilitiesData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('Capability dependency cycle detected')));
+    assert.ok(res.errors.some((e: string) => e.includes("Capability dependency cycle detected")));
   });
 
-  it('12. Fails closed when missing canonical owner paths or invalid visibility', () => {
+  it("12. Fails closed when missing canonical owner paths or invalid visibility", () => {
     const mutatedPaths = JSON.parse(JSON.stringify(rawCapabilities));
     mutatedPaths.capabilities[1].canonical_owner_paths = [];
     const res1 = validateLineage({ repoRoot, capabilitiesData: mutatedPaths });
     assert.strictEqual(res1.valid, false);
-    assert.ok(res1.errors.some((e: string) => e.includes('missing canonical owner paths')));
+    assert.ok(res1.errors.some((e: string) => e.includes("missing canonical owner paths")));
 
     const mutatedVis = JSON.parse(JSON.stringify(rawCapabilities));
-    mutatedVis.capabilities[1].visibility = 'INVALID_VISIBILITY';
+    mutatedVis.capabilities[1].visibility = "INVALID_VISIBILITY";
     const res2 = validateLineage({ repoRoot, capabilitiesData: mutatedVis });
     assert.strictEqual(res2.valid, false);
-    assert.ok(res2.errors.some((e: string) => e.includes('invalid visibility enum')));
+    assert.ok(res2.errors.some((e: string) => e.includes("invalid visibility enum")));
   });
 
-  it('13. Explicitly records canonical architectural SSOT rules', () => {
+  it("13. Explicitly records canonical architectural SSOT rules", () => {
     const ssot = rawCapabilities.ssot_rules;
-    assert.ok(ssot, 'ssot_rules must exist in capabilities.json');
-    assert.ok(ssot.content_ssot.includes('canonical content SSOT'));
-    assert.ok(ssot.visual_editor_role.includes('adapter, NOT SSOT'));
-    assert.ok(ssot.search_role.includes('derived/rebuildable index, NOT SSOT'));
-    assert.ok(ssot.project_context_role.includes('canonical project/tenant boundary'));
-    assert.ok(ssot.capability_map_role.includes('status/product navigation authority, NOT business-data SSOT'));
-    assert.ok(ssot.redirect_runtime_role.includes('consumes published content + RedirectRule'));
-    assert.ok(ssot.media_replace_role.includes('SAFELY_DISABLED / deferred'));
-    assert.ok(ssot.sitemap_runtime_role.includes('planned / not falsely complete'));
+    assert.ok(ssot, "ssot_rules must exist in capabilities.json");
+    assert.ok(ssot.content_ssot.includes("canonical content SSOT"));
+    assert.ok(ssot.visual_editor_role.includes("adapter, NOT SSOT"));
+    assert.ok(ssot.search_role.includes("derived/rebuildable index, NOT SSOT"));
+    assert.ok(ssot.project_context_role.includes("canonical project/tenant boundary"));
+    assert.ok(ssot.capability_map_role.includes("status/product navigation authority, NOT business-data SSOT"));
+    assert.ok(ssot.redirect_runtime_role.includes("consumes published content + RedirectRule"));
+    assert.ok(ssot.media_replace_role.includes("SAFELY_DISABLED / deferred"));
+    assert.ok(ssot.sitemap_runtime_role.includes("planned / not falsely complete"));
   });
 
-  it('14. Fails closed when unknown syntactically-valid last_merge_sha is referenced', () => {
+  it("14. Fails closed when unknown syntactically-valid last_merge_sha is referenced", () => {
     const mutated = JSON.parse(JSON.stringify(rawCapabilities));
-    mutated.capabilities[0].last_merge_sha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    mutated.capabilities[0].last_merge_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const res = validateLineage({ repoRoot, capabilitiesData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('references unknown last_merge_sha')));
+    assert.ok(res.errors.some((e: string) => e.includes("references unknown last_merge_sha")));
   });
 
-  it('15. Fails closed when unknown source_task is referenced', () => {
+  it("15. Fails closed when unknown source_task is referenced", () => {
     const mutated = JSON.parse(JSON.stringify(rawCapabilities));
-    mutated.capabilities[1].source_tasks.push('SYN-UNKNOWN-TASK-999');
+    mutated.capabilities[1].source_tasks.push("SYN-UNKNOWN-TASK-999");
     const res = validateLineage({ repoRoot, capabilitiesData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('references unknown source_task')));
+    assert.ok(res.errors.some((e: string) => e.includes("references unknown source_task")));
   });
 
-  it('16. Fails closed when canonical owner path matches zero tracked repository files', () => {
+  it("16. Fails closed when canonical owner path matches zero tracked repository files", () => {
     const mutated = JSON.parse(JSON.stringify(rawCapabilities));
-    mutated.capabilities[1].canonical_owner_paths.push('app/admin/nonexistent_fake_path/**');
+    mutated.capabilities[1].canonical_owner_paths.push("app/admin/nonexistent_fake_path/**");
     const res = validateLineage({ repoRoot, capabilitiesData: mutated });
     assert.strictEqual(res.valid, false);
-    assert.ok(res.errors.some((e: string) => e.includes('matches 0 tracked repository files')));
+    assert.ok(res.errors.some((e: string) => e.includes("matches 0 tracked repository files")));
   });
 
-  it('17. Accurately treats route-group (auth) as literal path and not regex group', () => {
-    const pattern = 'app/(auth)/admin/login/**';
-    assert.strictEqual(matchesOwnerPath('app/(auth)/admin/login/page.tsx', pattern), true);
-    assert.strictEqual(matchesOwnerPath('app/(auth)/admin/login/actions.ts', pattern), true);
-    assert.strictEqual(matchesOwnerPath('app/admin/login/page.tsx', pattern), false);
-    assert.strictEqual(matchesOwnerPath('app/auth/admin/login/page.tsx', pattern), false);
+  it("17. Accurately treats route-group (auth) as literal path and not regex group", () => {
+    const pattern = "app/(auth)/admin/login/**";
+    assert.strictEqual(matchesOwnerPath("app/(auth)/admin/login/page.tsx", pattern), true);
+    assert.strictEqual(matchesOwnerPath("app/(auth)/admin/login/actions.ts", pattern), true);
+    assert.strictEqual(matchesOwnerPath("app/admin/login/page.tsx", pattern), false);
+    assert.strictEqual(matchesOwnerPath("app/auth/admin/login/page.tsx", pattern), false);
   });
 
-  it('18. Accurately treats dynamic segment [projectId] as literal path and not regex character class', () => {
-    const pattern = 'app/api/admin/projects/[projectId]/seo/**';
-    assert.strictEqual(matchesOwnerPath('app/api/admin/projects/[projectId]/seo/route.ts', pattern), true);
-    assert.strictEqual(matchesOwnerPath('app/api/admin/projects/seo/route.ts', pattern), false);
-    assert.strictEqual(matchesOwnerPath('app/api/admin/projects/p/seo/route.ts', pattern), false);
+  it("18. Accurately treats dynamic segment [projectId] as literal path and not regex character class", () => {
+    const pattern = "app/api/admin/projects/[projectId]/seo/**";
+    assert.strictEqual(matchesOwnerPath("app/api/admin/projects/[projectId]/seo/route.ts", pattern), true);
+    assert.strictEqual(matchesOwnerPath("app/api/admin/projects/seo/route.ts", pattern), false);
+    assert.strictEqual(matchesOwnerPath("app/api/admin/projects/p/seo/route.ts", pattern), false);
   });
 
-  it('19. Fails closed when PR baseline 1..34 range is incomplete or out of range', () => {
-    // Test missing PR
+  it("19. Fails closed when PR baseline 1..34 range is incomplete", () => {
     const mutatedMissing = JSON.parse(JSON.stringify(rawTasks));
     mutatedMissing.tasks = mutatedMissing.tasks.filter((t: any) => t.pr_number !== 5);
+    mutatedMissing.total_tasks = mutatedMissing.tasks.length;
     const resMissing = validateLineage({ repoRoot, tasksData: mutatedMissing });
     assert.strictEqual(resMissing.valid, false);
-    assert.ok(resMissing.errors.some((e: string) => e.includes('Missing required PR #5')));
+    assert.ok(resMissing.errors.some((e: string) => e.includes("Missing required PR #5")));
+  });
 
-    // Test out of range PR
-    const mutatedOutOfRange = JSON.parse(JSON.stringify(rawTasks));
-    mutatedOutOfRange.tasks[33].pr_number = 35;
-    const resOutOfRange = validateLineage({ repoRoot, tasksData: mutatedOutOfRange });
-    assert.strictEqual(resOutOfRange.valid, false);
-    assert.ok(resOutOfRange.errors.some((e: string) => e.includes('outside expected baseline range 1..34')));
+  it("20. Allows non-contiguous PR numbering after #34 (e.g. absent #58)", () => {
+    const res = validateLineage({ repoRoot });
+    assert.strictEqual(res.valid, true);
+    assert.strictEqual(rawTasks.tasks.some((t: any) => t.pr_number === 58), false);
+  });
+
+  it("21. Fails closed when duplicate PR number is introduced", () => {
+    const mutated = JSON.parse(JSON.stringify(rawTasks));
+    mutated.tasks[35].pr_number = mutated.tasks[34].pr_number;
+    const res = validateLineage({ repoRoot, tasksData: mutated });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes("Duplicate PR number detected")));
+  });
+
+  it("22. Fails closed when PR numbers are out of strictly ascending order", () => {
+    const mutated = JSON.parse(JSON.stringify(rawTasks));
+    // Swap PR #40 and PR #41 positions to create an out-of-order sequence with unique PRs
+    const tmp = mutated.tasks[39].pr_number;
+    mutated.tasks[39].pr_number = mutated.tasks[40].pr_number;
+    mutated.tasks[40].pr_number = tmp;
+    const res = validateLineage({ repoRoot, tasksData: mutated });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes("not in strictly ascending order")));
+  });
+
+  it("23. Fails closed when total_tasks does not match tasks array length", () => {
+    const mutated = JSON.parse(JSON.stringify(rawTasks));
+    mutated.total_tasks = 999;
+    const res = validateLineage({ repoRoot, tasksData: mutated });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes("does not match tasks array length")));
+  });
+
+  it("24. Fails closed when capsule registry record is missing for task", () => {
+    const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+    mutatedTasks.tasks[20].task_id = "SYN-UNKNOWN-TASK-NO-CAP";
+    const res = validateLineage({ repoRoot, tasksData: mutatedTasks });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes("no matching record in capsule registry")));
+  });
+
+  it("25. Fails closed when capsule SHA-256 hash mismatch occurs", () => {
+    const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+    mutatedTasks.tasks[20].capsule_sha256 = "0".repeat(64);
+    const res = validateLineage({ repoRoot, tasksData: mutatedTasks });
+    assert.strictEqual(res.valid, false);
+    assert.ok(res.errors.some((e: string) => e.includes("capsule_sha256 mismatch") || e.includes("capsule SHA-256 mismatch")));
   });
 });
