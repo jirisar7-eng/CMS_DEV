@@ -490,13 +490,17 @@ export function parsePrNumberFromSubject(subject) {
   return { matched: true, prNumber: uniqueNums[0] };
 }
 
-export function isAllowedSyncPath(filePath) {
+export function isAllowedSyncPath(filePath, isRepair = false) {
   const norm = filePath.replace(/\\/g, "/");
   if (norm === ".synthesis/task-capsule.json") return true;
   if (norm.startsWith(".synthesis/task-capsules/")) return true;
   if (norm === ".synthesis/lineage/tasks.json") return true;
   if (norm === ".synthesis/lineage/capsules.json") return true;
   if (norm === ".synthesis/lineage/capabilities.json") return true;
+  if (isRepair) {
+    if (norm === "scripts/lineage/validate.mjs") return true;
+    if (norm === "tests/lineage-registry.test.ts") return true;
+  }
   return false;
 }
 
