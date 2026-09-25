@@ -398,23 +398,34 @@ export function SeoWorkspace({ projectId }: SeoWorkspaceProps) {
               <div className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4 text-xs">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-foreground">Generátor Sitemap.xml</h3>
-                  <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold text-[11px] flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Plánovaný runtime</span>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Aktivní runtime</span>
                   </span>
                 </div>
 
                 <p className="text-muted-foreground leading-relaxed">
-                  Automatický generátor souboru <code>sitemap.xml</code> a odpovídající veřejná routa zatím nejsou v tomto runtime prostředí aktivní.
-                  Generování sitemapy z publikovaných stránek a směrování bude součástí navazujícího specializovaného subsystemu.
+                  Veřejný runtime souboru <code>sitemap.xml</code> je aktivní. Sitemap se dynamicky generuje z autoritativních publikovaných stránek projektu. Zahrnuty jsou pouze stránky s veřejnou viditelností (PUBLIC). Stránky s příznakem <code>noIndex</code> jsou automaticky vyloučeny.
                 </p>
 
                 <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-2">
-                  <span className="font-semibold text-foreground block">Architektonický stav sitemapy</span>
-                  <p className="text-muted-foreground text-[11px]">
-                    Pro zamezení nesrovnalostí nejsou v tomto rozhraní simulována žádná fiktivní data stránek.
-                    Po nasazení sitemap enginu se zde zobrazí skutečné statistiky indexovaných stránek a přímý odkaz na generovaný XML soubor.
+                  <span className="font-semibold text-foreground block">Přímý odkaz na Sitemap.xml</span>
+                  <p className="text-muted-foreground text-[11px] mb-2">
+                    Pro zobrazení generovaného XML souboru sitemap.xml použijte projektově izolovaný veřejný odkaz:
                   </p>
+                  {projectId ? (
+                    <a
+                      href={`/sitemap.xml?projectId=${encodeURIComponent(projectId)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline font-semibold"
+                    >
+                      <span>/sitemap.xml?projectId={projectId}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground text-[11px]">Vyberte projekt pro zobrazení odkazu na sitemap.xml</span>
+                  )}
                 </div>
               </div>
             )}
@@ -424,9 +435,9 @@ export function SeoWorkspace({ projectId }: SeoWorkspaceProps) {
               <form onSubmit={handleSave} className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4 text-xs">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-foreground">Obsah souboru robots.txt</h3>
-                  <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold text-[11px] flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Konfigurace uložena v DB (veřejná routa plánována)</span>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Aktivní runtime</span>
                   </span>
                 </div>
 
@@ -434,10 +445,20 @@ export function SeoWorkspace({ projectId }: SeoWorkspaceProps) {
                   <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <div>
                     <span className="font-semibold text-foreground block mb-0.5">Runtime stav robots.txt</span>
-                    <span>
-                      Zde definovaná pravidla jsou perzistována v databázi pro tento projekt (pole <code>robotsTxt</code>).
-                      Veřejný endpoint <code>/robots.txt</code> zatím není v runtime aktivní; pravidla budou servírována po nasazení veřejného handleru.
+                    <span className="block mb-2">
+                      Veřejný endpoint <code>/robots.txt</code> je v runtime plně aktivní. Zde definovaná pravidla jsou perzistována v databázi pro tento projekt (pole <code>robotsTxt</code>). V případě nastavení systémového prostředí <code>FORCE_NOINDEX=true</code> jsou pravidla na běhové úrovni automaticky přepsána.
                     </span>
+                    {projectId && (
+                      <a
+                        href={`/robots.txt?projectId=${encodeURIComponent(projectId)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 font-mono text-xs text-primary hover:underline font-semibold"
+                      >
+                        <span>/robots.txt?projectId={projectId}</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
                   </div>
                 </div>
 

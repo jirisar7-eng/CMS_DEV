@@ -36,7 +36,8 @@
     "tests/seo-runtime.test.ts",
     "tests/seo-runtime-postgres.test.ts",
     "tests/admin-capability-status.test.ts",
-    "scripts/ci/test_manifest.mjs"
+    "scripts/ci/test_manifest.mjs",
+    "tests/seo-redirects-admin-cutover.test.ts"
   ],
   "forbidden_paths": [
     ".env*",

@@ -479,7 +479,7 @@ describe('SYN-WEB-003: SEO & Redirects Admin Cutover Test Suite', () => {
       assert.match(wsCode, /method:\s*['"]DELETE['"]/);
     });
 
-    it('adminNav.ts reflects truthfulness: SEO is ZÁKLAD and Redirects is FUNKČNÍ', () => {
+    it('adminNav.ts reflects truthfulness: SEO is FUNKČNÍ and Redirects is FUNKČNÍ', () => {
       const navCode = fs.readFileSync(path.join(rootDir, 'lib/navigation/adminNav.ts'), 'utf8');
       assert.match(navCode, /id:\s*'seo'[\s\S]*?status:\s*'FUNKČNÍ'/);
       assert.match(navCode, /id:\s*'redirects'[\s\S]*?status:\s*'FUNKČNÍ'/);
