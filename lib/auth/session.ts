@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
-import { prisma, isDatabaseConfigured } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
+import { isDatabaseConfigured } from "@/lib/runtime/database";
 import {
   SESSION_IDLE_TIMEOUT_MINUTES,
   SESSION_IDLE_TIMEOUT_MS,
