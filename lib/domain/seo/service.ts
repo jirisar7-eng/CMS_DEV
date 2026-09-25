@@ -114,14 +114,13 @@ export class SeoService {
     if (typeof rawContent !== "string" || !rawContent.trim()) {
       return safeDefault;
     }
-
-    let normalized = rawContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    normalized = normalized.replace(/[\x00-\x08\x0B-\x1F\x7F]/g, "");
-
+    const normalized = rawContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    if (/[\x00-\x08\x0B-\x1F\x7F]/.test(normalized)) {
+      return safeDefault;
+    }
     if (!normalized.trim() || Buffer.byteLength(normalized, "utf8") > 32768) {
       return safeDefault;
     }
-
     return normalized;
   }
 

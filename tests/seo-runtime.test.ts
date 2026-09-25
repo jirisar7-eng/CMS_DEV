@@ -1,8 +1,12 @@
 import { describe, it, mock, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import { prisma } from "../lib/db";
+import { RoutingService } from "../lib/domain/routing/service";
 import { GET as robotsHandler } from "../app/robots.txt/route";
 import { GET as sitemapHandler } from "../app/sitemap.xml/route";
+
+// Save original derivePublishedRoutes method
+const originalDerivePublishedRoutes = RoutingService.derivePublishedRoutes;
 
 // Mutate prisma singleton for mocks
 (prisma as any).project = {
@@ -49,6 +53,7 @@ describe("SEO Runtime Endpoints (Robots & Sitemap)", () => {
     (prisma.project.findFirst as any).mock.resetCalls();
     (prisma.projectSeoSettings.findUnique as any).mock.resetCalls();
     (prisma.page.findMany as any).mock.resetCalls();
+    RoutingService.derivePublishedRoutes = originalDerivePublishedRoutes;
     delete process.env.FORCE_NOINDEX;
   });
 
@@ -159,6 +164,91 @@ describe("SEO Runtime Endpoints (Robots & Sitemap)", () => {
     it("includes PUBLIC published routes and excludes UNLISTED, INTERNAL, PASSWORD_PROTECTED, noIndex, and pointer mismatches", async () => {
       const now = new Date("2026-09-24T12:00:00Z");
 
+      const mockRoutes = [
+        {
+          pageId: "page-home",
+          projectId: projA,
+          path: "/home",
+          slug: "home",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-home",
+          revisionNumber: 1,
+          title: "Home",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-unlisted",
+          projectId: projA,
+          path: "/unlisted",
+          slug: "unlisted",
+          parentId: null,
+          visibility: "UNLISTED",
+          publishedRevisionId: "rev-unlisted",
+          revisionNumber: 1,
+          title: "Unlisted",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-internal",
+          projectId: projA,
+          path: "/internal",
+          slug: "internal",
+          parentId: null,
+          visibility: "INTERNAL",
+          publishedRevisionId: "rev-internal",
+          revisionNumber: 1,
+          title: "Internal",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-secret",
+          projectId: projA,
+          path: "/secret",
+          slug: "secret",
+          parentId: null,
+          visibility: "PASSWORD_PROTECTED",
+          publishedRevisionId: "rev-secret",
+          revisionNumber: 1,
+          title: "Secret",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-noindex",
+          projectId: projA,
+          path: "/noindex",
+          slug: "noindex",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-noindex",
+          revisionNumber: 1,
+          title: "NoIndex",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-pointer-mismatch",
+          projectId: projA,
+          path: "/pointer-mismatch",
+          slug: "pointer-mismatch",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-mismatch-1",
+          revisionNumber: 1,
+          title: "Pointer Mismatch",
+          locale: "en",
+          publishedAt: now,
+        },
+      ];
+
+      RoutingService.derivePublishedRoutes = mock.fn(async () => {
+        return new Map(mockRoutes.map((r) => [r.path, r]));
+      }) as any;
+
       (prisma.page.findMany as any).mock.mockImplementation(async (args: any) => {
         assert.strictEqual(args.where.projectId, projA);
 
@@ -169,33 +259,6 @@ describe("SEO Runtime Endpoints (Robots & Sitemap)", () => {
             publishedRevision: {
               id: "rev-home",
               seo: { metaTitle: "Home" },
-              publishedAt: now,
-            },
-          },
-          {
-            id: "page-unlisted",
-            publishedRevisionId: "rev-unlisted",
-            publishedRevision: {
-              id: "rev-unlisted",
-              seo: {},
-              publishedAt: now,
-            },
-          },
-          {
-            id: "page-internal",
-            publishedRevisionId: "rev-internal",
-            publishedRevision: {
-              id: "rev-internal",
-              seo: {},
-              publishedAt: now,
-            },
-          },
-          {
-            id: "page-secret",
-            publishedRevisionId: "rev-secret",
-            publishedRevision: {
-              id: "rev-secret",
-              seo: {},
               publishedAt: now,
             },
           },
@@ -245,6 +308,52 @@ describe("SEO Runtime Endpoints (Robots & Sitemap)", () => {
     it("handles valid internal, valid absolute http/https, and invalid canonical fallback", async () => {
       const now = new Date("2026-09-24T12:00:00Z");
 
+      const mockRoutes = [
+        {
+          pageId: "page-1",
+          projectId: projA,
+          path: "/page-1",
+          slug: "page-1",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-1",
+          revisionNumber: 1,
+          title: "Page 1",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-2",
+          projectId: projA,
+          path: "/page-2",
+          slug: "page-2",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-2",
+          revisionNumber: 1,
+          title: "Page 2",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-3",
+          projectId: projA,
+          path: "/page-3",
+          slug: "page-3",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-3",
+          revisionNumber: 1,
+          title: "Page 3",
+          locale: "en",
+          publishedAt: now,
+        },
+      ];
+
+      RoutingService.derivePublishedRoutes = mock.fn(async () => {
+        return new Map(mockRoutes.map((r) => [r.path, r]));
+      }) as any;
+
       (prisma.page.findMany as any).mock.mockImplementation(async () => {
         return [
           {
@@ -291,6 +400,39 @@ describe("SEO Runtime Endpoints (Robots & Sitemap)", () => {
 
     it("orders entries deterministically (lexicographically) and escapes XML characters", async () => {
       const now = new Date("2026-09-24T12:00:00Z");
+
+      const mockRoutes = [
+        {
+          pageId: "page-z",
+          projectId: projA,
+          path: "/z-page",
+          slug: "z-page",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-z",
+          revisionNumber: 1,
+          title: "Z Page",
+          locale: "en",
+          publishedAt: now,
+        },
+        {
+          pageId: "page-a",
+          projectId: projA,
+          path: "/a-page",
+          slug: "a-page",
+          parentId: null,
+          visibility: "PUBLIC",
+          publishedRevisionId: "rev-a",
+          revisionNumber: 1,
+          title: "A Page",
+          locale: "en",
+          publishedAt: now,
+        },
+      ];
+
+      RoutingService.derivePublishedRoutes = mock.fn(async () => {
+        return new Map(mockRoutes.map((r) => [r.path, r]));
+      }) as any;
 
       (prisma.page.findMany as any).mock.mockImplementation(async () => {
         return [
