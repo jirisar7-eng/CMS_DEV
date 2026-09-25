@@ -26,12 +26,60 @@ describe("SYN-GOV-CAPSULE-002: Task Capsule Identity & Registry Foundation", () 
     assert.ok(result.count >= 38, "Expected at least 38 indexed capsules");
   });
 
-  it("3. Confirms all 38 existing legacy archives remain byte-for-byte unchanged", () => {
+  it("3. Confirms required legacy archives remain present and byte-for-byte unchanged", () => {
     const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
-    const legacyRecords = registry.capsules.filter((c: any) => c.legacy === true);
-    assert.strictEqual(legacyRecords.length, 38, "Expected exactly 38 legacy records");
+    const requiredLegacyPaths = [
+      ".synthesis/task-capsules/SYN-ADMIN-STATUS-001-CAPABILITY-MAP.json",
+      ".synthesis/task-capsules/SYN-AUDIT-001-ADMIN-VIEWER-CUTOVER.json",
+      ".synthesis/task-capsules/SYN-BRAND-001-SYNTHESIS-CMS-BRAND-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-BRAND-002-BRAND-STUDIO.json",
+      ".synthesis/task-capsules/SYN-BRAND-003-COMPLETE-SYNTHESIS-CMS-BRAND.json",
+      ".synthesis/task-capsules/SYN-CI-002-TECHNICAL-GATE-HARDENING.json",
+      ".synthesis/task-capsules/SYN-CONTENT-001-CONTENT-LIFECYCLE-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-CONTENT-001A-MEDIA-RUNTIME-R1.json",
+      ".synthesis/task-capsules/SYN-CONTENT-001B-MEDIA-ADMIN-UI.json",
+      ".synthesis/task-capsules/SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER.json",
+      ".synthesis/task-capsules/SYN-CONTENT-003-PUBLISHING-REVISIONS-ADMIN-CUTOVER.json",
+      ".synthesis/task-capsules/SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-DATA-002-PROVISIONING.json",
+      ".synthesis/task-capsules/SYN-DATA-003-GARAGE-STORAGE.json",
+      ".synthesis/task-capsules/SYN-DATA-004-GARAGE-CMD-FIX.json",
+      ".synthesis/task-capsules/SYN-DATA-005-GARAGE-INIT-IMAGE.json",
+      ".synthesis/task-capsules/SYN-DATA-006-GARAGE-IDEMPOTENCY-FIX.json",
+      ".synthesis/task-capsules/SYN-DEPLOY-001-CMS-DEV-CONTAINER.json",
+      ".synthesis/task-capsules/SYN-DEPLOY-003-CADDY-PERSISTENCE.json",
+      ".synthesis/task-capsules/SYN-EDITOR-001-VISUAL-PAGE-EDITOR-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE.json",
+      ".synthesis/task-capsules/SYN-INTEGRATE-001-PREPRISMA-CHECKPOINT.json",
+      ".synthesis/task-capsules/SYN-MEDIA-001A-PERSISTENCE-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER.json",
+      ".synthesis/task-capsules/SYN-NAV-001-NAVIGATION-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-PLUGIN-001.json",
+      ".synthesis/task-capsules/SYN-PLUGIN-001A.json",
+      ".synthesis/task-capsules/SYN-PLUGIN-002-PROJECT-PLUGIN-LIFECYCLE-PERSISTENCE.json",
+      ".synthesis/task-capsules/SYN-PUBLIC-001-SYNTHESIS-CMS-HOMEPAGE.json",
+      ".synthesis/task-capsules/SYN-SEARCH-001-SEARCH-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-SEC-001-IDENTITY-ACCESS-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-SEC-002-ADMIN-NODB-FALLBACK.json",
+      ".synthesis/task-capsules/SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION.json",
+      ".synthesis/task-capsules/SYN-SEC-004-DEPENDENCY-HARDENING.json",
+      ".synthesis/task-capsules/SYN-SEC-005A-RBAC-PRECEDENCE-CONTRACT.json",
+      ".synthesis/task-capsules/SYN-SVG-005-INTEGRATION.json",
+      ".synthesis/task-capsules/SYN-SVG-006-ASSET-LIFECYCLE.json",
+      ".synthesis/task-capsules/SYN-SYSTEM-MAP-001.json",
+      ".synthesis/task-capsules/SYN-SYSTEM-MAP-002.json",
+      ".synthesis/task-capsules/SYN-WEB-001-SEO-REDIRECTS-FOUNDATION.json",
+      ".synthesis/task-capsules/SYN-WEB-002-ROUTING-REDIRECT-RUNTIME.json",
+      ".synthesis/task-capsules/SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER.json"
+    ];
 
-    for (const record of legacyRecords) {
+    const recordsByPath = new Map(registry.capsules.map((c: any) => [c.archive_path, c]));
+
+    for (const archivePath of requiredLegacyPaths) {
+      const record = recordsByPath.get(archivePath);
+      assert.ok(record, `Required legacy record missing from registry: ${archivePath}`);
+      assert.strictEqual(record.legacy, true, `Record must be marked legacy: ${archivePath}`);
       assert.ok(record.capsule_id.startsWith("CAP-LEGACY-"), `Legacy ID format mismatch: ${record.capsule_id}`);
       const fullPath = path.join(repoRoot, record.archive_path);
       assert.ok(fs.existsSync(fullPath), `Legacy archive missing: ${record.archive_path}`);
