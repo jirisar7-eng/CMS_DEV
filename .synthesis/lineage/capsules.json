@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 65,
+  "total_capsules": 66,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -420,6 +420,20 @@
       "sha256": "6a61ad9128bff55782cde2b14a0f361626f9ef754ac32c53322ce6b7ed02b8e8",
       "parent_capsule_id": "CAP-SYN-SEO-002-20260924-001",
       "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-002A-20260925-001",
+      "task_id": "SYN-GOV-LINEAGE-002A-DIFF-FIREWALL-GLOB-FIX",
+      "title": "Diff Firewall Glob Semantics Blocker Fix",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-002A-DIFF-FIREWALL-GLOB-FIX.json",
+      "base_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
+      "expected_branch": "task/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
+      "sha256": "973521b602fc1bebec1c0bce704a442235cfcda0c5c7f48a2b0e582240ba7bf0",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002-20260925-001",
+      "supersedes_capsule_id": "CAP-SYN-GOV-LINEAGE-002-20260925-001",
       "legacy": false
     },
     {
