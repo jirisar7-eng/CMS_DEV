@@ -160,4 +160,42 @@ describe('SEO Domain Service', () => {
     const allowedExplicitDeny = await hasPermission('user-1', 'seo.read', projectId);
     assert.strictEqual(allowedExplicitDeny, false);
   });
+  it("should throw INVALID_CANONICAL_URL when resolveEffectiveSeo encounters an unsafe canonical", async () => {
+    await assert.rejects(
+      async () => SeoService.resolveEffectiveSeo(projectId, { canonicalUrl: "javascript:alert(1)" }),
+      { message: "INVALID_CANONICAL_URL" }
+    );
+  });
+
+  it("should validate and sanitize OG image URLs", () => {
+    assert.strictEqual(SeoService.validateOgImageUrl("javascript:alert(1)"), "");
+    assert.strictEqual(SeoService.validateOgImageUrl("data:image/png;base64,123"), "");
+    assert.strictEqual(SeoService.validateOgImageUrl("vbscript:msgbox(1)"), "");
+    assert.strictEqual(SeoService.validateOgImageUrl("//attacker.com/image.png"), "");
+    assert.strictEqual(SeoService.validateOgImageUrl("\\attacker.com\\image.png"), "");
+    assert.strictEqual(SeoService.validateOgImageUrl("/image\x00null.png"), "");
+
+    assert.strictEqual(SeoService.validateOgImageUrl("/cover.jpg"), "/cover.jpg");
+    assert.strictEqual(SeoService.validateOgImageUrl("https://cdn.example.com/cover.jpg"), "https://cdn.example.com/cover.jpg");
+  });
+
+  it("should validate and harden resolveRobotsText for control chars and size limits", () => {
+    // Normal content passes
+    assert.strictEqual(
+      SeoService.resolveRobotsText("User-agent: *\nAllow: /public"),
+      "User-agent: *\nAllow: /public"
+    );
+
+    // Unsafe control character returns safe default
+    const safeDefault = "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/";
+    assert.strictEqual(
+      SeoService.resolveRobotsText("User-agent: *\nDisallow: /path\x00null"),
+      safeDefault
+    );
+
+    // Oversized content returns safe default
+    const huge = "A".repeat(33000);
+    assert.strictEqual(SeoService.resolveRobotsText(huge), safeDefault);
+  });
+
 });
