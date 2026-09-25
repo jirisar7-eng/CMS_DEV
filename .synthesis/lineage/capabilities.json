@@ -250,7 +250,7 @@
         "SYN-SEO-002"
       ],
       "last_merge_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
-      "ssot_role": "Project-scoped SEO metadata is SSOT; robots.txt runtime is implemented; sitemap.xml runtime is implemented; sitemap derives from publish"
+      "ssot_role": "project SEO metadata is SSOT; robots.txt runtime is implemented; sitemap.xml runtime is implemented; sitemap derives from published public routes and page SEO"
     },
     {
       "capability_id": "redirects",
@@ -365,7 +365,7 @@
         "SYN-MEDIA-002"
       ],
       "last_merge_sha": "6e17f95056c91c22b35f67a267704a77c2011e45",
-      "ssot_role": "Media asset versioning and usage reference SSOT; Media Replace = SAFELY_DISABLED / deferred"
+      "ssot_role": "Media asset versioning and usage references are SSOT; file replacement is implemented for eligible non-PUBLISHED assets, preserves asset identity and usage links, enforces security validation, compensates storage on DB failure, and remains fail-closed for PUBLISHED assets."
     },
     {
       "capability_id": "brand",
@@ -410,7 +410,7 @@
         "SYN-PLUGIN-002"
       ],
       "last_merge_sha": "d7144b8766cba5311b33eb71d60f046f5f6b8d86",
-      "ssot_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
+      "ssot_role": "Code PluginRegistry is the manifest authority; ProjectPluginState provides project-scoped persisted enable/disable/config state; sensitive plugin config is not stored in ProjectPluginState."
     }
   ],
   "ssot_rules": {
@@ -420,8 +420,8 @@
     "project_context_role": "Project Context = canonical project/tenant boundary",
     "capability_map_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT",
     "redirect_runtime_role": "Redirect runtime = consumes published content + RedirectRule",
-    "media_replace_role": "Media Replace = SAFELY_DISABLED / deferred",
-    "sitemap_runtime_role": "robots.txt runtime is implemented; sitemap.xml runtime is implemented; sitemap derives from publish",
-    "plugin_registry_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
+    "media_replace_role": "File replacement is implemented for eligible non-PUBLISHED assets, preserves asset identity and usage links, enforces security validation, compensates storage on DB failure, and remains fail-closed for PUBLISHED assets.",
+    "sitemap_runtime_role": "robots.txt runtime is implemented; sitemap.xml runtime is implemented; sitemap derives from published public routes and page SEO",
+    "plugin_registry_role": "Code PluginRegistry is the manifest authority; ProjectPluginState provides project-scoped persisted enable/disable/config state; sensitive plugin config is not stored in ProjectPluginState."
   }
 }

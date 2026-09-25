@@ -4,6 +4,7 @@ import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { execSync } from "node:child_process";
 import { validateLineage, validateGitHistoryAlignment, parsePrNumberFromSubject, isAllowedSyncPath, resolveRepoRoot, matchesOwnerPath } from "../scripts/lineage/validate.mjs";
 
 const repoRoot = resolveRepoRoot();
@@ -156,8 +157,9 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     assert.ok(ssot.project_context_role.includes("canonical project/tenant boundary"));
     assert.ok(ssot.capability_map_role.includes("status/product navigation authority, NOT business-data SSOT"));
     assert.ok(ssot.redirect_runtime_role.includes("consumes published content + RedirectRule"));
-    assert.ok(ssot.media_replace_role.includes("SAFELY_DISABLED / deferred"));
-    assert.ok(ssot.sitemap_runtime_role.includes("sitemap derives from publish"));
+    assert.ok(ssot.media_replace_role.includes("File replacement is implemented"));
+    assert.ok(ssot.sitemap_runtime_role.includes("sitemap derives from published public routes and page SEO"));
+    assert.ok(ssot.plugin_registry_role.includes("Code PluginRegistry is the manifest authority"));
   });
 
   it("14. Fails closed when unknown syntactically-valid last_merge_sha is referenced", () => {
@@ -319,12 +321,48 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
 
   it("28. SEO capability truthfully records implemented runtime and SSOT boundaries", () => {
     const seo = rawCapabilities.capabilities.find((c: any) => c.capability_id === "seo");
-    assert.ok(seo.ssot_role.includes("project SEO metadata is SSOT") || seo.ssot_role.includes("Project-scoped SEO metadata is SSOT"));
+    assert.ok(seo.ssot_role.toLowerCase().includes("project seo metadata is ssot"));
     assert.ok(seo.ssot_role.includes("robots.txt runtime is implemented"));
     assert.ok(seo.ssot_role.includes("sitemap.xml runtime is implemented"));
     assert.ok(seo.ssot_role.includes("sitemap derives from publish"));
     assert.strictEqual(seo.project_scoped, true);
     assert.strictEqual(seo.security_boundary, "PROJECT_SCOPED_RBAC_SEO_MANAGE");
+  });
+
+  it("29. Capability description closeout asserts truthful media, plugin, and SEO wording (Checkpoint 5.1)", () => {
+    const fullCapabilities = fs.readFileSync(capabilitiesPath, "utf8");
+    // obsolete media string absent
+    assert.strictEqual(fullCapabilities.includes("Media Replace = SAFELY_DISABLED / deferred"), false);
+    assert.strictEqual(fullCapabilities.includes("SAFELY_DISABLED"), false);
+
+    // obsolete plugin string absent
+    assert.strictEqual(fullCapabilities.includes("NOT persistence/runtime activation SSOT"), false);
+
+    // updated media wording present
+    const media = rawCapabilities.capabilities.find((c: any) => c.capability_id === "media");
+    const expectedMedia = "Media asset versioning and usage references are SSOT; file replacement is implemented for eligible non-PUBLISHED assets, preserves asset identity and usage links, enforces security validation, compensates storage on DB failure, and remains fail-closed for PUBLISHED assets.";
+    assert.strictEqual(media.ssot_role, expectedMedia);
+    assert.ok(rawCapabilities.ssot_rules.media_replace_role.includes("File replacement is implemented for eligible non-PUBLISHED assets"));
+    assert.ok(rawCapabilities.ssot_rules.media_replace_role.includes("remains fail-closed for PUBLISHED assets."));
+
+    // updated plugin wording present
+    const plugin = rawCapabilities.capabilities.find((c: any) => c.capability_id === "plugin_registry");
+    const expectedPlugin = "Code PluginRegistry is the manifest authority; ProjectPluginState provides project-scoped persisted enable/disable/config state; sensitive plugin config is not stored in ProjectPluginState.";
+    assert.strictEqual(plugin.ssot_role, expectedPlugin);
+    assert.strictEqual(rawCapabilities.ssot_rules.plugin_registry_role, expectedPlugin);
+
+    // SEO wording contains published public routes and page SEO
+    const seo = rawCapabilities.capabilities.find((c: any) => c.capability_id === "seo");
+    assert.ok(seo.ssot_role.includes("published public routes and page SEO"));
+    assert.ok(rawCapabilities.ssot_rules.sitemap_runtime_role.includes("published public routes and page SEO"));
+
+    // search still does not contain SYN-SEARCH-002
+    const search = rawCapabilities.capabilities.find((c: any) => c.capability_id === "search");
+    assert.strictEqual(search.source_tasks.includes("SYN-SEARCH-002"), false);
+
+    // tasks.json remains untouched by this checkpoint
+    const diff = execSync("git diff -- .synthesis/lineage/tasks.json", { cwd: repoRoot, encoding: "utf8" });
+    assert.strictEqual(diff.trim(), "", "tasks.json must remain untouched");
   });
 
   describe("SYN-GOV-LINEAGE-002: Git History Anti-Drift Gate Unit Tests", () => {
