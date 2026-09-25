@@ -110,21 +110,29 @@ export async function GET(req: Request) {
       const rev = pageData.publishedRevision;
       const rawSeo =
         rev.seo && typeof rev.seo === "object" ? (rev.seo as Partial<PageSEO>) : null;
-      const effectiveSeo = await SeoService.resolveEffectiveSeo(projectId, rawSeo);
 
-      if (effectiveSeo.noIndex) {
+      if (rawSeo?.noIndex === true) {
         continue;
       }
 
+      let canonicalUrl = "";
+      if (rawSeo?.canonicalUrl) {
+        try {
+          canonicalUrl = SeoService.validateCanonicalUrl(rawSeo.canonicalUrl);
+        } catch {
+          canonicalUrl = "";
+        }
+      }
+
       let loc = "";
-      if (effectiveSeo.canonicalUrl) {
+      if (canonicalUrl) {
         if (
-          effectiveSeo.canonicalUrl.startsWith("http://") ||
-          effectiveSeo.canonicalUrl.startsWith("https://")
+          canonicalUrl.startsWith("http://") ||
+          canonicalUrl.startsWith("https://")
         ) {
-          loc = effectiveSeo.canonicalUrl;
-        } else if (effectiveSeo.canonicalUrl.startsWith("/")) {
-          loc = `${requestOrigin}${effectiveSeo.canonicalUrl}`;
+          loc = canonicalUrl;
+        } else if (canonicalUrl.startsWith("/")) {
+          loc = `${requestOrigin}${canonicalUrl}`;
         }
       }
 

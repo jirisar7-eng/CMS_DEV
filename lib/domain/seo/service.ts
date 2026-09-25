@@ -150,11 +150,7 @@ export class SeoService {
     }
     let canonicalUrl = "";
     if (pageSeo?.canonicalUrl) {
-      try {
-        canonicalUrl = this.validateCanonicalUrl(pageSeo.canonicalUrl);
-      } catch {
-        canonicalUrl = "";
-      }
+      canonicalUrl = this.validateCanonicalUrl(pageSeo.canonicalUrl);
     }
     const rawOg = pageSeo?.ogImage || projectDefaults?.defaultOgImage || "";
     const ogImage = this.validateOgImageUrl(rawOg);
