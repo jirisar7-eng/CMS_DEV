@@ -585,25 +585,35 @@ export function validateGitHistoryAlignment(options = {}) {
     }
   }
 
+  // Target resolution (fail closed)
+  let isTargetResolvable;
+  if (typeof options.isTargetResolvable === "boolean") {
+    isTargetResolvable = options.isTargetResolvable;
+  } else if (typeof options.resolveTarget === "function") {
+    try {
+      isTargetResolvable = Boolean(options.resolveTarget(historyTarget, repoRoot));
+    } catch {
+      isTargetResolvable = false;
+    }
+  } else if (!options.commits) {
+    try {
+      execSync(`git rev-parse --verify ${historyTarget}`, { cwd: repoRoot, stdio: ["pipe", "pipe", "ignore"] });
+      isTargetResolvable = true;
+    } catch {
+      isTargetResolvable = false;
+    }
+  } else {
+    isTargetResolvable = true;
+  }
+
+  if (!isTargetResolvable) {
+    errors.push("Cannot resolve history target: " + historyTarget);
+    return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+  }
+
   // 4. Retrieve or walk first-parent commits (Step 2D)
   let commits = options.commits;
   if (!commits) {
-    try {
-      execSync(`git rev-parse --verify ${historyTarget}`, { cwd: repoRoot, stdio: ["pipe", "pipe", "ignore"] });
-    } catch {
-      if (historyTarget === "origin/main") {
-        try {
-          execSync("git rev-parse --verify main", { cwd: repoRoot, stdio: ["pipe", "pipe", "ignore"] });
-          historyTarget = "main";
-        } catch {
-          errors.push("Cannot resolve history target: origin/main or main");
-          return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
-        }
-      } else {
-        errors.push("Cannot resolve history target: " + historyTarget);
-        return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
-      }
-    }
 
     try {
       execSync(`git merge-base --is-ancestor ${baselineSha} ${historyTarget}`, { cwd: repoRoot, stdio: ["pipe", "pipe", "ignore"] });
@@ -628,15 +638,18 @@ export function validateGitHistoryAlignment(options = {}) {
           stdio: ["pipe", "pipe", "ignore"]
         });
         const subject = fullMessage.split(/\r?\n/)[0].trim();
-        let changedFiles = [];
+        let changedFiles;
         try {
           const diffOut = execSync(`git diff-tree --no-commit-id --name-only -r ${sha}^1 ${sha}`, {
             cwd: repoRoot,
             encoding: "utf8",
             stdio: ["pipe", "pipe", "ignore"]
           }).trim();
-          changedFiles = diffOut.split("\n").map(s => s.trim()).filter(Boolean);
-        } catch {}
+          changedFiles = diffOut ? diffOut.split("\n").map(s => s.trim()).filter(Boolean) : [];
+        } catch (e) {
+          errors.push(`Failed to discover changed files for commit ${sha}: ${e.message}`);
+          return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+        }
         commits.push({ sha, subject, message: fullMessage, changedFiles });
       }
     } catch (e) {
@@ -660,8 +673,11 @@ export function validateGitHistoryAlignment(options = {}) {
     const isSync = fullMsg.split(/\r?\n/).some(line => line.startsWith("SYN-GOV-LINEAGE-SYNC"));
 
     if (isSync) {
-      const changed = Array.isArray(commit.changedFiles) ? commit.changedFiles : [];
-      for (const file of changed) {
+      if (!Array.isArray(commit.changedFiles)) {
+        errors.push(`Lineage-sync commit ${commit.sha} is missing changed-files evidence`);
+        continue;
+      }
+      for (const file of commit.changedFiles) {
         if (!isAllowedSyncPath(file)) {
           errors.push(`Lineage-sync commit ${commit.sha} touches forbidden path: ${file}`);
         }

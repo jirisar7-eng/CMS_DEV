@@ -523,6 +523,53 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
       assert.strictEqual(res.valid, false);
       assert.ok(res.errors.some((e: string) => e.includes("Repository is shallow; full git history required")));
     });
+
+    it("19. Local mode with missing origin/main => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        isTargetResolvable: false,
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Cannot resolve history target: origin/main")));
+    });
+
+    it("20. Pull_request mode with missing origin/main => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "pull_request",
+        isTargetResolvable: false,
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Cannot resolve history target: origin/main")));
+    });
+
+    it("21. Sync commit with missing changedFiles evidence => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic.splice(5, 0, {
+        sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        subject: "chore(governance): sync lineage",
+        message: "SYN-GOV-LINEAGE-SYNC: routine lineage\n\nSync description"
+        // changedFiles omitted intentionally
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("is missing changed-files evidence")));
+    });
   });
 
 });
