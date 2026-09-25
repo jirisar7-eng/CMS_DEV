@@ -674,15 +674,16 @@ export function validateGitHistoryAlignment(options = {}) {
     const subject = commit.subject || fullMsg.split(/\r?\n/)[0] || "";
 
     // Lineage-sync classification order: 1. check marker
-    const isSync = fullMsg.split(/\r?\n/).some(line => line.startsWith("SYN-GOV-LINEAGE-SYNC"));
-
+    const messageLines = fullMsg.split(/\r?\n/);
+    const isSync = messageLines.some(line => line.startsWith("SYN-GOV-LINEAGE-SYNC"));
     if (isSync) {
+      const isRepair = messageLines.some(line => line === "SYN-GOV-LINEAGE-SYNC-TEST-BASELINE-REPAIR");
       if (!Array.isArray(commit.changedFiles)) {
         errors.push(`Lineage-sync commit ${commit.sha} is missing changed-files evidence`);
         continue;
       }
       for (const file of commit.changedFiles) {
-        if (!isAllowedSyncPath(file)) {
+        if (!isAllowedSyncPath(file, isRepair)) {
           errors.push(`Lineage-sync commit ${commit.sha} touches forbidden path: ${file}`);
         }
       }
