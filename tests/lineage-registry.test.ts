@@ -6,6 +6,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execSync } from "node:child_process";
 import { validateLineage, validateGitHistoryAlignment, parsePrNumberFromSubject, isAllowedSyncPath, resolveRepoRoot, matchesOwnerPath } from "../scripts/lineage/validate.mjs";
+import { matchesPattern as matchesFirewallPattern } from "../scripts/ci/diff_firewall.mjs";
 
 const repoRoot = resolveRepoRoot();
 const tasksPath = path.join(repoRoot, ".synthesis/lineage/tasks.json");
@@ -680,4 +681,53 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     });
   });
 
+
+  describe("SYN-GOV-LINEAGE-002A: Diff Firewall Recursive Glob Matching", () => {
+    it("1. .synthesis/task-capsules/** matches .synthesis/task-capsules/SYN-SEC-009.json", () => {
+      assert.strictEqual(
+        matchesFirewallPattern(".synthesis/task-capsules/SYN-SEC-009.json", [".synthesis/task-capsules/**"]),
+        true
+      );
+    });
+
+    it("2. .synthesis/task-capsules/** matches .synthesis/task-capsules/nested/example.json", () => {
+      assert.strictEqual(
+        matchesFirewallPattern(".synthesis/task-capsules/nested/example.json", [".synthesis/task-capsules/**"]),
+        true
+      );
+    });
+
+    it("3. .synthesis/task-capsules/** does NOT match .synthesis/task-capsules-other/example.json", () => {
+      assert.strictEqual(
+        matchesFirewallPattern(".synthesis/task-capsules-other/example.json", [".synthesis/task-capsules/**"]),
+        false
+      );
+    });
+
+    it("4. Existing exact matching still works", () => {
+      assert.strictEqual(
+        matchesFirewallPattern(".synthesis/task-capsule.json", [".synthesis/task-capsule.json"]),
+        true
+      );
+      assert.strictEqual(
+        matchesFirewallPattern(".synthesis/task-capsule.json.bak", [".synthesis/task-capsule.json"]),
+        false
+      );
+    });
+
+    it("5. Existing single trailing * behavior remains unchanged", () => {
+      assert.strictEqual(
+        matchesFirewallPattern(".env.local", [".env*"]),
+        true
+      );
+      assert.strictEqual(
+        matchesFirewallPattern(".env", [".env*"]),
+        true
+      );
+      assert.strictEqual(
+        matchesFirewallPattern("other/.env", [".env*"]),
+        false
+      );
+    });
+  });
 });
