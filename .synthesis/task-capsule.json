@@ -1,46 +1,40 @@
 {
   "version": "1.1.0",
-  "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-D-20260925-001",
-  "task_id": "SYN-GOV-LINEAGE-SYNC-D-SYSTEM-MAP-COUNT-CLOSEOUT",
-  "title": "System Map Dynamic Task Count Closeout",
+  "capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
+  "task_id": "SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
+  "title": "MediaPermission Domain Type Contract Parity Alignment",
   "environment": "CMS_DEV",
-  "base_sha": "a309224dbc3285d9d63a2eed1a142b0378393def",
-  "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR67",
+  "base_sha": "a9e3dc7a89f9728af8b00c349d7198729bc320a2",
+  "expected_branch": "task/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
   "owner": "AI_STUDIO",
-  "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-C-20260925-001",
+  "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-D-20260925-001",
   "supersedes_capsule_id": null,
-  "created_at": "2026-09-25T18:05:28.731Z",
-  "status": "COMPLETED",
+  "created_at": "2026-09-25T19:13:52.565Z",
+  "status": "IN_PROGRESS",
   "allowed_mutation_types": [
-    "GOVERNANCE",
+    "TYPE_CONTRACT",
     "TEST",
-    "EVIDENCE"
+    "EVIDENCE",
+    "GOVERNANCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR67.json",
-    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-A-TEST-BASELINE-REPAIR.json",
-    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-B-REPAIR-MARKER-WIRING.json",
-    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-C-SYSTEM-MAP-COUNT-REPAIR.json",
-    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-D-SYSTEM-MAP-COUNT-CLOSEOUT.json",
-    ".synthesis/lineage/tasks.json",
+    ".synthesis/task-capsules/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT.json",
     ".synthesis/lineage/capsules.json",
-    ".synthesis/lineage/capabilities.json",
-    "scripts/lineage/validate.mjs",
-    "tests/lineage-registry.test.ts",
-    "tests/system-map-resolver.test.ts"
+    "lib/domain/media/types.ts",
+    "tests/media-permission-contract.types.ts"
   ],
   "forbidden_paths": [
     "package.json",
     "package-lock.json",
-    ".github/**",
     "prisma/**",
-    "lib/**",
-    "app/**",
-    "components/**",
+    ".github/**",
     "deployment/**",
     "infra/**",
-    ".env*",
-    "scripts/ci/validate_governance.mjs"
+    "app/**",
+    "lib/auth/**",
+    "scripts/**",
+    "docs/**",
+    ".env*"
   ]
 }

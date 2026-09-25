@@ -147,11 +147,8 @@ export interface UploadPipelineResult {
  */
 export type MediaPermission =
   | 'media.view'
-  | 'media.upload'
-  | 'media.use'
+  | 'media.create'
   | 'media.edit'
-  | 'media.replace'
-  | 'media.archive'
   | 'media.delete';
 
 /**
