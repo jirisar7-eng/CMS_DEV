@@ -287,13 +287,14 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
 
   describe('3. Internal View Lineage & Full Fidelity', () => {
     it('returns full internal lineage data with all capabilities and tasks', () => {
+      const expectedTasks = loadTasksRegistry(rootDir);
       const internalMap = resolveInternalSystemMap(rootDir);
 
       assert.strictEqual(internalMap.view, 'internal');
       assert.strictEqual(internalMap.total_capabilities, 14);
       assert.strictEqual(internalMap.capabilities.length, 14);
-      assert.strictEqual(internalMap.total_tasks, 65);
-      assert.strictEqual(internalMap.tasks.length, 65);
+      assert.strictEqual(internalMap.total_tasks, expectedTasks.total_tasks);
+      assert.strictEqual(internalMap.tasks.length, expectedTasks.tasks.length);
 
       const identityCap = internalMap.capabilities.find((c) => c.capability_id === 'identity_rbac');
       assert.ok(identityCap);
@@ -488,6 +489,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
         isGranted: true,
       });
 
+      const expectedTasks = loadTasksRegistry(rootDir);
       const req = new MockNextRequest('http://localhost:3000/api/admin/system-map?view=internal');
       const res = await systemMapApiHandler(req as any);
 
@@ -496,8 +498,8 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const data = await res.json();
       assert.strictEqual(data.view, 'internal');
       assert.strictEqual(data.total_capabilities, 14);
-      assert.strictEqual(data.total_tasks, 65);
-      assert.strictEqual(data.tasks.length, 65);
+      assert.strictEqual(data.total_tasks, expectedTasks.total_tasks);
+      assert.strictEqual(data.tasks.length, expectedTasks.tasks.length);
     });
 
     it('returns 400 when invalid view parameter is passed', async () => {

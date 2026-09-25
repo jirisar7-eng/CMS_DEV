@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 71,
+  "total_capsules": 72,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -489,6 +489,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR67",
       "sha256": "281a2c6855cd16a400718bc295d432e28747442b8c3dae73c06f2f996bf5cba5",
       "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-B-20260925-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-D-20260925-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-D-SYSTEM-MAP-COUNT-CLOSEOUT",
+      "title": "System Map Dynamic Task Count Closeout",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-D-SYSTEM-MAP-COUNT-CLOSEOUT.json",
+      "base_sha": "a309224dbc3285d9d63a2eed1a142b0378393def",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR67",
+      "sha256": "b66b5fcc46db0c1f47d32218bcab7baa04a670cc13872eba37bc0dbd4668c170",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-C-20260925-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
