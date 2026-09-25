@@ -4,7 +4,7 @@ import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { validateLineage, resolveRepoRoot, matchesOwnerPath } from "../scripts/lineage/validate.mjs";
+import { validateLineage, validateGitHistoryAlignment, parsePrNumberFromSubject, isAllowedSyncPath, resolveRepoRoot, matchesOwnerPath } from "../scripts/lineage/validate.mjs";
 
 const repoRoot = resolveRepoRoot();
 const tasksPath = path.join(repoRoot, ".synthesis/lineage/tasks.json");
@@ -256,4 +256,273 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     assert.strictEqual(res.valid, false);
     assert.ok(res.errors.some((e: string) => e.includes("capsule_sha256 mismatch") || e.includes("capsule SHA-256 mismatch")));
   });
+
+  describe("SYN-GOV-LINEAGE-002: Git History Anti-Drift Gate Unit Tests", () => {
+    function makeSyntheticCommits() {
+      const tasks35Plus = rawTasks.tasks.filter((t: any) => t.pr_number > 34);
+      return tasks35Plus.map((t: any) => ({
+        sha: t.merge_sha,
+        subject: `Feature commit for task ${t.task_id} (#${t.pr_number})`,
+        message: `Feature commit for task ${t.task_id} (#${t.pr_number})\n\nBody description`,
+        changedFiles: t.actual_changed_files || [".synthesis/lineage/tasks.json"]
+      }));
+    }
+
+    it("1. Exact synchronized history => PASS", () => {
+      const synthetic = makeSyntheticCommits();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, true, `Expected valid alignment, got errors: ${res.errors.join(", ")}`);
+      assert.strictEqual(res.summary.classifiedNormalPrs, 31);
+      assert.strictEqual(res.summary.unmatchedNormalPrs, 0);
+    });
+
+    it("2. Non-contiguous PR numbers => PASS", () => {
+      const synthetic = makeSyntheticCommits();
+      assert.strictEqual(synthetic.some((c: any) => c.subject.includes("#58")), false);
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, true);
+    });
+
+    it("3. Trailing \"(#N)\" parsing => PASS", () => {
+      const parsed = parsePrNumberFromSubject("feat(auth): add MFA support (#52)");
+      assert.strictEqual(parsed.matched, true);
+      assert.strictEqual(parsed.prNumber, 52);
+    });
+
+    it("4. \"Merge pull request #N\" parsing => PASS", () => {
+      const parsed = parsePrNumberFromSubject("Merge pull request #40 from jirisar7-eng/task/branch");
+      assert.strictEqual(parsed.matched, true);
+      assert.strictEqual(parsed.prNumber, 40);
+    });
+
+    it("5. \"Merge PR #N\" parsing => PASS", () => {
+      const parsed = parsePrNumberFromSubject("Merge PR #48: Secret Hygiene & Repository Secret Scanning");
+      assert.strictEqual(parsed.matched, true);
+      assert.strictEqual(parsed.prNumber, 48);
+    });
+
+    it("6. Duplicate PR number in history => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic[2].subject = "Duplicate PR subject (#35)";
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Duplicate PR #35 detected")));
+    });
+
+    it("7. Tasks record missing for historical PR in pull_request mode => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+      mutatedTasks.tasks = mutatedTasks.tasks.filter((t: any) => t.pr_number !== 40);
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: mutatedTasks,
+        isShallow: false,
+        mode: "pull_request",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Unmatched normal PR #40")));
+    });
+
+    it("8. Wrong merge_sha => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic[5].sha = "0123456789abcdef0123456789abcdef01234567";
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("merge_sha mismatch")));
+    });
+
+    it("9. Extra fabricated tasks record >34 => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+      mutatedTasks.tasks.push({
+        pr_number: 99,
+        task_id: "SYN-FAKE-099",
+        merge_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: mutatedTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("which does not exist in first-parent history")));
+    });
+
+    it("10. Unrecognized normal first-parent commit => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic[3].subject = "Random non-conventional unbracketed commit without PR";
+      synthetic[3].message = "Random non-conventional unbracketed commit without PR";
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Unrecognized first-parent commit format")));
+    });
+
+    it("11. Valid lineage-sync marker + allowed diff => PASS", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic.splice(5, 0, {
+        sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        subject: "chore(governance): synchronize lineage",
+        message: "SYN-GOV-LINEAGE-SYNC: routine lineage catch-up\n\nSync description",
+        changedFiles: [
+          ".synthesis/lineage/tasks.json",
+          ".synthesis/lineage/capsules.json",
+          ".synthesis/task-capsule.json"
+        ]
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, true, `Expected valid sync, got: ${res.errors.join(", ")}`);
+      assert.strictEqual(res.summary.syncCommits, 1);
+    });
+
+    it("12. Sync marker + forbidden changed file => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic.splice(5, 0, {
+        sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        subject: "chore(governance): sync lineage",
+        message: "SYN-GOV-LINEAGE-SYNC: routine lineage\n\nSync description",
+        changedFiles: [
+          ".synthesis/lineage/tasks.json",
+          "scripts/ci/validate_governance.mjs"
+        ]
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: scripts/ci/validate_governance.mjs")));
+    });
+
+    it("13. Pull_request mode with one unmatched normal PR => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+      mutatedTasks.tasks.pop();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: mutatedTasks,
+        isShallow: false,
+        mode: "pull_request",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Unmatched normal PR #66")));
+    });
+
+    it("14. Local mode with one unmatched normal PR => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+      mutatedTasks.tasks.pop();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: mutatedTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Unmatched normal PR #66")));
+    });
+
+    it("15. Main-push mode with exactly one FINAL unmatched normal PR => PASS", () => {
+      const synthetic = makeSyntheticCommits();
+      const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+      mutatedTasks.tasks.pop();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: mutatedTasks,
+        isShallow: false,
+        mode: "main_push",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, true, `Expected PASS on single final unmatched PR in main_push, got: ${res.errors.join(", ")}`);
+      assert.strictEqual(res.summary.unmatchedNormalPrs, 1);
+    });
+
+    it("16. Main-push mode with two unmatched normal PRs => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+      mutatedTasks.tasks.pop();
+      mutatedTasks.tasks.pop();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: mutatedTasks,
+        isShallow: false,
+        mode: "main_push",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Multiple unmatched normal PRs in main history (2)")));
+    });
+
+    it("17. Main-push mode where unmatched PR is not final history entry => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
+      mutatedTasks.tasks = mutatedTasks.tasks.filter((t: any) => t.pr_number !== 65);
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: mutatedTasks,
+        isShallow: false,
+        mode: "main_push",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("is not the final entry in first-parent history")));
+    });
+
+    it("18. Shallow repository strict validation => FAIL CLOSED", () => {
+      const synthetic = makeSyntheticCommits();
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: true,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("Repository is shallow; full git history required")));
+    });
+  });
+
 });

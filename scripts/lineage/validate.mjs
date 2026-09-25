@@ -458,6 +458,297 @@ export function validateLineage(options = {}) {
   };
 }
 
+
+export function parsePrNumberFromSubject(subject) {
+  if (typeof subject !== "string") return { matched: false };
+  const trimmed = subject.trim();
+  const results = [];
+
+  // Format 1: subject ends with (#N)
+  const match1 = trimmed.match(/\(#(\d+)\)$/);
+  if (match1) {
+    results.push(parseInt(match1[1], 10));
+  }
+
+  // Format 2: subject begins with Merge pull request #N
+  const match2 = trimmed.match(/^Merge pull request #(\d+)(?:\s|$)/i);
+  if (match2) {
+    results.push(parseInt(match2[1], 10));
+  }
+
+  // Format 3: subject begins with Merge PR #N
+  const match3 = trimmed.match(/^Merge PR #(\d+)(?:\s|$|:)/i);
+  if (match3) {
+    results.push(parseInt(match3[1], 10));
+  }
+
+  if (results.length === 0) return { matched: false };
+  const uniqueNums = Array.from(new Set(results));
+  if (uniqueNums.length > 1) {
+    return { matched: false, conflict: true, found: uniqueNums };
+  }
+  return { matched: true, prNumber: uniqueNums[0] };
+}
+
+export function isAllowedSyncPath(filePath) {
+  const norm = filePath.replace(/\\/g, "/");
+  if (norm === ".synthesis/task-capsule.json") return true;
+  if (norm.startsWith(".synthesis/task-capsules/")) return true;
+  if (norm === ".synthesis/lineage/tasks.json") return true;
+  if (norm === ".synthesis/lineage/capsules.json") return true;
+  if (norm === ".synthesis/lineage/capabilities.json") return true;
+  return false;
+}
+
+export function validateGitHistoryAlignment(options = {}) {
+  const repoRoot = resolveRepoRoot(options.repoRoot);
+  const errors = [];
+  const warnings = [];
+
+  // 1. Shallow repository check (Step 2A)
+  let isShallow = options.isShallow;
+  if (isShallow === undefined) {
+    try {
+      const shallowOutput = execSync("git rev-parse --is-shallow-repository", {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "ignore"]
+      }).trim();
+      isShallow = shallowOutput === "true";
+    } catch (e) {
+      errors.push("Failed to check if repository is shallow: " + e.message);
+    }
+  }
+  if (isShallow) {
+    errors.push("Repository is shallow; full git history required for lineage alignment validation");
+    return {
+      valid: false,
+      errors,
+      warnings,
+      summary: {
+        classifiedNormalPrs: 0,
+        syncCommits: 0,
+        unmatchedNormalPrs: 0
+      }
+    };
+  }
+
+  // 2. Load Tasks Registry and PR #34 baseline (Step 2C)
+  let tasksData = options.tasksData;
+  if (!tasksData) {
+    const tasksPath = path.join(repoRoot, ".synthesis/lineage/tasks.json");
+    if (!fs.existsSync(tasksPath)) {
+      errors.push("Missing tasks registry at " + tasksPath);
+      return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+    }
+    try {
+      tasksData = JSON.parse(fs.readFileSync(tasksPath, "utf8"));
+    } catch (e) {
+      errors.push("Invalid JSON in tasks.json: " + e.message);
+      return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+    }
+  }
+
+  const tasksList = Array.isArray(tasksData.tasks) ? tasksData.tasks : [];
+  const tasksByPr = new Map();
+  for (const t of tasksList) {
+    if (typeof t.pr_number === "number") {
+      tasksByPr.set(t.pr_number, t);
+    }
+  }
+
+  const pr34Record = tasksByPr.get(34);
+  if (!pr34Record || !pr34Record.merge_sha || !SHA1_REGEX.test(pr34Record.merge_sha)) {
+    errors.push("Missing or invalid PR #34 baseline record in tasks.json");
+    return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+  }
+  const baselineSha = pr34Record.merge_sha;
+
+  // 3. Determine Mode and Target (Step 2B)
+  let mode = options.mode;
+  if (!mode) {
+    if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+      mode = "pull_request";
+    } else if (process.env.GITHUB_EVENT_NAME === "push" && (process.env.GITHUB_REF === "refs/heads/main" || process.env.GITHUB_REF_NAME === "main")) {
+      mode = "main_push";
+    } else {
+      mode = "local";
+    }
+  }
+
+  let historyTarget = options.historyTarget;
+  if (!historyTarget) {
+    if (mode === "main_push") {
+      historyTarget = "HEAD";
+    } else {
+      historyTarget = "origin/main";
+    }
+  }
+
+  // 4. Retrieve or walk first-parent commits (Step 2D)
+  let commits = options.commits;
+  if (!commits) {
+    try {
+      execSync(`git rev-parse --verify ${historyTarget}`, { cwd: repoRoot, stdio: ["pipe", "pipe", "ignore"] });
+    } catch {
+      if (historyTarget === "origin/main") {
+        try {
+          execSync("git rev-parse --verify main", { cwd: repoRoot, stdio: ["pipe", "pipe", "ignore"] });
+          historyTarget = "main";
+        } catch {
+          errors.push("Cannot resolve history target: origin/main or main");
+          return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+        }
+      } else {
+        errors.push("Cannot resolve history target: " + historyTarget);
+        return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+      }
+    }
+
+    try {
+      execSync(`git merge-base --is-ancestor ${baselineSha} ${historyTarget}`, { cwd: repoRoot, stdio: ["pipe", "pipe", "ignore"] });
+    } catch {
+      errors.push(`Baseline commit ${baselineSha} (PR #34) is not an ancestor of history target ${historyTarget}`);
+      return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+    }
+
+    try {
+      const revListOutput = execSync(`git rev-list --first-parent --reverse ${baselineSha}..${historyTarget}`, {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "ignore"]
+      }).trim();
+
+      const shas = revListOutput.split("\n").map(s => s.trim()).filter(Boolean);
+      commits = [];
+      for (const sha of shas) {
+        const fullMessage = execSync(`git log -1 --format=%B ${sha}`, {
+          cwd: repoRoot,
+          encoding: "utf8",
+          stdio: ["pipe", "pipe", "ignore"]
+        });
+        const subject = fullMessage.split(/\r?\n/)[0].trim();
+        let changedFiles = [];
+        try {
+          const diffOut = execSync(`git diff-tree --no-commit-id --name-only -r ${sha}^1 ${sha}`, {
+            cwd: repoRoot,
+            encoding: "utf8",
+            stdio: ["pipe", "pipe", "ignore"]
+          }).trim();
+          changedFiles = diffOut.split("\n").map(s => s.trim()).filter(Boolean);
+        } catch {}
+        commits.push({ sha, subject, message: fullMessage, changedFiles });
+      }
+    } catch (e) {
+      errors.push("Failed to retrieve git history: " + e.message);
+      return { valid: false, errors, warnings, summary: { classifiedNormalPrs: 0, syncCommits: 0, unmatchedNormalPrs: 0 } };
+    }
+  }
+
+  // 5. Walk commits and classify (Steps 2E, 2F, 3, 4)
+  const seenHistoryPrs = new Set();
+  const classifiedNormalCommits = [];
+  const syncCommits = [];
+  const unmatchedNormalCommits = [];
+
+  for (let i = 0; i < commits.length; i++) {
+    const commit = commits[i];
+    const fullMsg = commit.message || commit.subject || "";
+    const subject = commit.subject || fullMsg.split(/\r?\n/)[0] || "";
+
+    // Lineage-sync classification order: 1. check marker
+    const isSync = fullMsg.split(/\r?\n/).some(line => line.startsWith("SYN-GOV-LINEAGE-SYNC"));
+
+    if (isSync) {
+      const changed = Array.isArray(commit.changedFiles) ? commit.changedFiles : [];
+      for (const file of changed) {
+        if (!isAllowedSyncPath(file)) {
+          errors.push(`Lineage-sync commit ${commit.sha} touches forbidden path: ${file}`);
+        }
+      }
+      syncCommits.push(commit);
+      continue;
+    }
+
+    // 2. parse normal PR pattern
+    const parsed = parsePrNumberFromSubject(subject);
+    if (!parsed.matched) {
+      if (parsed.conflict) {
+        errors.push(`Commit ${commit.sha} subject has conflicting PR numbers: ${parsed.found.join(", ")}`);
+      } else {
+        errors.push(`Unrecognized first-parent commit format: ${commit.sha} - "${subject}"`);
+      }
+      continue;
+    }
+
+    const prNumber = parsed.prNumber;
+    if (seenHistoryPrs.has(prNumber)) {
+      errors.push(`Duplicate PR #${prNumber} detected in first-parent history (${commit.sha})`);
+    }
+    seenHistoryPrs.add(prNumber);
+
+    const normalEntry = {
+      sha: commit.sha,
+      prNumber,
+      subject,
+      index: i
+    };
+    classifiedNormalCommits.push(normalEntry);
+
+    const taskRecord = tasksByPr.get(prNumber);
+    if (!taskRecord) {
+      unmatchedNormalCommits.push(normalEntry);
+    } else {
+      if (taskRecord.merge_sha !== commit.sha) {
+        errors.push(`PR #${prNumber} merge_sha mismatch: tasks.json has ${taskRecord.merge_sha}, git commit is ${commit.sha}`);
+      }
+    }
+  }
+
+  // 6. Mode enforcement on unmatched commits (Step 4)
+  if (mode === "pull_request" || mode === "local") {
+    if (unmatchedNormalCommits.length > 0) {
+      for (const u of unmatchedNormalCommits) {
+        errors.push(`Unmatched normal PR #${u.prNumber} (${u.sha}) in history is not recorded in tasks.json`);
+      }
+    }
+  } else if (mode === "main_push") {
+    if (unmatchedNormalCommits.length > 1) {
+      errors.push(`Multiple unmatched normal PRs in main history (${unmatchedNormalCommits.length}): ${unmatchedNormalCommits.map(u => "#" + u.prNumber).join(", ")}`);
+    } else if (unmatchedNormalCommits.length === 1) {
+      const unmatched = unmatchedNormalCommits[0];
+      const lastCommit = commits[commits.length - 1];
+      if (unmatched.sha !== lastCommit.sha) {
+        errors.push(`Unmatched normal PR #${unmatched.prNumber} (${unmatched.sha}) is not the final entry in first-parent history (final is ${lastCommit.sha})`);
+      }
+    }
+  }
+
+  // 7. Verify no fabricated/stale tasks.json records > 34 (Step 2F)
+  for (const t of tasksList) {
+    if (t.pr_number > 34) {
+      if (!seenHistoryPrs.has(t.pr_number)) {
+        errors.push(`tasks.json contains record for PR #${t.pr_number} (${t.task_id || "null"}) which does not exist in first-parent history`);
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    summary: {
+      mode,
+      historyTarget,
+      baselineSha,
+      totalFirstParentCommits: commits.length,
+      classifiedNormalPrs: classifiedNormalCommits.length,
+      syncCommits: syncCommits.length,
+      unmatchedNormalPrs: unmatchedNormalCommits.length
+    }
+  };
+}
+
 // CLI Execution entry point
 if (process.argv[1] && process.argv[1].endsWith('validate.mjs')) {
   console.log('--- Synthesis CMS Lineage & Capability Validator ---');
