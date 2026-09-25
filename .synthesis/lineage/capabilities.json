@@ -26,9 +26,10 @@
         "SYN-CI-002",
         "SYN-GOV-CAPSULE-002",
         "SYN-SEC-006",
-        "SYN-OPS-002"
+        "SYN-OPS-002",
+        "SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR"
       ],
-      "last_merge_sha": "ea5ca6dfb0619c5bbba6c9cb0306d39b0f14b440",
+      "last_merge_sha": "a309224dbc3285d9d63a2eed1a142b0378393def",
       "ssot_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT"
     },
     {

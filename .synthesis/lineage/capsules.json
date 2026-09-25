@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 67,
+  "total_capsules": 68,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -447,6 +447,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
       "sha256": "5db152e88a3fc4ef890a310d66c146a5b861d61f8c721e046284f7d8c933f057",
       "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002A-20260925-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR67-20260925-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR67",
+      "title": "PR #67 Live Lineage Sync Transport",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR67.json",
+      "base_sha": "a309224dbc3285d9d63a2eed1a142b0378393def",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR67",
+      "sha256": "93fd4796e6c6bcfbf13c80ff57ce5d4db1569c324dd348022ec8dc3111457d5f",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002B-20260925-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
