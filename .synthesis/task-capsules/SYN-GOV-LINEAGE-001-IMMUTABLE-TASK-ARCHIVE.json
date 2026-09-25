@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
+  "environment": "CMS_DEV",
+  "base_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
+  "expected_branch": "task/SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "GOVERNANCE",
+    "EVIDENCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    ".synthesis/task-capsules/*",
+    ".synthesis/task-capsules/**",
+    ".synthesis/lineage/*",
+    ".synthesis/lineage/**",
+    "scripts/lineage/*",
+    "scripts/lineage/**",
+    "tests/lineage-registry.test.ts"
+  ]
+}

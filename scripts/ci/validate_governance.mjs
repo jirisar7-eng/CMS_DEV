@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import canonicalize from "canonicalize";
 import { validateCapsuleRegistry } from "./validate_capsule_registry.mjs";
+import { validateLineage, validateGitHistoryAlignment } from "../lineage/validate.mjs";
 import { scanRepository } from "./secret_scanner.mjs";
 
 function sha256(data) {
@@ -134,6 +135,28 @@ if (!capsuleResult.valid) {
   }
 } else {
   console.log(`Validated Task Capsule Registry (${capsuleResult.count} capsules) - PASSED`);
+}
+
+// 4. Lineage Registry validation (offline)
+console.log("--- Validating Lineage Registry ---");
+const lineageResult = validateLineage();
+if (!lineageResult.valid) {
+  for (const err of lineageResult.errors) {
+    reportError(err);
+  }
+} else {
+  console.log(`Validated Lineage Registry (${lineageResult.summary.tasksCount} tasks, ${lineageResult.summary.capabilitiesCount} capabilities) - PASSED`);
+}
+
+// 5. Git History Alignment Anti-Drift Gate
+console.log("--- Validating Git History Alignment (Anti-Drift Gate) ---");
+const historyResult = validateGitHistoryAlignment();
+if (!historyResult.valid) {
+  for (const err of historyResult.errors) {
+    reportError(err);
+  }
+} else {
+  console.log(`Validated Git History Alignment (${historyResult.summary.classifiedNormalPrs} PRs, ${historyResult.summary.syncCommits} syncs, mode: ${historyResult.summary.mode}) - PASSED`);
 }
 
 if (hasError) {

@@ -1,0 +1,32 @@
+{
+  "version": "1.1.0",
+  "capsule_id": "CAP-SYN-CONTENT-005-20260922-001",
+  "task_id": "SYN-CONTENT-005",
+  "title": "Revisions Workspace Completion",
+  "environment": "CMS_DEV",
+  "base_sha": "1efdc0775f1f47cb28535e96a52dc864425d1ce3",
+  "expected_branch": "task/SYN-CONTENT-005-REVISIONS-WORKSPACE-COMPLETION",
+  "owner": "CHATGPT",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-09-22T00:00:00Z",
+  "parent_capsule_id": "CAP-SYN-CONTENT-004-20260922-001",
+  "supersedes_capsule_id": null,
+  "allowed_mutation_types": [
+    "ADMIN_UI",
+    "TEST",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "components/admin/revisions/RevisionsWorkspace.tsx",
+    "tests/revisions-workspace-completion.test.ts",
+    "scripts/ci/test_manifest.mjs"
+  ],
+  "forbidden_paths": [
+    ".env*",
+    "prisma/schema.prisma",
+    "prisma/migrations/**",
+    "lib/domain/content/lifecycle/**",
+    "docs/environment/ENV-LEGACY-*"
+  ]
+}

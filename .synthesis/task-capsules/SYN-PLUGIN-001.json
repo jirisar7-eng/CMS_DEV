@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-PLUGIN-001",
+  "environment": "CMS_DEV",
+  "base_sha": "b1919ef082a38a5b9d8e07d09d58737ef288f602",
+  "expected_branch": "task/SYN-PLUGIN-001-PLUGIN-MANIFEST-REGISTRY-FOUNDATION",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE",
+    "TEST",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "lib/domain/plugin/contracts.ts",
+    "lib/domain/plugin/registry.ts",
+    "lib/domain/plugin/validator.ts",
+    "lib/domain/plugin/index.ts",
+    "tests/plugin-registry.test.ts"
+  ]
+}

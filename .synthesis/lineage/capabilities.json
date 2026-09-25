@@ -20,9 +20,15 @@
       "source_tasks": [
         "SYN-DEPLOY-001-CMS-DEV-CONTAINER",
         "SYN-DATA-001-PERSISTENCE-RUNTIME-FOUNDATION",
-        "SYN-ADMIN-STATUS-001-CAPABILITY-MAP"
+        "SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
+        "SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
+        "SYN-PLUGIN-001A",
+        "SYN-CI-002",
+        "SYN-GOV-CAPSULE-002",
+        "SYN-SEC-006",
+        "SYN-OPS-002"
       ],
-      "last_merge_sha": "2cf4fcb9a4353bc2c48883fd1e4061631358d41c",
+      "last_merge_sha": "ea5ca6dfb0619c5bbba6c9cb0306d39b0f14b440",
       "ssot_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT"
     },
     {
@@ -52,9 +58,18 @@
         "SYN-SEC-001-IDENTITY-ACCESS-FOUNDATION",
         "SYN-SEC-002-ADMIN-NODB-FALLBACK",
         "SYN-SEC-003-ADMIN-LOGIN-LAYOUT-ISOLATION",
-        "SYN-SEC-004-DEPENDENCY-HARDENING"
+        "SYN-SEC-004-DEPENDENCY-HARDENING",
+        "SYN-SYSTEM-MAP-001",
+        "SYN-PLUGIN-002",
+        "SYN-SEC-005A",
+        "SYN-SEC-005B",
+        "SYN-AUDIT-002",
+        "SYN-SEC-007",
+        "SYN-SEC-008",
+        "SYN-SEC-009",
+        "SYN-CONTENT-006"
       ],
-      "last_merge_sha": "c0f3b9f776db98c9f7d9ad2c4931067d279e4b59",
+      "last_merge_sha": "7b45ffea82220946e3aab088768ca5d32e8a4598",
       "ssot_role": "Canonical identity, session, and role-based access control SSOT"
     },
     {
@@ -118,9 +133,12 @@
       "visibility": "SAFE_PUBLIC_METADATA",
       "source_tasks": [
         "SYN-CONTENT-001-CONTENT-LIFECYCLE-FOUNDATION",
-        "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER"
+        "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER",
+        "SYN-CONTENT-003",
+        "SYN-CONTENT-006",
+        "SYN-MEDIA-002"
       ],
-      "last_merge_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
+      "last_merge_sha": "6e17f95056c91c22b35f67a267704a77c2011e45",
       "ssot_role": "Page / PageRevision / ContentRelease = canonical content SSOT"
     },
     {
@@ -141,9 +159,10 @@
       "security_boundary": "PROJECT_SCOPED_RBAC_PAGES_READ",
       "visibility": "SAFE_PUBLIC_METADATA",
       "source_tasks": [
-        "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER"
+        "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER",
+        "SYN-EDITOR-002"
       ],
-      "last_merge_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
+      "last_merge_sha": "73fe2192ee6354fc82c574d448d0e6aed90931cf",
       "ssot_role": "Admin Pages UI workspace consuming content lifecycle SSOT"
     },
     {
@@ -165,9 +184,10 @@
       "security_boundary": "PROJECT_SCOPED_RBAC_PAGES_EDIT",
       "visibility": "SAFE_PUBLIC_METADATA",
       "source_tasks": [
-        "SYN-EDITOR-001-VISUAL-PAGE-EDITOR-FOUNDATION"
+        "SYN-EDITOR-001-VISUAL-PAGE-EDITOR-FOUNDATION",
+        "SYN-EDITOR-002"
       ],
-      "last_merge_sha": "7244d1676baa868a0c7c061c0950f6dd05f16210",
+      "last_merge_sha": "73fe2192ee6354fc82c574d448d0e6aed90931cf",
       "ssot_role": "Puck / Visual Editor = adapter, NOT SSOT"
     },
     {
@@ -196,9 +216,11 @@
       "security_boundary": "PROJECT_SCOPED_RBAC_NAVIGATION_MANAGE",
       "visibility": "SAFE_PUBLIC_METADATA",
       "source_tasks": [
-        "SYN-NAV-001-NAVIGATION-FOUNDATION"
+        "SYN-NAV-001-NAVIGATION-FOUNDATION",
+        "SYN-AUDIT-002",
+        "SYN-NAV-002"
       ],
-      "last_merge_sha": "194028387621c8bf00267680b13704458e686a49",
+      "last_merge_sha": "efd3ce5f689bba979b23975d5121c705d2c15399",
       "ssot_role": "Project-scoped navigation hierarchy SSOT referencing canonical Page records"
     },
     {
@@ -224,10 +246,11 @@
       "visibility": "SAFE_PUBLIC_METADATA",
       "source_tasks": [
         "SYN-WEB-001-SEO-REDIRECTS-FOUNDATION",
-        "SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER"
+        "SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER",
+        "SYN-SEO-002"
       ],
-      "last_merge_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
-      "ssot_role": "Project-scoped SEO metadata SSOT; Sitemap runtime = planned / not falsely complete"
+      "last_merge_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
+      "ssot_role": "project SEO metadata is SSOT; robots.txt runtime is implemented; sitemap.xml runtime is implemented; sitemap derives from published public routes and page SEO"
     },
     {
       "capability_id": "redirects",
@@ -338,10 +361,11 @@
         "SYN-MEDIA-001A-PERSISTENCE-FOUNDATION",
         "SYN-CONTENT-001A-MEDIA-RUNTIME-R1",
         "SYN-CONTENT-001B-MEDIA-ADMIN-UI",
-        "SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER"
+        "SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER",
+        "SYN-MEDIA-002"
       ],
-      "last_merge_sha": "afdd8cbd51ecbd18357bc94da324f7bef00573b6",
-      "ssot_role": "Media asset versioning and usage reference SSOT; Media Replace = SAFELY_DISABLED / deferred"
+      "last_merge_sha": "6e17f95056c91c22b35f67a267704a77c2011e45",
+      "ssot_role": "Media asset versioning and usage references are SSOT; file replacement is implemented for eligible non-PUBLISHED assets, preserves asset identity and usage links, enforces security validation, compensates storage on DB failure, and remains fail-closed for PUBLISHED assets."
     },
     {
       "capability_id": "brand",
@@ -382,10 +406,11 @@
       "security_boundary": "SYSTEM_GOVERNANCE",
       "visibility": "OWNER_INTERNAL",
       "source_tasks": [
-        "SYN-PLUGIN-001"
+        "SYN-PLUGIN-001",
+        "SYN-PLUGIN-002"
       ],
-      "last_merge_sha": "1cfdf81b29be8f93f03710590c71a72705ac8038",
-      "ssot_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
+      "last_merge_sha": "d7144b8766cba5311b33eb71d60f046f5f6b8d86",
+      "ssot_role": "Code PluginRegistry is the manifest authority; ProjectPluginState provides project-scoped persisted enable/disable/config state; sensitive plugin config is not stored in ProjectPluginState."
     }
   ],
   "ssot_rules": {
@@ -395,8 +420,8 @@
     "project_context_role": "Project Context = canonical project/tenant boundary",
     "capability_map_role": "Capability Map/adminNav = status/product navigation authority, NOT business-data SSOT",
     "redirect_runtime_role": "Redirect runtime = consumes published content + RedirectRule",
-    "media_replace_role": "Media Replace = SAFELY_DISABLED / deferred",
-    "sitemap_runtime_role": "Sitemap runtime = planned / not falsely complete",
-    "plugin_registry_role": "code-level plugin manifest/registry contract, NOT persistence/runtime activation SSOT"
+    "media_replace_role": "File replacement is implemented for eligible non-PUBLISHED assets, preserves asset identity and usage links, enforces security validation, compensates storage on DB failure, and remains fail-closed for PUBLISHED assets.",
+    "sitemap_runtime_role": "robots.txt runtime is implemented; sitemap.xml runtime is implemented; sitemap derives from published public routes and page SEO",
+    "plugin_registry_role": "Code PluginRegistry is the manifest authority; ProjectPluginState provides project-scoped persisted enable/disable/config state; sensitive plugin config is not stored in ProjectPluginState."
   }
 }

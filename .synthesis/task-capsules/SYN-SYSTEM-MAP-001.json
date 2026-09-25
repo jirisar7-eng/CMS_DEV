@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "task_id": "SYN-SYSTEM-MAP-001",
+  "environment": "CMS_DEV",
+  "base_sha": "15fbff2ea0311d8551881cbe9e7a0d13ebb7aed9",
+  "expected_branch": "task/SYN-SYSTEM-MAP-001-SECURE-RESOLVER",
+  "owner": "AI_STUDIO",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "CODE",
+    "TEST",
+    "GOVERNANCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    "lib/domain/system-map/*",
+    "lib/domain/system-map/**",
+    "lib/auth/rbac.ts",
+    "scripts/bootstrap-admin.ts",
+    "app/api/admin/system-map/*",
+    "app/api/admin/system-map/**",
+    "tests/system-map-resolver.test.ts"
+  ]
+}

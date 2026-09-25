@@ -1,16 +1,16 @@
 {
   "version": "1.1.0",
-  "capsule_id": "CAP-SYN-GOV-LINEAGE-002B-20260925-001",
-  "task_id": "SYN-GOV-LINEAGE-002B-CAPSULE-LEGACY-TEST-REPAIR",
-  "title": "Capsule Legacy Registry Test Regression Repair",
+  "capsule_id": "CAP-SYN-GOV-LINEAGE-002A-20260925-001",
+  "task_id": "SYN-GOV-LINEAGE-002A-DIFF-FIREWALL-GLOB-FIX",
+  "title": "Diff Firewall Glob Semantics Blocker Fix",
   "environment": "CMS_DEV",
   "base_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
   "expected_branch": "task/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
   "owner": "AI_STUDIO",
   "status": "COMPLETED",
-  "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002A-20260925-001",
-  "supersedes_capsule_id": null,
-  "created_at": "2026-09-25T14:21:10.140Z",
+  "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002-20260925-001",
+  "supersedes_capsule_id": "CAP-SYN-GOV-LINEAGE-002-20260925-001",
+  "created_at": "2026-09-25T12:33:47.706Z",
   "allowed_mutation_types": [
     "GOVERNANCE",
     "TEST",
@@ -26,17 +26,14 @@
     "scripts/ci/validate_governance.mjs",
     "scripts/ci/diff_firewall.mjs",
     "tests/lineage-registry.test.ts",
-    "tests/system-map-resolver.test.ts",
-    "tests/task-capsule-registry.test.ts"
+    "tests/system-map-resolver.test.ts"
   ],
   "forbidden_paths": [
     "package.json",
     "package-lock.json",
     ".github/**",
     "prisma/**",
-    "lib/**",
-    "app/**",
-    "components/**",
+    "lib/auth/**",
     "deployment/**",
     "infra/**",
     ".env*"
