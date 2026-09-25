@@ -10,9 +10,10 @@ import {
   Save,
   AlertCircle,
   CheckCircle2,
+  CheckCircle,
+  ExternalLink,
   Info,
-  Loader2,
-  Clock
+  Loader2
 } from 'lucide-react';
 
 interface SeoWorkspaceProps {
@@ -163,7 +164,7 @@ export function SeoWorkspace({ projectId }: SeoWorkspaceProps) {
       group="OBSAH"
       title="SEO a metadata"
       description="Globální optimalizace pro vyhledávače, Open Graph metadata a konfigurace robots.txt."
-      status="ZÁKLAD"
+      status="FUNKČNÍ"
       helpKey="content.seo.view"
     >
       {() => {

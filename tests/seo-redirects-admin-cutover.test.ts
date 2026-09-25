@@ -452,7 +452,10 @@ describe('SYN-WEB-003: SEO & Redirects Admin Cutover Test Suite', () => {
       assert.doesNotMatch(wsCode, /%page_title%/);
       assert.match(wsCode, /%s/);
       assert.doesNotMatch(wsCode, /24 publikovaných stránek/);
-      assert.match(wsCode, /Plánovaný runtime/);
+      assert.doesNotMatch(wsCode, /Plánovaný runtime/);
+      assert.match(wsCode, /sitemap\.xml/);
+      assert.match(wsCode, /robots\.txt/);
+      assert.match(wsCode, /projectId=/);
       assert.match(wsCode, /\/api\/admin\/projects\/.*\/seo/);
       assert.match(wsCode, /method:\s*['"]PUT['"]/);
       assert.match(wsCode, /method:\s*['"]GET['"]/);
@@ -478,7 +481,7 @@ describe('SYN-WEB-003: SEO & Redirects Admin Cutover Test Suite', () => {
 
     it('adminNav.ts reflects truthfulness: SEO is ZÁKLAD and Redirects is FUNKČNÍ', () => {
       const navCode = fs.readFileSync(path.join(rootDir, 'lib/navigation/adminNav.ts'), 'utf8');
-      assert.match(navCode, /id:\s*'seo'[\s\S]*?status:\s*'ZÁKLAD'/);
+      assert.match(navCode, /id:\s*'seo'[\s\S]*?status:\s*'FUNKČNÍ'/);
       assert.match(navCode, /id:\s*'redirects'[\s\S]*?status:\s*'FUNKČNÍ'/);
     });
   });

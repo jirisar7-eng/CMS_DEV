@@ -133,7 +133,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('publishing'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('revisions'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('search'), 'ZÁKLAD');
-      assert.strictEqual(getCapabilityStatus('seo'), 'ZÁKLAD');
+      assert.strictEqual(getCapabilityStatus('seo'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('svg-editor'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('users'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('roles'), 'ZÁKLAD');
