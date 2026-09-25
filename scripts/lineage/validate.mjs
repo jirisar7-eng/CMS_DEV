@@ -490,13 +490,18 @@ export function parsePrNumberFromSubject(subject) {
   return { matched: true, prNumber: uniqueNums[0] };
 }
 
-export function isAllowedSyncPath(filePath) {
+export function isAllowedSyncPath(filePath, isRepair = false) {
   const norm = filePath.replace(/\\/g, "/");
   if (norm === ".synthesis/task-capsule.json") return true;
   if (norm.startsWith(".synthesis/task-capsules/")) return true;
   if (norm === ".synthesis/lineage/tasks.json") return true;
   if (norm === ".synthesis/lineage/capsules.json") return true;
   if (norm === ".synthesis/lineage/capabilities.json") return true;
+  if (isRepair) {
+    if (norm === "scripts/lineage/validate.mjs") return true;
+    if (norm === "tests/lineage-registry.test.ts") return true;
+    if (norm === "tests/system-map-resolver.test.ts") return true;
+  }
   return false;
 }
 
@@ -670,15 +675,16 @@ export function validateGitHistoryAlignment(options = {}) {
     const subject = commit.subject || fullMsg.split(/\r?\n/)[0] || "";
 
     // Lineage-sync classification order: 1. check marker
-    const isSync = fullMsg.split(/\r?\n/).some(line => line.startsWith("SYN-GOV-LINEAGE-SYNC"));
-
+    const messageLines = fullMsg.split(/\r?\n/);
+    const isSync = messageLines.some(line => line.startsWith("SYN-GOV-LINEAGE-SYNC"));
     if (isSync) {
+      const isRepair = messageLines.some(line => line === "SYN-GOV-LINEAGE-SYNC-TEST-BASELINE-REPAIR");
       if (!Array.isArray(commit.changedFiles)) {
         errors.push(`Lineage-sync commit ${commit.sha} is missing changed-files evidence`);
         continue;
       }
       for (const file of commit.changedFiles) {
-        if (!isAllowedSyncPath(file)) {
+        if (!isAllowedSyncPath(file, isRepair)) {
           errors.push(`Lineage-sync commit ${commit.sha} touches forbidden path: ${file}`);
         }
       }

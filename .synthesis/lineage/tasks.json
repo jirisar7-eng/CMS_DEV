@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 65,
+  "total_tasks": 66,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3272,6 +3272,67 @@
       ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 67,
+      "pr_title": "SYN-GOV-LINEAGE-002 — Live Lineage Drift Repair",
+      "task_id": "SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
+      "branch": "task/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
+      "base_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
+      "source_head_sha": "831e83bf9251114c502b31104ed4ed5538fa96ba",
+      "merge_sha": "a309224dbc3285d9d63a2eed1a142b0378393def",
+      "merged_at": "2026-09-25T16:30:41Z",
+      "capsule_present": true,
+      "capsule_declared_status": "COMPLETED",
+      "derived_status": "MERGED",
+      "capsule_sha256": "6a61ad9128bff55782cde2b14a0f361626f9ef754ac32c53322ce6b7ed02b8e8",
+      "touches_capabilities": [
+        "governance"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/**",
+        ".synthesis/lineage/tasks.json",
+        ".synthesis/lineage/capabilities.json",
+        ".synthesis/lineage/capsules.json",
+        "scripts/lineage/validate.mjs",
+        "scripts/ci/validate_governance.mjs",
+        "scripts/ci/diff_firewall.mjs",
+        "tests/lineage-registry.test.ts",
+        "tests/system-map-resolver.test.ts",
+        "tests/task-capsule-registry.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capabilities.json",
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/lineage/tasks.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-CONTENT-004.json",
+        ".synthesis/task-capsules/SYN-CONTENT-005.json",
+        ".synthesis/task-capsules/SYN-CONTENT-006.json",
+        ".synthesis/task-capsules/SYN-DEP-003.json",
+        ".synthesis/task-capsules/SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE.json",
+        ".synthesis/task-capsules/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR.json",
+        ".synthesis/task-capsules/SYN-GOV-LINEAGE-002A-DIFF-FIREWALL-GLOB-FIX.json",
+        ".synthesis/task-capsules/SYN-GOV-LINEAGE-002B-CAPSULE-LEGACY-TEST-REPAIR.json",
+        ".synthesis/task-capsules/SYN-OPS-002.json",
+        ".synthesis/task-capsules/SYN-PLUGIN-001.json",
+        ".synthesis/task-capsules/SYN-PLUGIN-001A.json",
+        ".synthesis/task-capsules/SYN-SEC-009.json",
+        ".synthesis/task-capsules/SYN-SEC-010.json",
+        ".synthesis/task-capsules/SYN-SEO-002.json",
+        ".synthesis/task-capsules/SYN-SYSTEM-MAP-001.json",
+        ".synthesis/task-capsules/SYN-SYSTEM-MAP-002.json",
+        "scripts/ci/diff_firewall.mjs",
+        "scripts/ci/validate_governance.mjs",
+        "scripts/lineage/validate.mjs",
+        "tests/lineage-registry.test.ts",
+        "tests/system-map-resolver.test.ts",
+        "tests/task-capsule-registry.test.ts"
+      ]
     }
   ]
 }

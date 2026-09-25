@@ -199,8 +199,10 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const tasks = loadTasksRegistry(rootDir);
       assert.strictEqual(typeof tasks.registry_version, 'string');
       assert.strictEqual(typeof tasks.total_tasks, 'number');
-      assert.strictEqual(tasks.total_tasks, 65);
-      assert.strictEqual(tasks.tasks.length, 65);
+      assert.strictEqual(tasks.total_tasks, tasks.tasks.length);
+      const finalTask = tasks.tasks[tasks.tasks.length - 1];
+      assert.strictEqual(finalTask.pr_number, 67);
+      assert.strictEqual(finalTask.task_id, 'SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR');
     });
 
     it('fails closed with SystemMapRegistryError when capabilities registry is missing', () => {
@@ -285,13 +287,14 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
 
   describe('3. Internal View Lineage & Full Fidelity', () => {
     it('returns full internal lineage data with all capabilities and tasks', () => {
+      const expectedTasks = loadTasksRegistry(rootDir);
       const internalMap = resolveInternalSystemMap(rootDir);
 
       assert.strictEqual(internalMap.view, 'internal');
       assert.strictEqual(internalMap.total_capabilities, 14);
       assert.strictEqual(internalMap.capabilities.length, 14);
-      assert.strictEqual(internalMap.total_tasks, 65);
-      assert.strictEqual(internalMap.tasks.length, 65);
+      assert.strictEqual(internalMap.total_tasks, expectedTasks.total_tasks);
+      assert.strictEqual(internalMap.tasks.length, expectedTasks.tasks.length);
 
       const identityCap = internalMap.capabilities.find((c) => c.capability_id === 'identity_rbac');
       assert.ok(identityCap);
@@ -311,16 +314,21 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const pr66 = internalMap.tasks.find((t) => t.pr_number === 66);
       assert.ok(pr66);
       assert.strictEqual(pr66.task_id, 'SYN-SEO-002');
+
+      const pr67 = internalMap.tasks.find((t) => t.pr_number === 67);
+      assert.ok(pr67);
+      assert.strictEqual(pr67.task_id, 'SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR');
     });
 
     it('unified resolver correctly dispatches between basic and internal', () => {
+      const expectedTasks = loadTasksRegistry(rootDir);
       const basic = resolveSystemMap({ accessLevel: 'basic', customRoot: rootDir });
       assert.strictEqual(basic.view, 'basic');
       assert.strictEqual((basic as any).tasks, undefined);
 
       const internal = resolveSystemMap({ accessLevel: 'internal', customRoot: rootDir });
       assert.strictEqual(internal.view, 'internal');
-      assert.strictEqual((internal as any).tasks.length, 65);
+      assert.strictEqual((internal as any).tasks.length, expectedTasks.tasks.length);
     });
   });
 
@@ -481,6 +489,7 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
         isGranted: true,
       });
 
+      const expectedTasks = loadTasksRegistry(rootDir);
       const req = new MockNextRequest('http://localhost:3000/api/admin/system-map?view=internal');
       const res = await systemMapApiHandler(req as any);
 
@@ -489,8 +498,8 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const data = await res.json();
       assert.strictEqual(data.view, 'internal');
       assert.strictEqual(data.total_capabilities, 14);
-      assert.strictEqual(data.total_tasks, 65);
-      assert.strictEqual(data.tasks.length, 65);
+      assert.strictEqual(data.total_tasks, expectedTasks.total_tasks);
+      assert.strictEqual(data.tasks.length, expectedTasks.tasks.length);
     });
 
     it('returns 400 when invalid view parameter is passed', async () => {

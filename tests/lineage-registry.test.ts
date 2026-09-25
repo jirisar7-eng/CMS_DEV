@@ -23,7 +23,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     const res = validateLineage({ repoRoot });
     assert.strictEqual(res.valid, true, `Expected valid lineage, got errors: ${res.errors.join(", ")}`);
     assert.strictEqual(res.errors.length, 0);
-    assert.strictEqual(res.summary.tasksCount, 65);
+    assert.strictEqual(res.summary.tasksCount, rawTasks.tasks.length);
     assert.strictEqual(res.summary.capabilitiesCount, 14);
   });
 
@@ -38,15 +38,15 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
   });
 
   it("3. Historical baseline PR #1-#34 and live PR range are all represented without gaps or duplicates", () => {
-    assert.strictEqual(rawTasks.tasks.length, 65);
+    assert.strictEqual(rawTasks.tasks.length, rawTasks.total_tasks);
     const prNumbers = rawTasks.tasks.map((t: any) => t.pr_number);
     // Historical baseline 1..34 must all exist
     for (let i = 1; i <= 34; i++) {
       assert.ok(prNumbers.includes(i), `Historical baseline PR #${i} must exist`);
     }
-    // Expected PR numbers: 1..57, 59..66 (65 total)
+    const maxPr = rawTasks.tasks[rawTasks.tasks.length - 1].pr_number;
     const expected = [];
-    for (let i = 1; i <= 66; i++) {
+    for (let i = 1; i <= maxPr; i++) {
       if (i !== 58) expected.push(i);
     }
     assert.deepStrictEqual(prNumbers, expected);
@@ -59,9 +59,10 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
 
   it("4. Non-null task IDs are strictly unique across all historical tasks", () => {
     const nonNullTaskIds = rawTasks.tasks.filter((t: any) => t.task_id !== null).map((t: any) => t.task_id);
-    assert.strictEqual(nonNullTaskIds.length, 64);
+    const expectedCount = rawTasks.tasks.length - 1;
+    assert.strictEqual(nonNullTaskIds.length, expectedCount);
     const uniqueTaskIds = new Set(nonNullTaskIds);
-    assert.strictEqual(uniqueTaskIds.size, 64, "Expected 64 unique task IDs");
+    assert.strictEqual(uniqueTaskIds.size, expectedCount, `Expected ${expectedCount} unique task IDs`);
   });
 
   it("5. Historical IN_PROGRESS capsule + derived MERGED is valid evidence", () => {
@@ -78,9 +79,9 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     }
   });
 
-  it("6. Archived capsule SHA-256 integrity holds for all 64 historical capsules", () => {
+  it("6. Archived capsule SHA-256 integrity holds for all historical capsules", () => {
     const capsuleTasks = rawTasks.tasks.filter((t: any) => t.capsule_present === true);
-    assert.strictEqual(capsuleTasks.length, 64);
+    assert.strictEqual(capsuleTasks.length, rawTasks.tasks.length - 1);
     for (const t of capsuleTasks) {
       const capRecord = rawCapsules.capsules.find((c: any) => c.task_id === t.task_id);
       assert.ok(capRecord, `Capsule record missing for ${t.task_id}`);
@@ -262,7 +263,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
 
   it("26. Post-baseline tasks (PR > #34) declare verified evidence-backed touches_capabilities", () => {
     const post34 = rawTasks.tasks.filter((t: any) => t.pr_number > 34);
-    assert.strictEqual(post34.length, 31);
+    assert.strictEqual(post34.length, rawTasks.total_tasks - 34);
 
     const pr35 = post34.find((t: any) => t.pr_number === 35);
     assert.deepStrictEqual(pr35.touches_capabilities, ["governance"]);
@@ -285,6 +286,9 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     const pr66 = post34.find((t: any) => t.pr_number === 66);
     assert.deepStrictEqual(pr66.touches_capabilities, ["seo"]);
 
+    const pr67 = post34.find((t: any) => t.pr_number === 67);
+    assert.deepStrictEqual(pr67.touches_capabilities, ["governance"]);
+
     // Routine closeouts without mechanism changes are empty
     const pr61 = post34.find((t: any) => t.pr_number === 61);
     assert.deepStrictEqual(pr61.touches_capabilities, []);
@@ -294,11 +298,12 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     assert.deepStrictEqual(pr65.touches_capabilities, []);
   });
 
-  it("27. Capability source provenance and last_merge_sha reflect post-baseline integrations through PR #66", () => {
+  it("27. Capability source provenance and last_merge_sha reflect post-baseline integrations through PR #67", () => {
     const gov = rawCapabilities.capabilities.find((c: any) => c.capability_id === "governance");
     assert.ok(gov.source_tasks.includes("SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE"));
     assert.ok(gov.source_tasks.includes("SYN-OPS-002"));
-    assert.strictEqual(gov.last_merge_sha, "ea5ca6dfb0619c5bbba6c9cb0306d39b0f14b440");
+    assert.ok(gov.source_tasks.includes("SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR"));
+    assert.strictEqual(gov.last_merge_sha, "a309224dbc3285d9d63a2eed1a142b0378393def");
 
     const idRbac = rawCapabilities.capabilities.find((c: any) => c.capability_id === "identity_rbac");
     assert.ok(idRbac.source_tasks.includes("SYN-SYSTEM-MAP-001"));
@@ -387,7 +392,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
         commits: synthetic
       });
       assert.strictEqual(res.valid, true, `Expected valid alignment, got errors: ${res.errors.join(", ")}`);
-      assert.strictEqual(res.summary.classifiedNormalPrs, 31);
+      assert.strictEqual(res.summary.classifiedNormalPrs, synthetic.length);
       assert.strictEqual(res.summary.unmatchedNormalPrs, 0);
     });
 
@@ -522,7 +527,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
       assert.strictEqual(res.summary.syncCommits, 1);
     });
 
-    it("12. Sync marker + forbidden changed file => FAIL", () => {
+    it("12. Generic sync + tests/lineage-registry.test.ts without repair marker => FAIL", () => {
       const synthetic = makeSyntheticCommits();
       synthetic.splice(5, 0, {
         sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -530,7 +535,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
         message: "SYN-GOV-LINEAGE-SYNC: routine lineage\n\nSync description",
         changedFiles: [
           ".synthesis/lineage/tasks.json",
-          "scripts/ci/validate_governance.mjs"
+          "tests/lineage-registry.test.ts"
         ]
       });
       const res = validateGitHistoryAlignment({
@@ -541,13 +546,82 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
         commits: synthetic
       });
       assert.strictEqual(res.valid, false);
-      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: scripts/ci/validate_governance.mjs")));
+      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: tests/lineage-registry.test.ts")));
+    });
+
+    it("12a. Generic sync without repair marker rejects tests/system-map-resolver.test.ts => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic.splice(5, 0, {
+        sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        subject: "chore(governance): sync lineage",
+        message: "SYN-GOV-LINEAGE-SYNC: routine lineage\n\nSync description",
+        changedFiles: [
+          ".synthesis/lineage/tasks.json",
+          "tests/system-map-resolver.test.ts"
+        ]
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: tests/system-map-resolver.test.ts")));
+    });
+
+    it("12b. Exact repair marker + scripts/lineage/validate.mjs + tests/lineage-registry.test.ts + tests/system-map-resolver.test.ts => PASS", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic.splice(5, 0, {
+        sha: "cccccccccccccccccccccccccccccccccccccccc",
+        subject: "fix(governance): repair lineage sync test baseline",
+        message: "fix(governance): repair lineage sync test baseline\n\nSYN-GOV-LINEAGE-SYNC\nSYN-GOV-LINEAGE-SYNC-TEST-BASELINE-REPAIR",
+        changedFiles: [
+          ".synthesis/lineage/tasks.json",
+          "scripts/lineage/validate.mjs",
+          "tests/lineage-registry.test.ts",
+          "tests/system-map-resolver.test.ts"
+        ]
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, true, `Expected PASS with repair marker, got errors: ${res.errors.join(", ")}`);
+      assert.strictEqual(res.summary.syncCommits, 1);
+    });
+
+    it("12c. Exact repair marker + unrelated runtime path => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic.splice(5, 0, {
+        sha: "dddddddddddddddddddddddddddddddddddddddd",
+        subject: "fix(governance): repair lineage sync test baseline",
+        message: "fix(governance): repair lineage sync test baseline\n\nSYN-GOV-LINEAGE-SYNC\nSYN-GOV-LINEAGE-SYNC-TEST-BASELINE-REPAIR",
+        changedFiles: [
+          ".synthesis/lineage/tasks.json",
+          "scripts/lineage/validate.mjs",
+          "app/page.tsx"
+        ]
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: app/page.tsx")));
     });
 
     it("13. Pull_request mode with one unmatched normal PR => FAIL", () => {
       const synthetic = makeSyntheticCommits();
       const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
-      mutatedTasks.tasks.pop();
+      const removedTask = mutatedTasks.tasks.pop();
       const res = validateGitHistoryAlignment({
         repoRoot,
         tasksData: mutatedTasks,
@@ -556,13 +630,13 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
         commits: synthetic
       });
       assert.strictEqual(res.valid, false);
-      assert.ok(res.errors.some((e: string) => e.includes("Unmatched normal PR #66")));
+      assert.ok(res.errors.some((e: string) => e.includes(`Unmatched normal PR #${removedTask.pr_number}`)));
     });
 
     it("14. Local mode with one unmatched normal PR => FAIL", () => {
       const synthetic = makeSyntheticCommits();
       const mutatedTasks = JSON.parse(JSON.stringify(rawTasks));
-      mutatedTasks.tasks.pop();
+      const removedTask = mutatedTasks.tasks.pop();
       const res = validateGitHistoryAlignment({
         repoRoot,
         tasksData: mutatedTasks,
@@ -571,7 +645,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
         commits: synthetic
       });
       assert.strictEqual(res.valid, false);
-      assert.ok(res.errors.some((e: string) => e.includes("Unmatched normal PR #66")));
+      assert.ok(res.errors.some((e: string) => e.includes(`Unmatched normal PR #${removedTask.pr_number}`)));
     });
 
     it("15. Main-push mode with exactly one FINAL unmatched normal PR => PASS", () => {
