@@ -1973,7 +1973,9 @@
         "tests/lineage-registry.test.ts"
       ],
       "capsule_sha256": "67aeb3e12b0471d3907c4870b082d5465e713c3f14bb1ee8b775c7ca2e51640c",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "governance"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2011,7 +2013,9 @@
         "tests/system-map-resolver.test.ts"
       ],
       "capsule_sha256": "59366a5b5758dc153c13b9045c3f9720e0539b211f4c2a67975cdc7cb037737a",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2090,7 +2094,9 @@
         "tests/plugin-registry.test.ts"
       ],
       "capsule_sha256": "e7d70fc84894ecad6a10691af4dbbde499e3cf0d6db401ce24dab6bc5798f3f5",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "plugin_registry"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2122,7 +2128,9 @@
         "tests/system-map-resolver.test.ts"
       ],
       "capsule_sha256": "58798525824a317c168c8e7d7989fbf7dc5229b42e9a0e106bdf61c97d8b4e50",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "governance"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2178,7 +2186,10 @@
         "tests/plugin-lifecycle-persistence.test.ts"
       ],
       "capsule_sha256": "2334083cc2dc8f5ac4ecea8ed276d2fad88d6839cd9957e914e092e6c1c8b702",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac",
+        "plugin_registry"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2230,7 +2241,9 @@
         "tests/publishing-revisions-postgres.test.ts"
       ],
       "capsule_sha256": "edc93fe45e94530996aa2f25568a6da88ce189c4dcf57e07741a1c66e8c76229",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "content_lifecycle"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2316,7 +2329,9 @@
         "tests/admin-pages-client.test.ts"
       ],
       "capsule_sha256": "fabea23cf746b7c573afdfc288ec879e4b97b6c0ab1f37ef2d53c7244148e12d",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "governance"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2346,7 +2361,9 @@
         "tests/content-rbac-foundation.test.ts"
       ],
       "capsule_sha256": "adce9eab723b8371888c50e7fed31919c799700f2f6f4b6ea30150ade70a85ce",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2388,7 +2405,9 @@
         "tests/task-capsule-registry.test.ts"
       ],
       "capsule_sha256": "992a204f9340106ba36398f28e814c254c25ba975cfbccc8c502fd27a2f917ba",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "governance"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2424,7 +2443,9 @@
         "tests/admin-root-authorization.test.ts"
       ],
       "capsule_sha256": "4355f908484a7d2668e742d45f206c8f8f7031f87e37219d6605e61dde1120ec",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2464,7 +2485,10 @@
         "tests/audit-write-sanitization.test.ts"
       ],
       "capsule_sha256": "7054d3783c63eef3f5d9213ce4992b8f46df0565c605bd5b57c46297bffa2700",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac",
+        "navigation"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2504,7 +2528,9 @@
         "tests/secret-hygiene.test.ts"
       ],
       "capsule_sha256": "bcc5411bc4830d41011ef8200beee155dd4ea4078ded8acf7411bf2d37bcb28f",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "governance"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2584,7 +2610,9 @@
         "tests/session-security-v2.test.ts"
       ],
       "capsule_sha256": "bd0b54c654384ccb7a772cc78d834b183da8668f754abf141c0d4ca0cc46cc98",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2630,7 +2658,9 @@
         "tests/login-abuse-protection.test.ts"
       ],
       "capsule_sha256": "882dbd118c1a4d8a131aed9b28e9aa0c8e66d73b4ab55e462c19df20b7f33aac",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2706,7 +2736,9 @@
         "tests/mfa-postgres.test.ts"
       ],
       "capsule_sha256": "ad5f8557dd7645f0092971e66ddae8a05b96651b62d9b24440faa8b93db917d2",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2770,7 +2802,9 @@
         "tests/health-contract.test.ts"
       ],
       "capsule_sha256": "e140c144fa7cbbe54abe5d60eba90864d3f6513969bf2e775d30a15e941f373f",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "governance"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2930,7 +2964,10 @@
         "tests/publishing-workspace-completion.test.ts"
       ],
       "capsule_sha256": "d2550f170984b81f3856164acd336481755fa2c7e7336e7670fe81132f2268d2",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "identity_rbac",
+        "content_lifecycle"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -2972,7 +3009,10 @@
         "tests/editor-preview-public-parity.test.ts"
       ],
       "capsule_sha256": "63a025c497831cb615a4098e1bba3bac7fba3bfde678bf4dd9f4d566e4740063",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "admin_pages",
+        "visual_editor"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -3055,7 +3095,10 @@
         "tests/media-usage-references.test.ts"
       ],
       "capsule_sha256": "e09ba43d37fb9d2175c780bb1c210b00aec4cfa9c73ea27e041d84d16dbcb948",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "content_lifecycle",
+        "media"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -3140,7 +3183,9 @@
         "tests/navigation-lifecycle.test.ts"
       ],
       "capsule_sha256": "55d9f029003f90f459416a33ff2bc3dc2444435e25d6ab990455491352965ab0",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "navigation"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     },
@@ -3222,7 +3267,9 @@
         "tests/seo-runtime.test.ts"
       ],
       "capsule_sha256": "efe0162a47896da9f1f6b65f16bd4340fa0e76942de1d50881e629e0cdd2c294",
-      "touches_capabilities": [],
+      "touches_capabilities": [
+        "seo"
+      ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     }

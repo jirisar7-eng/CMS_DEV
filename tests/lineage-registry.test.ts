@@ -157,7 +157,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     assert.ok(ssot.capability_map_role.includes("status/product navigation authority, NOT business-data SSOT"));
     assert.ok(ssot.redirect_runtime_role.includes("consumes published content + RedirectRule"));
     assert.ok(ssot.media_replace_role.includes("SAFELY_DISABLED / deferred"));
-    assert.ok(ssot.sitemap_runtime_role.includes("planned / not falsely complete"));
+    assert.ok(ssot.sitemap_runtime_role.includes("sitemap derives from publish"));
   });
 
   it("14. Fails closed when unknown syntactically-valid last_merge_sha is referenced", () => {
@@ -255,6 +255,76 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     const res = validateLineage({ repoRoot, tasksData: mutatedTasks });
     assert.strictEqual(res.valid, false);
     assert.ok(res.errors.some((e: string) => e.includes("capsule_sha256 mismatch") || e.includes("capsule SHA-256 mismatch")));
+  });
+
+  it("26. Post-baseline tasks (PR > #34) declare verified evidence-backed touches_capabilities", () => {
+    const post34 = rawTasks.tasks.filter((t: any) => t.pr_number > 34);
+    assert.strictEqual(post34.length, 31);
+
+    const pr35 = post34.find((t: any) => t.pr_number === 35);
+    assert.deepStrictEqual(pr35.touches_capabilities, ["governance"]);
+
+    const pr40 = post34.find((t: any) => t.pr_number === 40);
+    assert.deepStrictEqual(pr40.touches_capabilities, ["identity_rbac", "plugin_registry"]);
+
+    const pr47 = post34.find((t: any) => t.pr_number === 47);
+    assert.deepStrictEqual(pr47.touches_capabilities, ["identity_rbac", "navigation"]);
+
+    const pr59 = post34.find((t: any) => t.pr_number === 59);
+    assert.deepStrictEqual(pr59.touches_capabilities, ["identity_rbac", "content_lifecycle"]);
+
+    const pr60 = post34.find((t: any) => t.pr_number === 60);
+    assert.deepStrictEqual(pr60.touches_capabilities, ["admin_pages", "visual_editor"]);
+
+    const pr62 = post34.find((t: any) => t.pr_number === 62);
+    assert.deepStrictEqual(pr62.touches_capabilities, ["content_lifecycle", "media"]);
+
+    const pr66 = post34.find((t: any) => t.pr_number === 66);
+    assert.deepStrictEqual(pr66.touches_capabilities, ["seo"]);
+
+    // Routine closeouts without mechanism changes are empty
+    const pr61 = post34.find((t: any) => t.pr_number === 61);
+    assert.deepStrictEqual(pr61.touches_capabilities, []);
+    const pr63 = post34.find((t: any) => t.pr_number === 63);
+    assert.deepStrictEqual(pr63.touches_capabilities, []);
+    const pr65 = post34.find((t: any) => t.pr_number === 65);
+    assert.deepStrictEqual(pr65.touches_capabilities, []);
+  });
+
+  it("27. Capability source provenance and last_merge_sha reflect post-baseline integrations through PR #66", () => {
+    const gov = rawCapabilities.capabilities.find((c: any) => c.capability_id === "governance");
+    assert.ok(gov.source_tasks.includes("SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE"));
+    assert.ok(gov.source_tasks.includes("SYN-OPS-002"));
+    assert.strictEqual(gov.last_merge_sha, "ea5ca6dfb0619c5bbba6c9cb0306d39b0f14b440");
+
+    const idRbac = rawCapabilities.capabilities.find((c: any) => c.capability_id === "identity_rbac");
+    assert.ok(idRbac.source_tasks.includes("SYN-SYSTEM-MAP-001"));
+    assert.ok(idRbac.source_tasks.includes("SYN-CONTENT-006"));
+    assert.strictEqual(idRbac.last_merge_sha, "7b45ffea82220946e3aab088768ca5d32e8a4598");
+
+    const content = rawCapabilities.capabilities.find((c: any) => c.capability_id === "content_lifecycle");
+    assert.ok(content.source_tasks.includes("SYN-CONTENT-003"));
+    assert.ok(content.source_tasks.includes("SYN-MEDIA-002"));
+    assert.strictEqual(content.last_merge_sha, "6e17f95056c91c22b35f67a267704a77c2011e45");
+
+    const seo = rawCapabilities.capabilities.find((c: any) => c.capability_id === "seo");
+    assert.ok(seo.source_tasks.includes("SYN-SEO-002"));
+    assert.strictEqual(seo.last_merge_sha, "dab847fedfe086167b4932032e88dd3b3d46131b");
+
+    // Unmodified capabilities preserved
+    const search = rawCapabilities.capabilities.find((c: any) => c.capability_id === "search");
+    assert.deepStrictEqual(search.source_tasks, ["SYN-SEARCH-001-SEARCH-FOUNDATION"]);
+    assert.strictEqual(search.last_merge_sha, "6887f26deb3849676e9c0c3ac3bce40d11b8cf7b");
+  });
+
+  it("28. SEO capability truthfully records implemented runtime and SSOT boundaries", () => {
+    const seo = rawCapabilities.capabilities.find((c: any) => c.capability_id === "seo");
+    assert.ok(seo.ssot_role.includes("project SEO metadata is SSOT") || seo.ssot_role.includes("Project-scoped SEO metadata is SSOT"));
+    assert.ok(seo.ssot_role.includes("robots.txt runtime is implemented"));
+    assert.ok(seo.ssot_role.includes("sitemap.xml runtime is implemented"));
+    assert.ok(seo.ssot_role.includes("sitemap derives from publish"));
+    assert.strictEqual(seo.project_scoped, true);
+    assert.strictEqual(seo.security_boundary, "PROJECT_SCOPED_RBAC_SEO_MANAGE");
   });
 
   describe("SYN-GOV-LINEAGE-002: Git History Anti-Drift Gate Unit Tests", () => {
