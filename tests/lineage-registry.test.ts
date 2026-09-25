@@ -549,7 +549,29 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
       assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: tests/lineage-registry.test.ts")));
     });
 
-    it("12b. Exact repair marker + scripts/lineage/validate.mjs + tests/lineage-registry.test.ts => PASS", () => {
+    it("12a. Generic sync without repair marker rejects tests/system-map-resolver.test.ts => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      synthetic.splice(5, 0, {
+        sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        subject: "chore(governance): sync lineage",
+        message: "SYN-GOV-LINEAGE-SYNC: routine lineage\n\nSync description",
+        changedFiles: [
+          ".synthesis/lineage/tasks.json",
+          "tests/system-map-resolver.test.ts"
+        ]
+      });
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits: synthetic
+      });
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: tests/system-map-resolver.test.ts")));
+    });
+
+    it("12b. Exact repair marker + scripts/lineage/validate.mjs + tests/lineage-registry.test.ts + tests/system-map-resolver.test.ts => PASS", () => {
       const synthetic = makeSyntheticCommits();
       synthetic.splice(5, 0, {
         sha: "cccccccccccccccccccccccccccccccccccccccc",
@@ -558,7 +580,8 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
         changedFiles: [
           ".synthesis/lineage/tasks.json",
           "scripts/lineage/validate.mjs",
-          "tests/lineage-registry.test.ts"
+          "tests/lineage-registry.test.ts",
+          "tests/system-map-resolver.test.ts"
         ]
       });
       const res = validateGitHistoryAlignment({

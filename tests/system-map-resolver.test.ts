@@ -199,8 +199,10 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const tasks = loadTasksRegistry(rootDir);
       assert.strictEqual(typeof tasks.registry_version, 'string');
       assert.strictEqual(typeof tasks.total_tasks, 'number');
-      assert.strictEqual(tasks.total_tasks, 65);
-      assert.strictEqual(tasks.tasks.length, 65);
+      assert.strictEqual(tasks.total_tasks, tasks.tasks.length);
+      const finalTask = tasks.tasks[tasks.tasks.length - 1];
+      assert.strictEqual(finalTask.pr_number, 67);
+      assert.strictEqual(finalTask.task_id, 'SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR');
     });
 
     it('fails closed with SystemMapRegistryError when capabilities registry is missing', () => {
@@ -311,16 +313,21 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       const pr66 = internalMap.tasks.find((t) => t.pr_number === 66);
       assert.ok(pr66);
       assert.strictEqual(pr66.task_id, 'SYN-SEO-002');
+
+      const pr67 = internalMap.tasks.find((t) => t.pr_number === 67);
+      assert.ok(pr67);
+      assert.strictEqual(pr67.task_id, 'SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR');
     });
 
     it('unified resolver correctly dispatches between basic and internal', () => {
+      const expectedTasks = loadTasksRegistry(rootDir);
       const basic = resolveSystemMap({ accessLevel: 'basic', customRoot: rootDir });
       assert.strictEqual(basic.view, 'basic');
       assert.strictEqual((basic as any).tasks, undefined);
 
       const internal = resolveSystemMap({ accessLevel: 'internal', customRoot: rootDir });
       assert.strictEqual(internal.view, 'internal');
-      assert.strictEqual((internal as any).tasks.length, 65);
+      assert.strictEqual((internal as any).tasks.length, expectedTasks.tasks.length);
     });
   });
 

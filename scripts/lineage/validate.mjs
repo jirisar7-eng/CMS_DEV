@@ -500,6 +500,7 @@ export function isAllowedSyncPath(filePath, isRepair = false) {
   if (isRepair) {
     if (norm === "scripts/lineage/validate.mjs") return true;
     if (norm === "tests/lineage-registry.test.ts") return true;
+    if (norm === "tests/system-map-resolver.test.ts") return true;
   }
   return false;
 }
