@@ -126,7 +126,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/seo',
         icon: Globe,
         group: 'OBSAH',
-        status: 'ZÁKLAD',
+        status: 'FUNKČNÍ',
         helpKey: 'content.seo.view',
         description: 'Globální SEO metadata, Open Graph a konfigurace robots.txt.',
       },

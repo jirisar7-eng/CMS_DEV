@@ -68,6 +68,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/search-api.test.ts",
   "tests/search-domain.test.ts",
   "tests/seo-domain.test.ts",
+  "tests/seo-runtime.test.ts",
   "tests/seo-redirects-admin-cutover.test.ts",
   "tests/system-map-resolver.test.ts",
   "tests/system-map-ui.test.ts",
