@@ -107,7 +107,7 @@ export async function setSessionCookie({ rawToken, expiresAt }: PendingSessionCo
 }
 
 export async function createSession(userId: string): Promise<string> {
-  if (!isDatabaseConfigured()) throw new Error("DATABASE_UNAVAILABLE");
+  if (!isDatabaseConfigured()) throw new Error('DATABASE_UNAVAILABLE');
   const pending = await createSessionRecord(userId);
   await setSessionCookie(pending);
   return pending.sessionId;
