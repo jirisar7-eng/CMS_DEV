@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 73,
+  "total_capsules": 74,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -909,6 +909,20 @@
       "expected_branch": "task/SYN-SEC-010-HTTP-SECURITY-HEADERS",
       "sha256": "8d440c34dabada54e33f281eb4b0158fc6542c532e159b2006131e9da12eb824",
       "parent_capsule_id": "CAP-SYN-SEC-009-20260922-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-SEC-011-20260925-001",
+      "task_id": "SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT",
+      "title": "Admin Security Policy Lifetime Hardening and Real Enforced State Alignment",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT.json",
+      "base_sha": "df63481ac505979083381f6899647f928934c96d",
+      "expected_branch": "task/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT",
+      "sha256": "b3c88847b34f5103242fedc83a3ac4d38303629f47f0ef0bd35e5976bf96ed45",
+      "parent_capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
