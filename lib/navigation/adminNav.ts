@@ -408,7 +408,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/projects',
         icon: FolderKanban,
         group: 'PLATFORMA',
-        status: 'ZÁKLAD',
+        status: 'FUNKČNÍ',
         helpKey: 'platform.projects.view',
         description: 'Autorizovaný registr projektů, přepínání projektového kontextu a tenantová izolace.',
       },

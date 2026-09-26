@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth/session';
 import { hasPermission } from '@/lib/auth/rbac';
+import { validateCreateProjectInput } from '@/lib/domain/projects/validation';
+import { getProjectService } from '@/lib/domain/projects/service';
+import { ProjectDomainError } from '@/lib/domain/projects/types';
 
 export async function GET(request: Request) {
   try {
@@ -31,6 +34,39 @@ export async function GET(request: Request) {
     return NextResponse.json(authorizedProjects);
   } catch (error) {
     console.error('GET /api/admin/projects error:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { session, user } = await getSession();
+    if (!user || user.status !== 'ACTIVE') {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    const canManageProjects = await hasPermission(user.id, 'projects.manage', null);
+    if (!canManageProjects) {
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const input = validateCreateProjectInput(body);
+    const service = getProjectService();
+    const project = await service.createProject(input, user.id);
+
+    return NextResponse.json(project, { status: 201 });
+  } catch (error) {
+    if (error instanceof ProjectDomainError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
+    console.error('POST /api/admin/projects error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

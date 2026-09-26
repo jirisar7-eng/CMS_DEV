@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 79,
+  "total_capsules": 81,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -771,6 +771,34 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-PROJECTS-002-MAIN-ALIGNMENT-20260926-001",
+      "task_id": "SYN-PROJECTS-002-MAIN-ALIGNMENT",
+      "title": "SYN-PROJECTS-002 Main Alignment After PR #70 Lineage Repair",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-PROJECTS-002-MAIN-ALIGNMENT.json",
+      "base_sha": "9b603ce5a8a6c07ed4d19fae47f82afbf24152db",
+      "expected_branch": "task/SYN-PROJECTS-002-PROJECT-LIFECYCLE",
+      "sha256": "48329ab6d35aa62fa6810666b817f5aa80d0fe3ab57dbde0baced1fa7c72cbca",
+      "parent_capsule_id": "CAP-SYN-PROJECTS-002-20260926-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-PROJECTS-002-20260926-001",
+      "task_id": "SYN-PROJECTS-002",
+      "title": "SYN-PROJECTS-002 — Projects CRUD & Lifecycle",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-PROJECTS-002.json",
+      "base_sha": "27d6204949972d1d9b58efd372b64e67a622573d",
+      "expected_branch": "task/SYN-PROJECTS-002-PROJECT-LIFECYCLE",
+      "sha256": "79e57f276c3d6fa0b090f865ed96ad261b1aaccdf13fdd53928a9fbdfe209b65",
+      "parent_capsule_id": null,
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-LEGACY-SYN-PUBLIC-001-SYNTHESIS-CMS-HOMEPAGE",
