@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 66,
+  "total_tasks": 67,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3332,6 +3332,40 @@
         "tests/lineage-registry.test.ts",
         "tests/system-map-resolver.test.ts",
         "tests/task-capsule-registry.test.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 69,
+      "pr_title": "SYN-MEDIA-003 — Align MediaPermission contract with canonical RBAC",
+      "task_id": "SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
+      "branch": "task/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
+      "base_sha": "a9e3dc7a89f9728af8b00c349d7198729bc320a2",
+      "source_head_sha": "4a301264b3b5085f50aeee4461ef794549f2cd13",
+      "merge_sha": "df63481ac505979083381f6899647f928934c96d",
+      "merged_at": "2026-09-25T19:33:04Z",
+      "capsule_present": true,
+      "capsule_declared_status": "COMPLETED",
+      "derived_status": "MERGED",
+      "capsule_sha256": "f6983fd39312a086f9dc05d426825deae09c0a71390348bd73eb658f145f9b58",
+      "touches_capabilities": [
+        "media"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT.json",
+        ".synthesis/lineage/capsules.json",
+        "lib/domain/media/types.ts",
+        "tests/media-permission-contract.types.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT.json",
+        "lib/domain/media/types.ts",
+        "tests/media-permission-contract.types.ts"
       ]
     }
   ]

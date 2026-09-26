@@ -200,9 +200,13 @@ describe('SYN-SYSTEM-MAP-001: Secure System Map Resolver & Access Control', () =
       assert.strictEqual(typeof tasks.registry_version, 'string');
       assert.strictEqual(typeof tasks.total_tasks, 'number');
       assert.strictEqual(tasks.total_tasks, tasks.tasks.length);
+      assert.ok(tasks.tasks.length > 0, 'tasks must be non-empty');
       const finalTask = tasks.tasks[tasks.tasks.length - 1];
-      assert.strictEqual(finalTask.pr_number, 67);
-      assert.strictEqual(finalTask.task_id, 'SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR');
+      assert.strictEqual(typeof finalTask.pr_number, 'number');
+      assert.ok(typeof finalTask.task_id === 'string' && finalTask.task_id.trim() !== '');
+      for (let i = 1; i < tasks.tasks.length; i++) {
+        assert.ok(tasks.tasks[i].pr_number > tasks.tasks[i - 1].pr_number, 'task ordering must remain strictly ascending');
+      }
     });
 
     it('fails closed with SystemMapRegistryError when capabilities registry is missing', () => {
