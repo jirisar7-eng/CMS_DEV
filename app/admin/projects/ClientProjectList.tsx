@@ -27,7 +27,7 @@ interface Props {
   activeProjectId: string | null;
 }
 
-function mapProjectError(status: number): string {
+function mapCreateProjectError(status: number): string {
   switch (status) {
     case 400:
       return "Neplatné údaje projektu.";
@@ -38,7 +38,41 @@ function mapProjectError(status: number): string {
     case 409:
       return "Projekt s tímto klíčem již existuje.";
     default:
-      return "Projekt se nepodařilo uložit.";
+      return "Projekt se nepodařilo vytvořit.";
+  }
+}
+
+function mapRenameProjectError(status: number): string {
+  switch (status) {
+    case 400:
+      return "Neplatný název projektu.";
+    case 401:
+      return "Přihlášení vypršelo nebo uživatel není aktivní.";
+    case 403:
+      return "Nemáte oprávnění tento projekt upravit.";
+    case 404:
+      return "Projekt již neexistuje.";
+    case 409:
+      return "Projekt nelze v aktuálním stavu upravit.";
+    default:
+      return "Projekt se nepodařilo upravit.";
+  }
+}
+
+function mapArchiveProjectError(status: number): string {
+  switch (status) {
+    case 400:
+      return "Neplatný požadavek na archivaci.";
+    case 401:
+      return "Přihlášení vypršelo nebo uživatel není aktivní.";
+    case 403:
+      return "Nemáte oprávnění tento projekt archivovat.";
+    case 404:
+      return "Projekt již neexistuje.";
+    case 409:
+      return "Projekt nelze v aktuálním stavu archivovat.";
+    default:
+      return "Projekt se nepodařilo archivovat.";
   }
 }
 
@@ -104,7 +138,7 @@ export function ClientProjectList({ projects, activeProjectId }: Props) {
       });
 
       if (!response.ok) {
-        setErrorMessage(mapProjectError(response.status));
+        setErrorMessage(mapCreateProjectError(response.status));
         setIsSubmitting(false);
         return;
       }
@@ -114,7 +148,7 @@ export function ClientProjectList({ projects, activeProjectId }: Props) {
       setCreateKey("");
       window.location.reload();
     } catch {
-      setErrorMessage("Projekt se nepodařilo uložit.");
+      setErrorMessage("Projekt se nepodařilo vytvořit.");
       setIsSubmitting(false);
     }
   };
@@ -160,7 +194,7 @@ export function ClientProjectList({ projects, activeProjectId }: Props) {
       );
 
       if (!response.ok) {
-        setErrorMessage(mapProjectError(response.status));
+        setErrorMessage(mapRenameProjectError(response.status));
         setIsSubmitting(false);
         return;
       }
@@ -169,7 +203,7 @@ export function ClientProjectList({ projects, activeProjectId }: Props) {
       setEditName("");
       window.location.reload();
     } catch {
-      setErrorMessage("Projekt se nepodařilo uložit.");
+      setErrorMessage("Projekt se nepodařilo upravit.");
       setIsSubmitting(false);
     }
   };
@@ -206,7 +240,7 @@ export function ClientProjectList({ projects, activeProjectId }: Props) {
       );
 
       if (!response.ok) {
-        setErrorMessage(mapProjectError(response.status));
+        setErrorMessage(mapArchiveProjectError(response.status));
         setIsSubmitting(false);
         return;
       }
@@ -218,7 +252,7 @@ export function ClientProjectList({ projects, activeProjectId }: Props) {
       setArchivingProject(null);
       window.location.reload();
     } catch {
-      setErrorMessage("Projekt se nepodařilo uložit.");
+      setErrorMessage("Projekt se nepodařilo archivovat.");
       setIsSubmitting(false);
     }
   };

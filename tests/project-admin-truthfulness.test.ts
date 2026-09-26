@@ -2,6 +2,10 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("SYN-PROJECTS-002: Project Admin UI Truthfulness & Lifecycle Parity", () => {
   const rootDir = path.resolve(__dirname, "..");
@@ -77,13 +81,30 @@ describe("SYN-PROJECTS-002: Project Admin UI Truthfulness & Lifecycle Parity", (
     assert.doesNotMatch(clientCode, /přiřadit uživatele/i);
   });
 
-  it("Safe error mapping without internal stack traces or raw server errors", () => {
+  it("Operation-specific safe error mappings without internal stack traces or raw error leakage", () => {
+    // CREATE error mapping: 409 maps to key collision
+    assert.match(clientCode, /mapCreateProjectError/);
     assert.match(clientCode, /Neplatné údaje projektu\./);
-    assert.match(clientCode, /Přihlášení vypršelo nebo uživatel není aktivní\./);
-    assert.match(clientCode, /Nemáte oprávnění spravovat projekty\./);
     assert.match(clientCode, /Projekt s tímto klíčem již existuje\./);
-    assert.match(clientCode, /Projekt se nepodařilo uložit\./);
+    assert.match(clientCode, /Projekt se nepodařilo vytvořit\./);
+
+    // RENAME error mapping: 409 is lifecycle state conflict, not key collision
+    assert.match(clientCode, /mapRenameProjectError/);
+    assert.match(clientCode, /Neplatný název projektu\./);
+    assert.match(clientCode, /Nemáte oprávnění tento projekt upravit\./);
+    assert.match(clientCode, /Projekt nelze v aktuálním stavu upravit\./);
+    assert.match(clientCode, /Projekt se nepodařilo upravit\./);
+
+    // ARCHIVE error mapping: 409 is lifecycle state conflict, not key collision
+    assert.match(clientCode, /mapArchiveProjectError/);
+    assert.match(clientCode, /Neplatný požadavek na archivaci\./);
+    assert.match(clientCode, /Nemáte oprávnění tento projekt archivovat\./);
+    assert.match(clientCode, /Projekt nelze v aktuálním stavu archivovat\./);
+    assert.match(clientCode, /Projekt se nepodařilo archivovat\./);
+
+    // No raw error leakage or stack traces
     assert.doesNotMatch(clientCode, /err\.stack/);
     assert.doesNotMatch(clientCode, /error\.stack/);
+    assert.doesNotMatch(clientCode, /JSON\.stringify\(err/);
   });
 });
