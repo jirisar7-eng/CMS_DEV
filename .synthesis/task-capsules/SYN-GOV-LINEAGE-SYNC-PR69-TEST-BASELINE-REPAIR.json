@@ -1,0 +1,39 @@
+{
+  "version": "1.1.0",
+  "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR69-TEST-BASELINE-REPAIR-20260926-001",
+  "task_id": "SYN-GOV-LINEAGE-SYNC-PR69-TEST-BASELINE-REPAIR",
+  "title": "Lineage Sync Test Baseline Repair for PR #69",
+  "environment": "CMS_DEV",
+  "base_sha": "0ea04bfafd8476585073c3708bed99fc43800a93",
+  "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR69",
+  "owner": "AI_STUDIO",
+  "parent_capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
+  "supersedes_capsule_id": null,
+  "created_at": "2026-09-26T04:35:00.000Z",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "GOVERNANCE",
+    "TEST",
+    "EVIDENCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR69-TEST-BASELINE-REPAIR.json",
+    ".synthesis/lineage/capsules.json",
+    "tests/lineage-registry.test.ts",
+    "tests/system-map-resolver.test.ts"
+  ],
+  "forbidden_paths": [
+    "package.json",
+    "package-lock.json",
+    ".github/**",
+    "prisma/**",
+    "lib/**",
+    "app/**",
+    "components/**",
+    "deployment/**",
+    "infra/**",
+    ".env*",
+    "scripts/ci/validate_governance.mjs"
+  ]
+}

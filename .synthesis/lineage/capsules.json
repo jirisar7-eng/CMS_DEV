@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 74,
+  "total_capsules": 77,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -517,6 +517,48 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR67",
       "sha256": "93fd4796e6c6bcfbf13c80ff57ce5d4db1569c324dd348022ec8dc3111457d5f",
       "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-002B-20260925-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR69-CLOSEOUT-20260926-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR69-CLOSEOUT",
+      "title": "PR #69 Lineage Sync Durable Evidence Closeout",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR69-CLOSEOUT.json",
+      "base_sha": "8b33680e38721c5fcb8466e5ba5400b8f727190b",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR69-CLOSEOUT",
+      "sha256": "f48d63377de7c4976bfb86ea1ed400def14f26e9d7b8eab1e802b0a96449fecb",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR69-20260926-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR69-TEST-BASELINE-REPAIR-20260926-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR69-TEST-BASELINE-REPAIR",
+      "title": "Lineage Sync Test Baseline Repair for PR #69",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR69-TEST-BASELINE-REPAIR.json",
+      "base_sha": "0ea04bfafd8476585073c3708bed99fc43800a93",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR69",
+      "sha256": "44381eb9890c92ea8b7af95e4f3f4d6944dd382b9cccde07f044a8a0dc9fd667",
+      "parent_capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR69-20260926-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR69",
+      "title": "Synchronize PR #69 Lineage into Tasks Registry",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR69.json",
+      "base_sha": "df63481ac505979083381f6899647f928934c96d",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR69",
+      "sha256": "285767b898a8e587348b04e8592336692cbac2d7a6ff61d62b81e9132423cbd0",
+      "parent_capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },

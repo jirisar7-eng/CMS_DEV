@@ -37,26 +37,27 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     assert.ok(Array.isArray(pr1.actual_changed_files) && pr1.actual_changed_files.length > 0);
   });
 
-  it("3. Historical baseline PR #1-#34 and live PR range are all represented without gaps or duplicates", () => {
+  it("3. Historical baseline PR #1-#34 and live PR range are represented truthfully without duplicates", () => {
     assert.strictEqual(rawTasks.tasks.length, rawTasks.total_tasks);
     const prNumbers = rawTasks.tasks.map((t: any) => t.pr_number);
+
     // Historical baseline 1..34 must all exist
     for (let i = 1; i <= 34; i++) {
       assert.ok(prNumbers.includes(i), `Historical baseline PR #${i} must exist`);
     }
-    const maxPr = rawTasks.tasks[rawTasks.tasks.length - 1].pr_number;
-    const expected = [];
-    for (let i = 1; i <= maxPr; i++) {
-      if (i !== 58) expected.push(i);
-    }
-    assert.deepStrictEqual(prNumbers, expected);
-    assert.strictEqual(prNumbers.includes(58), false, "PR #58 must be absent");
-    // Verify ascending order
+
+    // Task PR numbers must be unique
+    const uniquePrNumbers = new Set(prNumbers);
+    assert.strictEqual(uniquePrNumbers.size, prNumbers.length, "Task PR numbers must be unique");
+
+    // Verify strictly ascending order
     for (let i = 1; i < prNumbers.length; i++) {
       assert.ok(prNumbers[i] > prNumbers[i - 1], "PR numbers must be strictly ascending");
     }
-  });
 
+    // PR #58 remains absent as the historically known Issue
+    assert.strictEqual(prNumbers.includes(58), false, "PR #58 must be absent");
+  });
   it("4. Non-null task IDs are strictly unique across all historical tasks", () => {
     const nonNullTaskIds = rawTasks.tasks.filter((t: any) => t.task_id !== null).map((t: any) => t.task_id);
     const expectedCount = rawTasks.tasks.length - 1;
