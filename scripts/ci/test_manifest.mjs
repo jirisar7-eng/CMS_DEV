@@ -75,7 +75,8 @@ export const DETERMINISTIC_TESTS = [
   "tests/seo-redirects-admin-cutover.test.ts",
   "tests/system-map-resolver.test.ts",
   "tests/system-map-ui.test.ts",
-  "tests/task-capsule-registry.test.ts"
+  "tests/task-capsule-registry.test.ts",
+  "tests/user-domain-validation.test.ts"
 ];
 
 export const POSTGRES_TESTS = [
