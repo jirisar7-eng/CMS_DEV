@@ -1,20 +1,29 @@
-import { cookies } from 'next/headers';
-import { prisma } from '@/lib/db';
-import crypto from 'crypto';
+import crypto from "crypto";
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
-import { isDatabaseConfigured } from '@/lib/runtime/database';
+import { isDatabaseConfigured } from "@/lib/runtime/database";
+import {
+  SESSION_IDLE_TIMEOUT_MINUTES,
+  SESSION_IDLE_TIMEOUT_MS,
+  SESSION_ABSOLUTE_TIMEOUT_HOURS,
+  SESSION_ABSOLUTE_TIMEOUT_MS,
+  SESSION_TOUCH_THROTTLE_MINUTES,
+  SESSION_TOUCH_THROTTLE_MS,
+  calculateEffectiveSessionLifetime,
+} from "@/lib/auth/session-policy";
 
-export const SESSION_COOKIE_NAME = 'syn_admin_session';
+export {
+  SESSION_IDLE_TIMEOUT_MINUTES,
+  SESSION_IDLE_TIMEOUT_MS,
+  SESSION_ABSOLUTE_TIMEOUT_HOURS,
+  SESSION_ABSOLUTE_TIMEOUT_MS,
+  SESSION_TOUCH_THROTTLE_MINUTES,
+  SESSION_TOUCH_THROTTLE_MS,
+  calculateEffectiveSessionLifetime,
+};
 
-// Absolute session lifetime: 30 days
-export const SESSION_EXPIRATION_DAYS = 30;
-export const SESSION_ABSOLUTE_TIMEOUT_MS = SESSION_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
-
-// Idle session lifetime: 12 hours of inactivity
-export const SESSION_IDLE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
-
-// Throttle lastSeenAt / sliding expiration updates: 5 minutes
-export const SESSION_TOUCH_THROTTLE_MS = 5 * 60 * 1000;
+export const SESSION_COOKIE_NAME = "syn_admin_session";
 
 export interface SessionData {
   id: string;
@@ -23,6 +32,7 @@ export interface SessionData {
   idleExpiresAt?: Date | null;
   lastSeenAt?: Date;
   revokedAt?: Date | null;
+  createdAt?: Date;
 }
 
 export interface UserContext {
@@ -48,7 +58,7 @@ async function getSafeCookieStore() {
  * Only this hash is stored in the database.
  */
 export function hashSessionToken(rawToken: string): string {
-  return crypto.createHash('sha256').update(rawToken, 'utf8').digest('hex');
+  return crypto.createHash("sha256").update(rawToken, "utf8").digest("hex");
 }
 
 /**
@@ -77,7 +87,9 @@ export async function createSessionRecord(
   const expiresAt = new Date(now + SESSION_ABSOLUTE_TIMEOUT_MS);
   const idleExpiresAt = new Date(now + SESSION_IDLE_TIMEOUT_MS);
   const lastSeenAt = new Date(now);
+
   await db.session.create({ data: { id: sessionId, tokenHash, userId, expiresAt, idleExpiresAt, lastSeenAt } });
+
   return { sessionId, rawToken, expiresAt };
 }
 
@@ -106,8 +118,8 @@ export async function createSession(userId: string): Promise<string> {
  * - Validates cookie presence
  * - Supports hashed token lookup
  * - Gracefully handles legacy plaintext sessions by requiring relogin
- * - Enforces absolute expiration
- * - Enforces idle expiration
+ * - Enforces effective absolute expiration (max 12h from creation)
+ * - Enforces effective idle expiration (max 15m from last activity)
  * - Enforces session revocation
  * - Enforces user status (ACTIVE only)
  * - Throttles sliding idle touch (lastSeenAt) to avoid excessive database writes
@@ -156,6 +168,7 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
       // Invalidate legacy unhashed session and clear cookie to force fresh secure login
       await invalidateSession(legacySession.id);
     }
+
     return { session: null, user: null };
   }
 
@@ -167,34 +180,43 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
     return { session: null, user: null };
   }
 
-  // 2. Check absolute expiration
-  if (session.expiresAt.getTime() <= nowMs) {
+  // 2. Compute effective dynamic lifetimes (protects against stale long-lived legacy sessions)
+  const { effectiveExpiresAt, effectiveIdleExpiresAt } = calculateEffectiveSessionLifetime({
+    createdAt: session.createdAt,
+    lastSeenAt: session.lastSeenAt,
+    expiresAt: session.expiresAt,
+    idleExpiresAt: session.idleExpiresAt,
+  });
+
+  // 3. Check absolute expiration
+  if (nowMs >= effectiveExpiresAt.getTime()) {
     await invalidateSession(session.id);
     return { session: null, user: null };
   }
 
-  // 3. Check idle expiration (if set)
-  if (session.idleExpiresAt && session.idleExpiresAt.getTime() <= nowMs) {
+  // 4. Check idle expiration
+  if (nowMs >= effectiveIdleExpiresAt.getTime()) {
     await invalidateSession(session.id);
     return { session: null, user: null };
   }
 
-  // 4. Fail closed if user is not ACTIVE
-  if (session.user.status !== 'ACTIVE') {
+  // 5. Fail closed if user is not ACTIVE
+  if (session.user.status !== "ACTIVE") {
     await invalidateSession(session.id);
     return { session: null, user: null };
   }
 
-  // 5. Sliding idle touch (throttled):
+  // 6. Sliding idle touch (throttled):
   // If more than SESSION_TOUCH_THROTTLE_MS has passed since lastSeenAt, update lastSeenAt & idleExpiresAt
-  const lastSeenMs = session.lastSeenAt ? session.lastSeenAt.getTime() : 0;
+  const lastSeenMs = session.lastSeenAt ? session.lastSeenAt.getTime() : session.createdAt.getTime();
   if (nowMs - lastSeenMs >= SESSION_TOUCH_THROTTLE_MS) {
-    const newIdleExpiresAt = new Date(Math.min(nowMs + SESSION_IDLE_TIMEOUT_MS, session.expiresAt.getTime()));
+    const newIdleExpiresAt = new Date(Math.min(nowMs + SESSION_IDLE_TIMEOUT_MS, effectiveExpiresAt.getTime()));
     await prisma.session.update({
       where: { id: session.id },
       data: {
         lastSeenAt: now,
         idleExpiresAt: newIdleExpiresAt,
+        expiresAt: effectiveExpiresAt,
       },
     });
   }
@@ -203,10 +225,11 @@ export async function getSession(): Promise<{ session: SessionData | null; user:
     session: {
       id: session.id,
       userId: session.userId,
-      expiresAt: session.expiresAt,
-      idleExpiresAt: session.idleExpiresAt,
+      expiresAt: effectiveExpiresAt,
+      idleExpiresAt: effectiveIdleExpiresAt,
       lastSeenAt: session.lastSeenAt,
       revokedAt: session.revokedAt,
+      createdAt: session.createdAt,
     },
     user: session.user,
   };
@@ -222,6 +245,7 @@ export async function revokeSession(sessionId: string): Promise<void> {
   } catch {
     // Non-request scope
   }
+
   const currentToken = cookieStore?.get(SESSION_COOKIE_NAME)?.value;
 
   if (isDatabaseConfigured()) {
@@ -238,6 +262,7 @@ export async function revokeSession(sessionId: string): Promise<void> {
     const session = isDatabaseConfigured()
       ? await prisma.session.findUnique({ where: { id: sessionId }, select: { tokenHash: true } })
       : null;
+
     if (session?.tokenHash === currentHash || sessionId === currentToken) {
       cookieStore.delete(SESSION_COOKIE_NAME);
     }
@@ -286,8 +311,8 @@ export async function invalidateSession(sessionId: string): Promise<void> {
  */
 export async function requireAuthenticatedUser(): Promise<UserContext> {
   const { user } = await getSession();
-  if (!user || user.status !== 'ACTIVE') {
-    throw new Error('UNAUTHENTICATED');
+  if (!user || user.status !== "ACTIVE") {
+    throw new Error("UNAUTHENTICATED");
   }
   return user;
 }

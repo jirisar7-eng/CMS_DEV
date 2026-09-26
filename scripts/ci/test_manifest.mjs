@@ -7,6 +7,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/mfa-login.test.ts",
   "tests/encryption.test.ts",
   "tests/session-security-v2.test.ts",
+  "tests/security-admin-truthfulness.test.ts",
   "tests/audit-write-sanitization.test.ts",
   "tests/secret-hygiene.test.ts",
   "tests/admin-capability-status.test.ts",
