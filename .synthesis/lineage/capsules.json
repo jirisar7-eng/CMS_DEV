@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 78,
+  "total_capsules": 79,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -559,6 +559,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR69",
       "sha256": "285767b898a8e587348b04e8592336692cbac2d7a6ff61d62b81e9132423cbd0",
       "parent_capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR70-20260926-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR70",
+      "title": "Synchronize PR #70 Lineage into Tasks Registry",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR70.json",
+      "base_sha": "27d6204949972d1d9b58efd372b64e67a622573d",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR70",
+      "sha256": "74c61816c768c6ec9b397783fcecfd0f4830c125665c2dbc7c2592f0cc30fbb9",
+      "parent_capsule_id": "CAP-SYN-SEC-011-MAIN-ALIGNMENT-20260926-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
