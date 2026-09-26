@@ -127,6 +127,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('redirects'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('navigation'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('seo'), 'FUNKČNÍ');
+      assert.strictEqual(getCapabilityStatus('projects'), 'FUNKČNÍ');
     });
 
     it('verified ZÁKLAD capabilities are correctly marked', () => {
@@ -139,7 +140,6 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('roles'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('audit'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('sessions'), 'ZÁKLAD');
-      assert.strictEqual(getCapabilityStatus('projects'), 'ZÁKLAD');
     });
 
     it('verified PLÁNOVÁNO capabilities are correctly marked', () => {
@@ -173,8 +173,8 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['DOKONČENO'] + 
         stats['VYPNUTO'];
       assert.strictEqual(sum, 32);
-      assert.strictEqual(stats['FUNKČNÍ'], 6);
-      assert.strictEqual(stats['ZÁKLAD'], 12);
+      assert.strictEqual(stats['FUNKČNÍ'], 7);
+      assert.strictEqual(stats['ZÁKLAD'], 11);
       assert.strictEqual(stats['POUZE UI'], 11);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
