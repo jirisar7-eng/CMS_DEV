@@ -225,6 +225,7 @@ describe("SYN-USERS-001: Audit Event Schemas & Metadata Sanitization", () => {
     };
 
     const sanitizedCreated = sanitizeAuditMetadata(raw, "USER_CREATED");
+    assert.ok(sanitizedCreated);
     assert.equal(sanitizedCreated.targetUserId, "user-123");
     assert.equal(sanitizedCreated.email, "admin@example.com");
     assert.equal(sanitizedCreated.password, undefined);
@@ -233,6 +234,7 @@ describe("SYN-USERS-001: Audit Event Schemas & Metadata Sanitization", () => {
     assert.equal(sanitizedCreated.mfaSecret, undefined);
 
     const sanitizedUpdated = sanitizeAuditMetadata(raw, "USER_UPDATED");
+    assert.ok(sanitizedUpdated);
     assert.equal(sanitizedUpdated.targetUserId, "user-123");
     assert.deepEqual(sanitizedUpdated.changedFields, ["email", "displayName"]);
     assert.equal(sanitizedUpdated.password, undefined);
