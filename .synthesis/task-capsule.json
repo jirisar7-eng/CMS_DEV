@@ -1,28 +1,25 @@
 {
   "version": "1.1.0",
-  "capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
-  "task_id": "SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
-  "title": "MediaPermission Domain Type Contract Parity Alignment",
+  "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR69-20260926-001",
+  "task_id": "SYN-GOV-LINEAGE-SYNC-PR69",
+  "title": "Synchronize PR #69 Lineage into Tasks Registry",
   "environment": "CMS_DEV",
-  "base_sha": "a9e3dc7a89f9728af8b00c349d7198729bc320a2",
-  "expected_branch": "task/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
+  "base_sha": "df63481ac505979083381f6899647f928934c96d",
+  "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR69",
   "owner": "AI_STUDIO",
-  "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-D-20260925-001",
+  "parent_capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
   "supersedes_capsule_id": null,
-  "created_at": "2026-09-25T19:13:52.565Z",
-  "status": "COMPLETED",
+  "created_at": "2026-09-26T10:12:01.897Z",
+  "status": "IN_PROGRESS",
   "allowed_mutation_types": [
-    "TYPE_CONTRACT",
-    "TEST",
-    "EVIDENCE",
-    "GOVERNANCE"
+    "GOVERNANCE",
+    "EVIDENCE"
   ],
   "allowed_paths": [
     ".synthesis/task-capsule.json",
-    ".synthesis/task-capsules/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT.json",
-    ".synthesis/lineage/capsules.json",
-    "lib/domain/media/types.ts",
-    "tests/media-permission-contract.types.ts"
+    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR69.json",
+    ".synthesis/lineage/tasks.json",
+    ".synthesis/lineage/capsules.json"
   ],
   "forbidden_paths": [
     "package.json",
@@ -32,7 +29,8 @@
     "deployment/**",
     "infra/**",
     "app/**",
-    "lib/auth/**",
+    "lib/**",
+    "components/**",
     "scripts/**",
     "docs/**",
     ".env*"
