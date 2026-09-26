@@ -75,7 +75,10 @@ test("SYN-SEC-011: Security Admin UI Truthfulness and Runtime Alignment Contract
   await t.test("M. Runtime Parity with next.config.ts", () => {
     assert.match(nextConfigSource, /SAMEORIGIN/);
     assert.match(nextConfigSource, /frame-ancestors 'self'/);
-    assert.match(nextConfigSource, /max-age=31536000/);
-    assert.doesNotMatch(nextConfigSource, /includeSubDomains/);
+    const hstsMatch = nextConfigSource.match(
+      /key:\s*['"]Strict-Transport-Security['"]\s*,\s*value:\s*['"]([^'"]+)['"]/
+    );
+    assert.ok(hstsMatch, "next.config.ts must define Strict-Transport-Security");
+    assert.strictEqual(hstsMatch[1], "max-age=31536000");
   });
 });
