@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 77,
+  "total_capsules": 78,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -965,6 +965,20 @@
       "expected_branch": "task/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT",
       "sha256": "b3c88847b34f5103242fedc83a3ac4d38303629f47f0ef0bd35e5976bf96ed45",
       "parent_capsule_id": "CAP-SYN-MEDIA-003-20260925-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-SEC-011-MAIN-ALIGNMENT-20260926-001",
+      "task_id": "SYN-SEC-011-MAIN-ALIGNMENT",
+      "title": "SYN-SEC-011 Main Alignment After Governance Lineage Repair",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-SEC-011-MAIN-ALIGNMENT.json",
+      "base_sha": "c0a02b6bcaf07dfb0bb0b8562265eb5d59f0bf66",
+      "expected_branch": "task/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT",
+      "sha256": "76b751ad44fb6bfd581d501c961c16b20469eea84f950b5bd870a061d058193b",
+      "parent_capsule_id": "CAP-SYN-SEC-011-20260925-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
