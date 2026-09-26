@@ -20,18 +20,20 @@ describe("PostgreSQL Real Integration - SYN-PROJECTS-002 Project Lifecycle", () 
     prisma = new PrismaClient();
     service = new ProjectService({ prisma });
 
-    try {
-      await prisma.user.create({
-        data: {
-          id: testUserId,
-          email: `${testUserId}@example.com`,
-          displayName: "Project Test User",
-          status: "ACTIVE",
-        },
-      });
-    } catch {
-      // User table structure or already exists
-    }
+    await prisma.user.create({
+      data: {
+        id: testUserId,
+        email: `${testUserId}@example.com`,
+        displayName: "Project Test User",
+        passwordHash: "test-only-non-authenticating-hash",
+        status: "ACTIVE",
+      },
+    });
+
+    const verifiedUser = await prisma.user.findUnique({
+      where: { id: testUserId },
+    });
+    assert.ok(verifiedUser, "Setup: test user must exist in database");
   });
 
   after(async () => {
