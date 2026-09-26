@@ -23,12 +23,13 @@
     ".synthesis/lineage/capsules.json",
     "lib/auth/session-policy.ts",
     "lib/auth/session.ts",
+    "app/admin/security/page.tsx",
     "tests/session-security-v2.test.ts",
-    "tests/session-security-postgres.test.ts"
+    "tests/session-security-postgres.test.ts",
+    "tests/security-admin-truthfulness.test.ts",
+    "scripts/ci/test_manifest.mjs"
   ],
   "forbidden_paths": [
-    "app/admin/security/page.tsx",
-    "tests/security-admin-truthfulness.test.ts",
     "prisma/**",
     "migrations/**",
     ".github/**",
