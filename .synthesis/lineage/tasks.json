@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 68,
+  "total_tasks": 69,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3412,6 +3412,64 @@
         "tests/security-admin-truthfulness.test.ts",
         "tests/session-security-postgres.test.ts",
         "tests/session-security-v2.test.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 74,
+      "pr_title": "SYN-PROJECTS-002 — Projects CRUD & Lifecycle",
+      "task_id": "SYN-PROJECTS-002-MAIN-ALIGNMENT",
+      "branch": "task/SYN-PROJECTS-002-PROJECT-LIFECYCLE",
+      "base_sha": "9b603ce5a8a6c07ed4d19fae47f82afbf24152db",
+      "source_head_sha": "9c414ea3bafb33cc4ea306ede58d0aab5a7077fd",
+      "merge_sha": "7afc7bf42e7a9c91df6a77946f5671f713f34516",
+      "merged_at": "2026-09-26T17:48:09Z",
+      "capsule_present": true,
+      "capsule_declared_status": "COMPLETED",
+      "derived_status": "MERGED",
+      "capsule_sha256": "48329ab6d35aa62fa6810666b817f5aa80d0fe3ab57dbde0baced1fa7c72cbca",
+      "touches_capabilities": [
+        "projects"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-PROJECTS-002.json",
+        ".synthesis/task-capsules/SYN-PROJECTS-002-MAIN-ALIGNMENT.json",
+        ".synthesis/lineage/capsules.json",
+        "lib/domain/projects/**",
+        "app/api/admin/projects/route.ts",
+        "app/api/admin/projects/[projectId]/route.ts",
+        "app/admin/projects/ClientProjectList.tsx",
+        "lib/auth/audit.ts",
+        "lib/domain/audit/service.ts",
+        "lib/navigation/adminNav.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/project-crud-api.test.ts",
+        "tests/project-lifecycle-postgres.test.ts",
+        "tests/project-admin-truthfulness.test.ts",
+        "tests/admin-capability-status.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-PROJECTS-002-MAIN-ALIGNMENT.json",
+        ".synthesis/task-capsules/SYN-PROJECTS-002.json",
+        "app/admin/projects/ClientProjectList.tsx",
+        "app/api/admin/projects/[projectId]/route.ts",
+        "app/api/admin/projects/route.ts",
+        "lib/auth/audit.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/projects/service.ts",
+        "lib/domain/projects/types.ts",
+        "lib/domain/projects/validation.ts",
+        "lib/navigation/adminNav.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/admin-capability-status.test.ts",
+        "tests/project-admin-truthfulness.test.ts",
+        "tests/project-crud-api.test.ts",
+        "tests/project-lifecycle-postgres.test.ts"
       ]
     }
   ]
