@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 67,
+  "total_tasks": 68,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3366,6 +3366,52 @@
         ".synthesis/task-capsules/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT.json",
         "lib/domain/media/types.ts",
         "tests/media-permission-contract.types.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 70,
+      "pr_title": "SYN-SEC-011 — Align Admin session policy and Security UI truthfulness",
+      "task_id": "SYN-SEC-011-MAIN-ALIGNMENT",
+      "branch": "task/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT",
+      "base_sha": "c0a02b6bcaf07dfb0bb0b8562265eb5d59f0bf66",
+      "source_head_sha": "55e1e289340a8572b26b88900bdcfe7d1d162f7a",
+      "merge_sha": "27d6204949972d1d9b58efd372b64e67a622573d",
+      "merged_at": "2026-09-26T14:03:00Z",
+      "capsule_present": true,
+      "capsule_declared_status": "COMPLETED",
+      "derived_status": "MERGED",
+      "capsule_sha256": "76b751ad44fb6bfd581d501c961c16b20469eea84f950b5bd870a061d058193b",
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT.json",
+        ".synthesis/task-capsules/SYN-SEC-011-MAIN-ALIGNMENT.json",
+        ".synthesis/lineage/capsules.json",
+        "app/admin/security/page.tsx",
+        "lib/auth/session-policy.ts",
+        "lib/auth/session.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/security-admin-truthfulness.test.ts",
+        "tests/session-security-postgres.test.ts",
+        "tests/session-security-v2.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT.json",
+        ".synthesis/task-capsules/SYN-SEC-011-MAIN-ALIGNMENT.json",
+        "app/admin/security/page.tsx",
+        "lib/auth/session-policy.ts",
+        "lib/auth/session.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/security-admin-truthfulness.test.ts",
+        "tests/session-security-postgres.test.ts",
+        "tests/session-security-v2.test.ts"
       ]
     }
   ]
