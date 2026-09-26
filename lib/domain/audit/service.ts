@@ -267,6 +267,22 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
   NAVIGATION_SET_DELETED: {
     setId: safeString(100),
   },
+  // Project events
+  PROJECT_CREATED: {
+    name: safeString(100),
+    key: safeString(64),
+    status: safeString(20),
+  },
+  PROJECT_UPDATED: {
+    previousName: safeString(100),
+    name: safeString(100),
+  },
+  PROJECT_ARCHIVED: {
+    previousStatus: safeString(20),
+    status: safeString(20),
+    name: safeString(100),
+    key: safeString(64),
+  },
 };
 
 // Global fallback allowlist for safe schema fields

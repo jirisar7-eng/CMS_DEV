@@ -60,6 +60,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/plugin-lifecycle-persistence.test.ts",
   "tests/plugin-registry.test.ts",
   "tests/project-context-security.test.ts",
+  "tests/project-crud-api.test.ts",
   "tests/publishing-revisions-admin-cutover.test.ts",
   "tests/publishing-workspace-completion.test.ts",
   "tests/revisions-workspace-completion.test.ts",
@@ -84,5 +85,6 @@ export const POSTGRES_TESTS = [
   "tests/audit-admin-postgres.test.ts",
   "tests/publishing-revisions-postgres.test.ts",
   "tests/content-lifecycle-schedule-unpublish-postgres.test.ts",
-  "tests/navigation-lifecycle-postgres.test.ts"
+  "tests/navigation-lifecycle-postgres.test.ts",
+  "tests/project-lifecycle-postgres.test.ts"
 ];
