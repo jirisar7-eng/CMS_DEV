@@ -78,6 +78,15 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
   },
 
   // User & RBAC events
+  USER_CREATED: {
+    targetUserId: safeString(100),
+    email: safeString(255),
+    displayName: safeString(100),
+  },
+  USER_UPDATED: {
+    targetUserId: safeString(100),
+    changedFields: safeStringArray(50, 100),
+  },
   USER_STATUS_CHANGED: {
     targetUserId: safeString(100),
     status: safeString(50),

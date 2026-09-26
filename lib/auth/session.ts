@@ -272,17 +272,31 @@ export async function revokeSession(sessionId: string): Promise<void> {
 /**
  * Revokes all sessions belonging to a specific user (e.g. on password reset, role change, or compromise).
  */
-export async function revokeAllUserSessions(userId: string, exceptSessionId?: string): Promise<void> {
+export interface RevokeAllUserSessionsOptions {
+  exceptSessionId?: string;
+  tx?: Prisma.TransactionClient;
+}
+
+export async function revokeAllUserSessions(
+  userId: string,
+  optionsOrExceptSessionId?: string | RevokeAllUserSessionsOptions
+): Promise<void> {
   if (!isDatabaseConfigured()) {
     return;
   }
 
+  const options: RevokeAllUserSessionsOptions =
+    typeof optionsOrExceptSessionId === "string"
+      ? { exceptSessionId: optionsOrExceptSessionId }
+      : optionsOrExceptSessionId ?? {};
+
+  const db = options.tx ?? prisma;
   const now = new Date();
-  await prisma.session.updateMany({
+  await db.session.updateMany({
     where: {
       userId,
       revokedAt: null,
-      ...(exceptSessionId ? { id: { not: exceptSessionId } } : {}),
+      ...(options.exceptSessionId ? { id: { not: options.exceptSessionId } } : {}),
     },
     data: { revokedAt: now },
   });
