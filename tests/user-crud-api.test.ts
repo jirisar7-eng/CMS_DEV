@@ -309,8 +309,9 @@ function createMockPrisma() {
         if (!existing) {
           throw new Error("Record to update not found");
         }
+        let email = existing.email;
         if (data.email) {
-          const email = String(data.email).trim().toLowerCase();
+          email = String(data.email).trim().toLowerCase();
           for (const other of users.values()) {
             if (other.id !== where.id && other.email.toLowerCase() === email) {
               const err = new Error("Unique constraint failed");
@@ -318,17 +319,19 @@ function createMockPrisma() {
               throw err;
             }
           }
-          existing.email = email;
         }
-        if (data.displayName !== undefined) {
-          existing.displayName = (data.displayName as string | null) ?? null;
-        }
-        if (data.status) {
-          existing.status = String(data.status);
-        }
-        existing.updatedAt = new Date("2026-09-27T01:00:00.000Z");
-        users.set(existing.id, existing);
-        return existing;
+        const updated: MockDbUser = {
+          ...existing,
+          email,
+          displayName:
+            data.displayName !== undefined
+              ? ((data.displayName as string | null) ?? null)
+              : existing.displayName,
+          status: data.status ? String(data.status) : existing.status,
+          updatedAt: new Date("2026-09-27T01:00:00.000Z"),
+        };
+        users.set(updated.id, updated);
+        return updated;
       },
     },
     auditLog: {
