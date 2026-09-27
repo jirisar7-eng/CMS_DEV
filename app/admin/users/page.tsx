@@ -45,6 +45,64 @@ function mapUserErrorCode(code?: string): string {
   }
 }
 
+interface FetchUsersParams {
+  page: number;
+  query?: string;
+  status?: "ALL" | UserStatus;
+  signal?: AbortSignal;
+}
+
+interface FetchUsersResult {
+  data: ListUsersResult | null;
+  error: string | null;
+}
+
+async function fetchUsersList({
+  page,
+  query,
+  status,
+  signal,
+}: FetchUsersParams): Promise<FetchUsersResult> {
+  try {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", "20");
+    if (query && query.trim()) {
+      params.set("query", query.trim());
+    }
+    if (status && status !== "ALL") {
+      params.set("status", status);
+    }
+
+    const res = await fetch(`/api/admin/users?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        "Cache-Control": "no-store",
+      },
+      signal,
+    });
+
+    if (!res.ok) {
+      let code: string | undefined;
+      try {
+        const json = await res.json();
+        code = json?.error?.code;
+      } catch {
+        // non-json response
+      }
+      return { data: null, error: mapUserErrorCode(code) };
+    }
+
+    const data: ListUsersResult = await res.json();
+    return { data, error: null };
+  } catch (err: unknown) {
+    if (signal?.aborted || (err instanceof DOMException && err.name === "AbortError")) {
+      return { data: null, error: null };
+    }
+    return { data: null, error: "Operaci se nepodařilo dokončit." };
+  }
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<SafeUserRecord[]>([]);
   const [total, setTotal] = useState<number>(0);
@@ -53,6 +111,7 @@ export default function UsersPage() {
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [appliedQuery, setAppliedQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | UserStatus>("ALL");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -78,63 +137,73 @@ export default function UsersPage() {
   const [isSubmittingLifecycle, setIsSubmittingLifecycle] = useState<boolean>(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
 
+  const applyListResult = useCallback((result: FetchUsersResult) => {
+    if (result.error) {
+      setErrorMessage(result.error);
+    } else if (result.data) {
+      setUsers(result.data.items);
+      setTotal(result.data.total);
+      setPage(result.data.page);
+      setTotalPages(result.data.totalPages);
+      setHasMore(result.data.hasMore);
+      setErrorMessage(null);
+    }
+  }, []);
+
   const loadUsers = useCallback(
     async (targetPage: number, query: string, filter: "ALL" | UserStatus) => {
       setIsLoading(true);
       setErrorMessage(null);
       try {
-        const params = new URLSearchParams();
-        params.set("page", String(targetPage));
-        params.set("limit", "20");
-        if (query.trim()) {
-          params.set("query", query.trim());
-        }
-        if (filter !== "ALL") {
-          params.set("status", filter);
-        }
-
-        const res = await fetch(`/api/admin/users?${params.toString()}`, {
-          method: "GET",
-          headers: {
-            "Cache-Control": "no-store",
-          },
+        const result = await fetchUsersList({
+          page: targetPage,
+          query,
+          status: filter,
         });
-
-        if (!res.ok) {
-          let code: string | undefined;
-          try {
-            const json = await res.json();
-            code = json?.error?.code;
-          } catch {
-            // non-json response
-          }
-          setErrorMessage(mapUserErrorCode(code));
-          return;
-        }
-
-        const data: ListUsersResult = await res.json();
-        setUsers(data.items);
-        setTotal(data.total);
-        setPage(data.page);
-        setTotalPages(data.totalPages);
-        setHasMore(data.hasMore);
-      } catch {
-        setErrorMessage("Operaci se nepodařilo dokončit.");
+        applyListResult(result);
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [applyListResult]
   );
 
   useEffect(() => {
-    loadUsers(page, searchQuery, statusFilter);
-  }, [loadUsers, page, statusFilter]);
+    let isMounted = true;
+    const controller = new AbortController();
+
+    fetchUsersList({
+      page,
+      query: appliedQuery,
+      status: statusFilter,
+      signal: controller.signal,
+    }).then((result) => {
+      if (!isMounted || controller.signal.aborted) return;
+      if (result.error) {
+        setErrorMessage(result.error);
+      } else if (result.data) {
+        setUsers(result.data.items);
+        setTotal(result.data.total);
+        setPage(result.data.page);
+        setTotalPages(result.data.totalPages);
+        setHasMore(result.data.hasMore);
+        setErrorMessage(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [page, appliedQuery, statusFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmed = searchQuery.trim();
+    setIsLoading(true);
     setPage(1);
-    loadUsers(1, searchQuery, statusFilter);
+    setAppliedQuery(trimmed);
   };
 
   const handleOpenCreate = () => {
@@ -196,7 +265,7 @@ export default function UsersPage() {
       handleCloseCreate();
       setSuccessMessage("Uživatel byl úspěšně vytvořen.");
       setPage(1);
-      await loadUsers(1, searchQuery, statusFilter);
+      await loadUsers(1, appliedQuery, statusFilter);
     } catch {
       setCreateError("Operaci se nepodařilo dokončit.");
     } finally {
@@ -257,7 +326,7 @@ export default function UsersPage() {
 
       handleCloseEdit();
       setSuccessMessage("Údaje uživatele byly úspěšně aktualizovány.");
-      await loadUsers(page, searchQuery, statusFilter);
+      await loadUsers(page, appliedQuery, statusFilter);
     } catch {
       setEditError("Operaci se nepodařilo dokončit.");
     } finally {
@@ -310,7 +379,7 @@ export default function UsersPage() {
           : "Uživatel byl úspěšně reaktivován.";
       handleCloseLifecycle();
       setSuccessMessage(msg);
-      await loadUsers(page, searchQuery, statusFilter);
+      await loadUsers(page, appliedQuery, statusFilter);
     } catch {
       setLifecycleError("Operaci se nepodařilo dokončit.");
     } finally {
@@ -405,7 +474,7 @@ export default function UsersPage() {
 
               <button
                 type="button"
-                onClick={() => loadUsers(page, searchQuery, statusFilter)}
+                onClick={() => loadUsers(page, appliedQuery, statusFilter)}
                 className="p-2 text-muted-foreground hover:text-foreground rounded-xl border border-border bg-card hover:bg-muted transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center cursor-pointer"
                 title="Obnovit seznam"
                 aria-label="Obnovit seznam"
