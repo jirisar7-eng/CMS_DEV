@@ -218,9 +218,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/users',
         icon: Users,
         group: 'SPRÁVA',
-        status: 'ZÁKLAD',
+        status: 'FUNKČNÍ',
         helpKey: 'management.users.view',
-        description: 'Správa redakčních a administrátorských účtů s 2FA.',
+        description: 'Správa uživatelských účtů, přehled rolí, stav 2FA a životní cyklus.',
       },
       {
         id: 'roles',
