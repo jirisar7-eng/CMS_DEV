@@ -76,6 +76,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/system-map-resolver.test.ts",
   "tests/system-map-ui.test.ts",
   "tests/task-capsule-registry.test.ts",
+  "tests/user-crud-api.test.ts",
   "tests/user-domain-validation.test.ts"
 ];
 
