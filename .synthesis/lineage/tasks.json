@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 69,
+  "total_tasks": 70,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3471,6 +3471,64 @@
         "tests/project-crud-api.test.ts",
         "tests/project-lifecycle-postgres.test.ts"
       ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 76,
+      "pr_title": "SYN-USERS-001 — Users Management v1",
+      "task_id": "SYN-USERS-001",
+      "branch": "task/SYN-USERS-001-USERS-MANAGEMENT-V1",
+      "base_sha": "02869df93926055ccd5127626262e4c1d88b3008",
+      "source_head_sha": "b531119b7159af002a9612061d39aa3414a63845",
+      "merge_sha": "300baf9ec89d6f0b8f862f971d7b02651b4a0af2",
+      "merged_at": "2026-09-27T11:07:02Z",
+      "capsule_present": true,
+      "capsule_declared_status": "IN_PROGRESS",
+      "derived_status": "MERGED",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/lineage/capsules.json",
+        "lib/auth/password.ts",
+        "lib/auth/audit.ts",
+        "lib/auth/session.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/users/**",
+        "app/api/admin/users/**",
+        "app/admin/users/**",
+        "lib/navigation/adminNav.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/user-domain-validation.test.ts",
+        "tests/user-crud-api.test.ts",
+        "tests/user-lifecycle-postgres.test.ts",
+        "tests/user-admin-truthfulness.test.ts",
+        "tests/admin-capability-status.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/task-capsule.json",
+        "app/admin/users/page.tsx",
+        "app/api/admin/users/[userId]/route.ts",
+        "app/api/admin/users/route.ts",
+        "lib/auth/audit.ts",
+        "lib/auth/password.ts",
+        "lib/auth/session.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/users/service.ts",
+        "lib/domain/users/types.ts",
+        "lib/domain/users/validation.ts",
+        "lib/navigation/adminNav.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/admin-capability-status.test.ts",
+        "tests/user-admin-truthfulness.test.ts",
+        "tests/user-crud-api.test.ts",
+        "tests/user-domain-validation.test.ts",
+        "tests/user-lifecycle-postgres.test.ts"
+      ],
+      "capsule_sha256": "0912daa49fbbeefbec80277a03221ac98095d2e6d1a3a591a40dc77b126368dc",
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
     }
   ]
 }
