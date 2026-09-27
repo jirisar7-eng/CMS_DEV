@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 84,
+  "total_capsules": 85,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -869,6 +869,20 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-SEARCH-002-20260927-001",
+      "task_id": "SYN-SEARCH-002",
+      "title": "Search Runtime Completion",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-SEARCH-002.json",
+      "base_sha": "1210a3e80095694423e74866dd68a0ced3b60a6c",
+      "expected_branch": "task/SYN-SEARCH-002-CLOSEOUT",
+      "sha256": "345deb18aa145253ca20421688a72b4b382a14a2670114e3340dc942f5aa6cea",
+      "parent_capsule_id": null,
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-LEGACY-SYN-SEC-001-IDENTITY-ACCESS-FOUNDATION",
