@@ -716,11 +716,15 @@ export default function RolesAdminPage() {
 
   return (
     <CapabilityShell
+      group="SPRÁVA"
       title="Správa rolí a oprávnění"
       description="Centrální RBAC workspace pro konfiguraci systémových i vlastních rolí, matic oprávnění, přiřazení uživatelům a přímých bezpečnostních výjimek."
       status="FUNKČNÍ"
+      helpKey="management.roles.view"
     >
-      <div className="space-y-6">
+      {() => (
+        <>
+          <div className="space-y-6">
         {/* Flash zprávy */}
         {errorMessage && (
           <div className="flex items-start justify-between gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
@@ -1701,6 +1705,8 @@ export default function RolesAdminPage() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </CapabilityShell>
   );
