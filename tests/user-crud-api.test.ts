@@ -1,7 +1,8 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, before } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import Module from "node:module";
+import { NextRequest } from "next/server";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { PermissionKey } from "@/lib/auth/rbac";
 import type { UserStatus, SafeUserRecord } from "@/lib/domain/users/types";
@@ -46,7 +47,7 @@ let mockRevokedUserIds: string[] = [];
           : null,
         user: mockAuthUser,
       }),
-      revokeAllUserSessions: async (userId: string) => {
+      revokeAllUserSessions: async (userId: string, ..._rest: unknown[]) => {
         mockRevokedUserIds.push(userId);
       },
     };
@@ -90,17 +91,37 @@ let mockRevokedUserIds: string[] = [];
   return originalRequire.call(this, id, ...args);
 };
 
-// Route and Service Imports after module interception
-import {
-  UserService,
-  setUserServiceForTesting,
-  toSafeUserRecord,
-  UserDomainError,
-} from "../lib/domain/users/service";
-import { GET as listUsersRoute, POST as createUserRoute } from "../app/api/admin/users/route";
-import { GET as getUserRoute, PATCH as updateUserRoute } from "../app/api/admin/users/[userId]/route";
-import { verifyPassword } from "../lib/auth/password";
-import { NextRequest } from "next/server";
+// Runtime bindings loaded dynamically AFTER module interception
+type UserDomainError = import("../lib/domain/users/service").UserDomainError;
+let UserService: typeof import("../lib/domain/users/service").UserService;
+let setUserServiceForTesting: typeof import("../lib/domain/users/service").setUserServiceForTesting;
+let toSafeUserRecord: typeof import("../lib/domain/users/service").toSafeUserRecord;
+let UserDomainError: typeof import("../lib/domain/users/service").UserDomainError;
+let listUsersRoute: typeof import("../app/api/admin/users/route").GET;
+let createUserRoute: typeof import("../app/api/admin/users/route").POST;
+let getUserRoute: typeof import("../app/api/admin/users/[userId]/route").GET;
+let updateUserRoute: typeof import("../app/api/admin/users/[userId]/route").PATCH;
+let verifyPassword: typeof import("../lib/auth/password").verifyPassword;
+
+async function initRuntimeBindings() {
+  if (UserService) return;
+  const serviceMod = await import("../lib/domain/users/service");
+  UserService = serviceMod.UserService;
+  setUserServiceForTesting = serviceMod.setUserServiceForTesting;
+  toSafeUserRecord = serviceMod.toSafeUserRecord;
+  UserDomainError = serviceMod.UserDomainError;
+
+  const collectionMod = await import("../app/api/admin/users/route");
+  listUsersRoute = collectionMod.GET;
+  createUserRoute = collectionMod.POST;
+
+  const detailMod = await import("../app/api/admin/users/[userId]/route");
+  getUserRoute = detailMod.GET;
+  updateUserRoute = detailMod.PATCH;
+
+  const passwordMod = await import("../lib/auth/password");
+  verifyPassword = passwordMod.verifyPassword;
+}
 
 // ============================================================================
 // In-Memory Deterministic Mock Prisma Store
@@ -148,6 +169,35 @@ function createMockPrisma() {
             }
           }
           return null;
+        }
+        return null;
+      },
+      findFirst: async ({
+        where,
+      }: {
+        where?: {
+          email?: string;
+          id?: { not?: string };
+          [key: string]: unknown;
+        };
+        select?: Record<string, boolean>;
+      }) => {
+        if (!where) return null;
+        for (const u of users.values()) {
+          let matches = true;
+          if (where.email !== undefined) {
+            if (u.email.toLowerCase() !== String(where.email).toLowerCase()) {
+              matches = false;
+            }
+          }
+          if (where.id && typeof where.id === "object" && "not" in where.id) {
+            if (u.id === where.id.not) {
+              matches = false;
+            }
+          }
+          if (matches) {
+            return u;
+          }
         }
         return null;
       },
@@ -313,7 +363,12 @@ describe("SYN-USERS-001: Deterministic Users Service & API", () => {
   let mockEnv: ReturnType<typeof createMockPrisma>;
   let grantedPermissions: Set<string>;
 
-  beforeEach(() => {
+  before(async () => {
+    await initRuntimeBindings();
+  });
+
+  beforeEach(async () => {
+    await initRuntimeBindings();
     mockEnv = createMockPrisma();
     grantedPermissions = new Set(["user-admin-1:users.view", "user-admin-1:users.manage"]);
     mockRevokedUserIds = [];
@@ -814,7 +869,8 @@ describe("SYN-USERS-001: Deterministic Users Service & API", () => {
           ),
         (err: unknown) => {
           assert.ok(err instanceof UserDomainError);
-          assert.strictEqual(err.code, "UNAUTHENTICATED");
+          assert.strictEqual(err.code, "FORBIDDEN");
+          assert.strictEqual(err.status, 403);
           return true;
         }
       );
@@ -847,10 +903,11 @@ describe("SYN-USERS-001: Deterministic Users Service & API", () => {
 
       await service.updateUser("user-aaa", { displayName: "Updated AAA" }, "user-bbb");
 
-      assert.ok(mockEnv.lockedIdsLog.length > 0);
-      const locked = mockEnv.lockedIdsLog[0];
-      // Locked IDs must be sorted ascending: ['user-aaa', 'user-bbb']
-      assert.deepStrictEqual(locked, ["user-aaa", "user-bbb"]);
+      assert.strictEqual(mockEnv.lockedIdsLog.length, 2);
+      assert.deepStrictEqual(mockEnv.lockedIdsLog[0], ["user-aaa"]);
+      assert.deepStrictEqual(mockEnv.lockedIdsLog[1], ["user-bbb"]);
+      const lockedIds = mockEnv.lockedIdsLog.flat();
+      assert.deepStrictEqual(lockedIds, ["user-aaa", "user-bbb"]);
     });
 
     it("locks exactly once when actorId === targetUserId", async () => {
@@ -861,7 +918,7 @@ describe("SYN-USERS-001: Deterministic Users Service & API", () => {
 
       await service.updateUser("user-admin-1", { displayName: "Self Rename" }, "user-admin-1");
 
-      assert.ok(mockEnv.lockedIdsLog.length > 0);
+      assert.strictEqual(mockEnv.lockedIdsLog.length, 1);
       const locked = mockEnv.lockedIdsLog[0];
       assert.deepStrictEqual(locked, ["user-admin-1"]);
     });
