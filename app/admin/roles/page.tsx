@@ -22,7 +22,7 @@ import {
   Search,
   SlidersHorizontal,
 } from 'lucide-react';
-import { CapabilityShell } from '@/components/admin/capability-shell';
+import { CapabilityShell } from '@/components/admin/CapabilityShell';
 import {
   PERMISSION_KEYS,
   PermissionKey,
