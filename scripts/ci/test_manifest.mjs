@@ -89,5 +89,6 @@ export const POSTGRES_TESTS = [
   "tests/publishing-revisions-postgres.test.ts",
   "tests/content-lifecycle-schedule-unpublish-postgres.test.ts",
   "tests/navigation-lifecycle-postgres.test.ts",
-  "tests/project-lifecycle-postgres.test.ts"
+  "tests/project-lifecycle-postgres.test.ts",
+  "tests/user-lifecycle-postgres.test.ts"
 ];
