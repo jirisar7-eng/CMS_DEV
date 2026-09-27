@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 70,
+  "total_tasks": 71,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3529,6 +3529,34 @@
       ],
       "depends_on_tasks": [],
       "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY"
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 78,
+      "pr_title": "SYN-SEARCH-002 — Close Search Runtime Completion",
+      "task_id": "SYN-SEARCH-002",
+      "branch": "task/SYN-SEARCH-002-CLOSEOUT",
+      "base_sha": "1210a3e80095694423e74866dd68a0ced3b60a6c",
+      "source_head_sha": "8a7242813ee0325dd05d1d7b1c843536c5516296",
+      "merge_sha": "21ab70bc643879faf66600f17e754bb717966618",
+      "merged_at": "2026-09-27T13:37:32Z",
+      "capsule_present": true,
+      "capsule_declared_status": "COMPLETED",
+      "derived_status": "MERGED",
+      "capsule_sha256": "345deb18aa145253ca20421688a72b4b382a14a2670114e3340dc942f5aa6cea",
+      "touches_capabilities": [],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SEARCH-002.json",
+        ".synthesis/lineage/capsules.json"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SEARCH-002.json"
+      ]
     }
   ]
 }

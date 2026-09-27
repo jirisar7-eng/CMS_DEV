@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 85,
+  "total_capsules": 86,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -601,6 +601,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR76",
       "sha256": "a30fcd3e6806227d4e8f77231382ebac24cc2c2f84ccd02cc6c5587548e731eb",
       "parent_capsule_id": "CAP-SYN-USERS-001-20260926-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR78-20260927-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR78",
+      "title": "Synchronize PR #78 lineage",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR78.json",
+      "base_sha": "21ab70bc643879faf66600f17e754bb717966618",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR78",
+      "sha256": "de3cb5f703766dcf3b1c7e0691a1dd2b222bfdf3efe61f476b7a6a377675d8c4",
+      "parent_capsule_id": "CAP-SYN-SEARCH-002-20260927-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
