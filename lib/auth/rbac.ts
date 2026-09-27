@@ -1,15 +1,15 @@
 import { prisma } from '@/lib/db';
 import { getSession } from './session';
 import {
-  PermissionKey,
+  type PermissionKey,
   PERMISSION_KEYS,
   isPermissionKey,
   ROLE_GRANT_EXCLUDED_PERMISSIONS,
   isRoleGrantExcludedPermission,
 } from './permissions';
 
+export type { PermissionKey };
 export {
-  PermissionKey,
   PERMISSION_KEYS,
   isPermissionKey,
   ROLE_GRANT_EXCLUDED_PERMISSIONS,
@@ -95,11 +95,11 @@ export async function hasPermission(
  */
 export async function requirePermission(permissionKey: PermissionKey, projectId?: string | null): Promise<void> {
   const { user } = await getSession();
-  
+    
   if (!user || user.status !== 'ACTIVE') {
     throw new Error('UNAUTHENTICATED');
   }
-
+ 
   const isAuthorized = await hasPermission(user.id, permissionKey, projectId);
   if (!isAuthorized) {
     throw new Error('UNAUTHORIZED');
