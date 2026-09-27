@@ -75,7 +75,10 @@ export const DETERMINISTIC_TESTS = [
   "tests/seo-redirects-admin-cutover.test.ts",
   "tests/system-map-resolver.test.ts",
   "tests/system-map-ui.test.ts",
-  "tests/task-capsule-registry.test.ts"
+  "tests/task-capsule-registry.test.ts",
+  "tests/user-admin-truthfulness.test.ts",
+  "tests/user-crud-api.test.ts",
+  "tests/user-domain-validation.test.ts"
 ];
 
 export const POSTGRES_TESTS = [
@@ -87,5 +90,6 @@ export const POSTGRES_TESTS = [
   "tests/publishing-revisions-postgres.test.ts",
   "tests/content-lifecycle-schedule-unpublish-postgres.test.ts",
   "tests/navigation-lifecycle-postgres.test.ts",
-  "tests/project-lifecycle-postgres.test.ts"
+  "tests/project-lifecycle-postgres.test.ts",
+  "tests/user-lifecycle-postgres.test.ts"
 ];
