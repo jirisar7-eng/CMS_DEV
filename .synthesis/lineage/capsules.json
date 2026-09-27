@@ -879,7 +879,7 @@
       "archive_path": ".synthesis/task-capsules/SYN-RBAC-002.json",
       "base_sha": "fd45bcb3c0fb61d9ebe3362d393469fad61864ae",
       "expected_branch": "task/SYN-RBAC-002",
-      "sha256": "d56197f644aac8ee8fe4d28fb561f962aeeb4ad1c60511279b6173b488662d29",
+      "sha256": "f2a06284da196edee36730171aa7f52f6af3d0bfebf41b580457f27a72002c49",
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": false

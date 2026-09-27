@@ -39,7 +39,8 @@
     "tests/rbac-*.test.ts",
     "scripts/ci/test_manifest.mjs",
     "lib/auth/permissions.ts",
-    "scripts/bootstrap-admin.ts"
+    "scripts/bootstrap-admin.ts",
+    "tests/content-rbac-foundation.test.ts"
   ],
   "forbidden_paths": [
     "prisma/schema.prisma",
