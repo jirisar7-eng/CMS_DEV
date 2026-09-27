@@ -271,9 +271,13 @@ export default function RolesAdminPage() {
 
   // Inicializace
   useEffect(() => {
-    fetchRoles();
-    fetchProjects();
-    fetchUsers();
+    const timeoutId = window.setTimeout(() => {
+      void fetchRoles();
+      void fetchProjects();
+      void fetchUsers();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [fetchRoles, fetchProjects, fetchUsers]);
 
   // --- API: Načtení detailu a oprávnění vybrané role ---
@@ -313,9 +317,14 @@ export default function RolesAdminPage() {
   );
 
   useEffect(() => {
-    if (selectedRole?.id) {
-      fetchRoleDetails(selectedRole.id);
-    }
+    const roleId = selectedRole?.id;
+    if (!roleId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void fetchRoleDetails(roleId);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [selectedRole?.id, fetchRoleDetails]);
 
   // --- API: Uložení oprávnění role ---
@@ -531,9 +540,13 @@ export default function RolesAdminPage() {
   );
 
   useEffect(() => {
-    if (selectedUserId && activeTab === 'assignments') {
-      fetchUserData(selectedUserId);
-    }
+    if (!selectedUserId || activeTab !== 'assignments') return;
+
+    const timeoutId = window.setTimeout(() => {
+      void fetchUserData(selectedUserId);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [selectedUserId, activeTab, fetchUserData]);
 
   // --- API: Přiřazení role uživateli ---
