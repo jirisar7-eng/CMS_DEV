@@ -693,17 +693,25 @@ export function validateGitHistoryAlignment(options = {}) {
     }
 
     // 2. parse normal PR pattern
+    let prNumber;
     const parsed = parsePrNumberFromSubject(subject);
     if (!parsed.matched) {
       if (parsed.conflict) {
         errors.push(`Commit ${commit.sha} subject has conflicting PR numbers: ${parsed.found.join(", ")}`);
+        continue;
+      }
+
+      // Bounded fallback: exact tasks.json merge_sha match for immutable historical commits
+      const matchingTasks = tasksList.filter(t => t.merge_sha === commit.sha);
+      if (matchingTasks.length === 1 && typeof matchingTasks[0].pr_number === "number" && !isNaN(matchingTasks[0].pr_number)) {
+        prNumber = matchingTasks[0].pr_number;
       } else {
         errors.push(`Unrecognized first-parent commit format: ${commit.sha} - "${subject}"`);
+        continue;
       }
-      continue;
+    } else {
+      prNumber = parsed.prNumber;
     }
-
-    const prNumber = parsed.prNumber;
     if (seenHistoryPrs.has(prNumber)) {
       errors.push(`Duplicate PR #${prNumber} detected in first-parent history (${commit.sha})`);
     }
