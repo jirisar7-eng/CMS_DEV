@@ -62,9 +62,10 @@ describe("SYN-USERS-001: Users Admin UI Truthfulness & Endpoint Cutover", () => 
   });
 
   it("create payload includes email, password, and optional displayName", () => {
-    assert.match(pageCode, /email:\s*createEmail/);
+    assert.match(pageCode, /email:\s*createEmail\.trim\(\)/);
     assert.match(pageCode, /password:\s*createPassword/);
-    assert.match(pageCode, /displayName:\s*createDisplayName/);
+    assert.match(pageCode, /if\s*\(\s*createDisplayName\.trim\(\)\s*\)/);
+    assert.match(pageCode, /payload\.displayName\s*=\s*createDisplayName\.trim\(\)/);
   });
 
   it("edit payload is limited to email and displayName", () => {
