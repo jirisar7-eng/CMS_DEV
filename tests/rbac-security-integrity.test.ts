@@ -6,8 +6,16 @@ import { RoleService } from '../lib/domain/roles/service';
 import { RoleServiceError } from '../lib/domain/roles/types';
 import { PERMISSION_KEYS, PermissionKey } from '../lib/auth/permissions';
 
+interface MockRole {
+  id: string;
+  name: string;
+  isSystem: boolean;
+  description: string | null;
+  permissions: string[];
+}
+
 function createMockDb() {
-  const roles = [
+  const roles: MockRole[] = [
     { id: 'role-super-admin', name: 'Super Administrator', isSystem: true, description: 'Full access', permissions: [] },
     { id: 'role-admin', name: 'Administrator', isSystem: true, description: 'Admin access', permissions: [] },
     { id: 'role-editor', name: 'Editor', isSystem: false, description: 'Content editor', permissions: [] },
@@ -56,7 +64,7 @@ function createMockDb() {
         return found || null;
       },
       create: async ({ data }: any) => {
-        const newRole = { id: `role-${Date.now()}`, isSystem: false, description: null, ...data, permissions: [] };
+        const newRole: MockRole = { id: `role-${Date.now()}`, isSystem: false, description: null, ...data, permissions: [] };
         roles.push(newRole);
         return newRole;
       },
