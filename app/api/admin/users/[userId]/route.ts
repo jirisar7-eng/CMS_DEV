@@ -98,7 +98,7 @@ function handleUsersApiError(err: unknown): NextResponse {
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ userId: string }> | { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
     const user = await requireAuthenticatedUser();
@@ -125,7 +125,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ userId: string }> | { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
     validateMutationOrigin(request);
