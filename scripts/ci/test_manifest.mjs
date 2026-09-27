@@ -79,6 +79,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/rbac-domain-service.test.ts",
   "tests/rbac-domain-validation.test.ts",
   "tests/rbac-permission-catalog-contract.test.ts",
+  "tests/rbac-security-integrity.test.ts",
   "tests/task-capsule-registry.test.ts",
   "tests/user-admin-truthfulness.test.ts",
   "tests/user-crud-api.test.ts",
