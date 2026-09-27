@@ -75,6 +75,7 @@ export const DETERMINISTIC_TESTS = [
   "tests/seo-redirects-admin-cutover.test.ts",
   "tests/system-map-resolver.test.ts",
   "tests/system-map-ui.test.ts",
+  "tests/rbac-migration-integrity.test.ts",
   "tests/task-capsule-registry.test.ts",
   "tests/user-admin-truthfulness.test.ts",
   "tests/user-crud-api.test.ts",

@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 86,
+  "total_capsules": 87,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -867,6 +867,20 @@
       "expected_branch": "task/SYN-QA-SEC-001-BROWSER-SMOKE-HARNESS",
       "sha256": "81e86af919cce57fe935e86beed567615ce4fc178efd046f65a44ac68f0a75c2",
       "parent_capsule_id": "CAP-SYN-SEC-006-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-RBAC-002-20260927-001",
+      "task_id": "SYN-RBAC-002",
+      "title": "Roles & Permissions Management v1",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-RBAC-002.json",
+      "base_sha": "fd45bcb3c0fb61d9ebe3362d393469fad61864ae",
+      "expected_branch": "task/SYN-RBAC-002",
+      "sha256": "ea8f06e133b71efbc812dc920c3b9008b297aa6b19c6cca78d17ec8341ef31af",
+      "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": false
     },
