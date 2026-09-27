@@ -37,7 +37,9 @@
     "app/admin/roles/**",
     "components/admin/roles/**",
     "tests/rbac-*.test.ts",
-    "scripts/ci/test_manifest.mjs"
+    "scripts/ci/test_manifest.mjs",
+    "lib/auth/permissions.ts",
+    "scripts/bootstrap-admin.ts"
   ],
   "forbidden_paths": [
     "prisma/schema.prisma",

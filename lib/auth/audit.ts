@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/db';
+
 import type { Prisma } from '@prisma/client';
-import { getSession } from './session';
+
 import { sanitizeAuditMetadata } from '@/lib/domain/audit';
 
 export type AuditAction =
@@ -14,6 +14,10 @@ export type AuditAction =
   | 'USER_CREATED'
   | 'USER_UPDATED'
   | 'USER_STATUS_CHANGED'
+  | 'ROLE_CREATED'
+  | 'ROLE_UPDATED'
+  | 'ROLE_DELETED'
+  | 'ROLE_PERMISSIONS_CHANGED'
   | 'ROLE_ASSIGNED'
   | 'ROLE_REMOVED'
   | 'PERMISSION_OVERRIDE_CHANGED'
@@ -65,6 +69,7 @@ export async function logAudit(options: AuditLogOptions): Promise<void> {
   let actorId = options.actorId;
   if (actorId === undefined) {
     try {
+      const { getSession } = await import("./session");
       const { user } = await getSession();
       if (user) {
         actorId = user.id;
@@ -79,7 +84,7 @@ export async function logAudit(options: AuditLogOptions): Promise<void> {
     ? sanitizeAuditMetadata(options.metadata, options.action, { mode: 'write' })
     : null;
 
-  const db = options.tx ?? prisma;
+  const db = options.tx ?? (await import('@/lib/db')).prisma;
   await db.auditLog.create({
     data: {
       action: options.action,

@@ -1,51 +1,20 @@
 import { prisma } from '@/lib/db';
 import { getSession } from './session';
+import {
+  PermissionKey,
+  PERMISSION_KEYS,
+  isPermissionKey,
+  ROLE_GRANT_EXCLUDED_PERMISSIONS,
+  isRoleGrantExcludedPermission,
+} from './permissions';
 
-export type PermissionKey =
-  | 'admin.access'
-  | 'brand.view'
-  | 'brand.edit'
-  | 'brand.publish'
-  | 'brand.rollback'
-  | 'media.view'
-  | 'media.create'
-  | 'media.edit'
-  | 'media.delete'
-  | 'users.view'
-  | 'users.manage'
-  | 'roles.view'
-  | 'roles.manage'
-  | 'audit.view'
-  | 'system.manage'
-  | 'projects.view'
-  | 'projects.manage'
-  | 'content.view'
-  | 'content.create'
-  | 'content.edit'
-  | 'content.review'
-  | 'content.approve'
-  | 'content.publish'
-  | 'content.rollback'
-  | 'content.archive'
-  | 'navigation.view'
-  | 'navigation.create'
-  | 'navigation.edit'
-  | 'navigation.delete'
-  | 'navigation.publish'
-  | 'seo.read'
-  | 'seo.update'
-  | 'seo.manage_defaults'
-  | 'redirects.read'
-  | 'redirects.create'
-  | 'redirects.update'
-  | 'redirects.delete'
-  | 'search.read_admin'
-  | 'search.manage'
-  | 'search.reindex'
-  | 'system_map.read_basic'
-  | 'system_map.read_internal'
-  | 'plugin.read'
-  | 'plugin.manage';
+export {
+  PermissionKey,
+  PERMISSION_KEYS,
+  isPermissionKey,
+  ROLE_GRANT_EXCLUDED_PERMISSIONS,
+  isRoleGrantExcludedPermission,
+};
 
 export async function hasPermission(
   userId: string,

@@ -1,6 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import {
+  PERMISSION_KEYS,
+  ROLE_GRANT_EXCLUDED_PERMISSIONS,
+  isRoleGrantExcludedPermission,
+} from '../lib/auth/permissions';
 
 const prisma = new PrismaClient();
 
@@ -31,29 +36,12 @@ async function bootstrap() {
     });
   }
 
-  // 2. Ensure initial permissions exist
-  const initialPermissions = [
-    'admin.access',
-    'brand.view', 'brand.edit', 'brand.publish', 'brand.rollback',
-    'media.view', 'media.create', 'media.edit', 'media.delete',
-    'users.view', 'users.manage',
-    'roles.view', 'roles.manage',
-    'audit.view',
-    'system.manage', 'projects.view', 'projects.manage',
-    'content.view', 'content.create', 'content.edit', 'content.review',
-    'content.approve', 'content.publish', 'content.rollback', 'content.archive',
-    'navigation.view', 'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.publish',
-    'seo.read', 'seo.update', 'seo.manage_defaults',
-    'redirects.read', 'redirects.create', 'redirects.update', 'redirects.delete',
-    'search.read_admin', 'search.manage', 'search.reindex',
-    'system_map.read_basic',
-    'plugin.read', 'plugin.manage'
-  ];
-
-  for (const permKey of initialPermissions) {
+  // 2. Ensure all canonical permissions exist from single-source PERMISSION_KEYS
+  for (const permKey of PERMISSION_KEYS) {
     let perm = await prisma.permission.findUnique({
       where: { key: permKey },
     });
+
     if (!perm) {
       console.log(`Creating permission: ${permKey}`);
       perm = await prisma.permission.create({
@@ -64,59 +52,56 @@ async function bootstrap() {
       });
     }
 
-    // Attach to SUPER_ADMIN if not already
-    const rolePerm = await prisma.rolePermission.findUnique({
-      where: {
-        roleId_permissionId: {
-          roleId: superAdminRole.id,
-          permissionId: perm.id,
-        },
-      },
-    });
-
-    if (!rolePerm) {
-      await prisma.rolePermission.create({
-        data: {
-          roleId: superAdminRole.id,
-          permissionId: perm.id,
+    // Attach to SUPER_ADMIN if grantable (not excluded by security policy)
+    if (!isRoleGrantExcludedPermission(permKey)) {
+      const rolePerm = await prisma.rolePermission.findUnique({
+        where: {
+          roleId_permissionId: {
+            roleId: superAdminRole.id,
+            permissionId: perm.id,
+          },
         },
       });
+
+      if (!rolePerm) {
+        await prisma.rolePermission.create({
+          data: {
+            roleId: superAdminRole.id,
+            permissionId: perm.id,
+          },
+        });
+      }
     }
   }
 
-  // 2b. Ensure system_map.read_internal exists, but is NOT granted to SUPER_ADMIN role (remove if present)
-  let internalPerm = await prisma.permission.findUnique({
-    where: { key: 'system_map.read_internal' },
-  });
-  if (!internalPerm) {
-    console.log('Creating sensitive permission: system_map.read_internal');
-    internalPerm = await prisma.permission.create({
-      data: {
-        key: 'system_map.read_internal',
-        description: 'Sensitive permission: full authoritative lineage and capability map access',
-      },
+  // 2b. Ensure excluded sensitive permissions are NOT attached to SUPER_ADMIN role (remove if present)
+  for (const excludedKey of ROLE_GRANT_EXCLUDED_PERMISSIONS) {
+    const excludedPerm = await prisma.permission.findUnique({
+      where: { key: excludedKey },
     });
-  }
 
-  // Idempotently ensure system_map.read_internal is NOT attached to SUPER_ADMIN role
-  const existingRolePerm = await prisma.rolePermission.findUnique({
-    where: {
-      roleId_permissionId: {
-        roleId: superAdminRole.id,
-        permissionId: internalPerm.id,
-      },
-    },
-  });
-  if (existingRolePerm) {
-    console.log('Removing system_map.read_internal from SUPER_ADMIN role (must not be role-granted)...');
-    await prisma.rolePermission.delete({
-      where: {
-        roleId_permissionId: {
-          roleId: superAdminRole.id,
-          permissionId: internalPerm.id,
+    if (excludedPerm) {
+      const existingRolePerm = await prisma.rolePermission.findUnique({
+        where: {
+          roleId_permissionId: {
+            roleId: superAdminRole.id,
+            permissionId: excludedPerm.id,
+          },
         },
-      },
-    });
+      });
+
+      if (existingRolePerm) {
+        console.log(`Removing ${excludedKey} from SUPER_ADMIN role (must not be role-granted)...`);
+        await prisma.rolePermission.delete({
+          where: {
+            roleId_permissionId: {
+              roleId: superAdminRole.id,
+              permissionId: excludedPerm.id,
+            },
+          },
+        });
+      }
+    }
   }
 
   // 3. Create or update the admin user
@@ -167,32 +152,38 @@ async function bootstrap() {
   }
 
   // 4b. Grant bootstrap owner explicit individual global ALLOW override for system_map.read_internal
-  const internalOverride = await prisma.userPermissionOverride.findFirst({
-    where: {
-      userId: adminUser.id,
-      permissionId: internalPerm.id,
-      projectId: null,
-    },
+  const internalPerm = await prisma.permission.findUnique({
+    where: { key: 'system_map.read_internal' },
   });
 
-  if (!internalOverride) {
-    console.log(`Granting explicit individual global ALLOW override for system_map.read_internal to bootstrap owner (${email})`);
-    await prisma.userPermissionOverride.create({
-      data: {
+  if (internalPerm) {
+    const internalOverride = await prisma.userPermissionOverride.findFirst({
+      where: {
         userId: adminUser.id,
         permissionId: internalPerm.id,
         projectId: null,
-        isGranted: true,
       },
     });
-  } else if (!internalOverride.isGranted) {
-    console.log(`Switching existing DENY override to ALLOW for bootstrap owner (${email}) on system_map.read_internal`);
-    await prisma.userPermissionOverride.update({
-      where: { id: internalOverride.id },
-      data: {
-        isGranted: true,
-      },
-    });
+
+    if (!internalOverride) {
+      console.log(`Granting explicit individual global ALLOW override for system_map.read_internal to bootstrap owner (${email})`);
+      await prisma.userPermissionOverride.create({
+        data: {
+          userId: adminUser.id,
+          permissionId: internalPerm.id,
+          projectId: null,
+          isGranted: true,
+        },
+      });
+    } else if (!internalOverride.isGranted) {
+      console.log(`Switching existing DENY override to ALLOW for bootstrap owner (${email}) on system_map.read_internal`);
+      await prisma.userPermissionOverride.update({
+        where: { id: internalOverride.id },
+        data: {
+          isGranted: true,
+        },
+      });
+    }
   }
 
   // 5. Audit the bootstrap event
