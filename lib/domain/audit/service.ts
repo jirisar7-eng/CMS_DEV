@@ -92,20 +92,51 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
     status: safeString(50),
     previousStatus: safeString(50),
   },
+  ROLE_CREATED: {
+    roleId: safeString(100),
+    name: safeString(100),
+    description: safeString(500),
+    isSystem: safeBoolean(),
+  },
+  ROLE_UPDATED: {
+    roleId: safeString(100),
+    name: safeString(100),
+    description: safeString(500),
+    previousName: safeString(100),
+  },
+  ROLE_DELETED: {
+    roleId: safeString(100),
+    name: safeString(100),
+  },
+  ROLE_PERMISSIONS_CHANGED: {
+    roleId: safeString(100),
+    roleName: safeString(100),
+    permissionKeys: safeStringArray(100, 100),
+    addedCount: safeNumber(),
+    removedCount: safeNumber(),
+  },
   ROLE_ASSIGNED: {
     targetUserId: safeString(100),
     role: safeString(100),
     roleId: safeString(100),
+    roleName: safeString(100),
+    projectId: safeString(100),
   },
   ROLE_REMOVED: {
     targetUserId: safeString(100),
     role: safeString(100),
     roleId: safeString(100),
+    roleName: safeString(100),
+    projectId: safeString(100),
   },
   PERMISSION_OVERRIDE_CHANGED: {
     targetUserId: safeString(100),
     permission: safeString(100),
+    permissionKey: safeString(100),
     granted: safeBoolean(),
+    isGranted: safeBoolean(),
+    projectId: safeString(100),
+    operation: safeString(50),
   },
 
   // Content Lifecycle events

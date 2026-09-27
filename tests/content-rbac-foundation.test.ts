@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { prisma } from '../lib/db';
 import { hasPermission } from '../lib/auth/rbac';
+import { PERMISSION_KEYS } from '../lib/auth/permissions';
 
 const rbacPath = path.join(process.cwd(), 'lib/auth/rbac.ts');
 const rbacContent = fs.readFileSync(rbacPath, 'utf-8');
@@ -22,41 +23,20 @@ const EXPECTED_CONTENT_PERMISSIONS = [
   'content.archive',
 ];
 
-test('Content RBAC Foundation - 1. PermissionKey source contains all 8 content permissions', () => {
-  const permissionKeyTypeMatch = rbacContent.match(/export\s+type\s+PermissionKey\s*=([\s\S]*?);/);
-  assert.ok(permissionKeyTypeMatch, 'PermissionKey type definition must exist in rbac.ts');
-  const typeBody = permissionKeyTypeMatch[1];
+test('Content RBAC Foundation - 1. Canonical permission catalog contains all 8 content permissions', () => {
   for (const perm of EXPECTED_CONTENT_PERMISSIONS) {
-    assert.ok(
-      typeBody.includes(`'${perm}'`),
-      `PermissionKey must contain '${perm}'`
-    );
+    assert.ok((PERMISSION_KEYS as readonly string[]).includes(perm));
   }
 });
 
-test('Content RBAC Foundation - 2. Bootstrap initialPermissions contains the same exact 8 content permissions', () => {
-  const initialPermissionsMatch = bootstrapContent.match(/const\s+initialPermissions\s*=\s*\[([\s\S]*?)\];/);
-  assert.ok(initialPermissionsMatch, 'initialPermissions array must exist in bootstrap-admin.ts');
-  const arrayBody = initialPermissionsMatch[1];
-  for (const perm of EXPECTED_CONTENT_PERMISSIONS) {
-    assert.ok(
-      arrayBody.includes(`'${perm}'`),
-      `initialPermissions in bootstrap-admin.ts must contain '${perm}'`
-    );
-  }
+test('Content RBAC Foundation - 2. Bootstrap consumes the canonical permission catalog', () => {
+  assert.match(bootstrapContent, /for\s*\(\s*const\s+permKey\s+of\s+PERMISSION_KEYS\s*\)/);
+  assert.doesNotMatch(bootstrapContent, /const\s+initialPermissions\s*=\s*\[/);
 });
 
-test('Content RBAC Foundation - 3. No content.delete in PermissionKey or bootstrap', () => {
-  assert.strictEqual(
-    rbacContent.includes('content.delete'),
-    false,
-    'lib/auth/rbac.ts must not contain content.delete'
-  );
-  assert.strictEqual(
-    bootstrapContent.includes('content.delete'),
-    false,
-    'scripts/bootstrap-admin.ts must not contain content.delete'
-  );
+test('Content RBAC Foundation - 3. No content.delete in canonical catalog or bootstrap', () => {
+  assert.strictEqual((PERMISSION_KEYS as readonly string[]).includes('content.delete'), false);
+  assert.strictEqual(bootstrapContent.includes('content.delete'), false);
 });
 
 test('Content RBAC Foundation - 4. No newly introduced runtime SUPER_ADMIN bypass in rbac.ts', () => {
