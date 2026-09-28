@@ -76,9 +76,33 @@ export interface PendingSessionCookie {
   expiresAt: Date;
 }
 
+export const SESSION_USER_AGENT_MAX_LENGTH = 512;
+
+/**
+ * Normalizes and bounds the raw User-Agent string before persistence.
+ * - Non-string / null / undefined => null
+ * - Trims leading/trailing whitespace
+ * - Replaces control characters (CR, LF, null bytes, non-printable ASCII) with spaces
+ * - Bounds result to maximum 512 characters
+ * - If normalized result becomes empty => null
+ */
+export function normalizeSessionUserAgent(userAgent?: string | null): string | null {
+  if (!userAgent || typeof userAgent !== "string") {
+    return null;
+  }
+  const sanitized = userAgent.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+  if (!sanitized) {
+    return null;
+  }
+  return sanitized.length > SESSION_USER_AGENT_MAX_LENGTH
+    ? sanitized.slice(0, SESSION_USER_AGENT_MAX_LENGTH)
+    : sanitized;
+}
+
 export async function createSessionRecord(
   userId: string,
   db: Prisma.TransactionClient | typeof prisma = prisma,
+  userAgent?: string | null,
 ): Promise<PendingSessionCookie> {
   const rawToken = crypto.randomBytes(32).toString("hex");
   const tokenHash = hashSessionToken(rawToken);
@@ -87,8 +111,19 @@ export async function createSessionRecord(
   const expiresAt = new Date(now + SESSION_ABSOLUTE_TIMEOUT_MS);
   const idleExpiresAt = new Date(now + SESSION_IDLE_TIMEOUT_MS);
   const lastSeenAt = new Date(now);
+  const normalizedUA = normalizeSessionUserAgent(userAgent);
 
-  await db.session.create({ data: { id: sessionId, tokenHash, userId, expiresAt, idleExpiresAt, lastSeenAt } });
+  await db.session.create({
+    data: {
+      id: sessionId,
+      tokenHash,
+      userId,
+      userAgent: normalizedUA,
+      expiresAt,
+      idleExpiresAt,
+      lastSeenAt,
+    },
+  });
 
   return { sessionId, rawToken, expiresAt };
 }
@@ -305,6 +340,35 @@ export async function revokeAllUserSessions(
 /**
  * Completely invalidates / deletes a session by ID and clears session cookie.
  */
+/**
+ * Completely invalidates / deletes a session by its raw bearer token (via tokenHash) and clears session cookie.
+ * Fail-closed: when database is configured, deletion by tokenHash must execute before clearing the cookie.
+ */
+export async function invalidateSessionByRawToken(rawToken: string): Promise<void> {
+  if (!rawToken || typeof rawToken !== "string") {
+    return;
+  }
+  const tokenHash = hashSessionToken(rawToken);
+
+  if (isDatabaseConfigured()) {
+    await prisma.session.deleteMany({
+      where: {
+        OR: [
+          { tokenHash },
+          { id: rawToken },
+        ],
+      },
+    });
+  }
+
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete(SESSION_COOKIE_NAME);
+  } catch {
+    // Non-request scope
+  }
+}
+
 export async function invalidateSession(sessionId: string): Promise<void> {
   try {
     const cookieStore = await cookies();
