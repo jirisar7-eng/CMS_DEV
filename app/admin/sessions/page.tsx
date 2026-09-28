@@ -79,8 +79,6 @@ export default function SessionsPage() {
   const [revokingOthers, setRevokingOthers] = useState<boolean>(false);
 
   const fetchSessions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/admin/sessions", {
         method: "GET",
@@ -102,6 +100,7 @@ export default function SessionsPage() {
 
       const data: SafeSessionProjection[] = await res.json();
       setSessions(Array.isArray(data) ? data : []);
+      setError(null);
     } catch {
       setError(mapErrorCodeToMessage("DATABASE_ERROR"));
       setSessions([]);
@@ -110,8 +109,14 @@ export default function SessionsPage() {
     }
   }, []);
 
+  const refreshSessions = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    await fetchSessions();
+  }, [fetchSessions]);
+
   useEffect(() => {
-    fetchSessions();
+    void fetchSessions();
   }, [fetchSessions]);
 
   const handleRevokeSingle = async (sessionId: string, deviceLabel: string) => {
@@ -147,7 +152,7 @@ export default function SessionsPage() {
         type: "success",
         message: "Relace byla úspěšně ukončena.",
       });
-      await fetchSessions();
+      await refreshSessions();
     } catch {
       setFeedback({
         type: "error",
@@ -194,7 +199,7 @@ export default function SessionsPage() {
         type: "success",
         message: `Úspěšně odhlášeno ${count} ostatních zařízení.`,
       });
-      await fetchSessions();
+      await refreshSessions();
     } catch {
       setFeedback({
         type: "error",
@@ -252,7 +257,7 @@ export default function SessionsPage() {
               </h3>
               <button
                 type="button"
-                onClick={fetchSessions}
+                onClick={refreshSessions}
                 disabled={loading}
                 title="Obnovit seznam"
                 className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
@@ -288,7 +293,7 @@ export default function SessionsPage() {
               <p className="text-xs sm:text-sm font-semibold text-destructive">{error}</p>
               <button
                 type="button"
-                onClick={fetchSessions}
+                onClick={refreshSessions}
                 className="px-4 py-1.5 text-xs font-semibold rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
               >
                 Zkusit znovu
