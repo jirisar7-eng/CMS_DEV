@@ -48,7 +48,15 @@ function getDeviceIcon(label: string) {
   if (label.includes("Tablet") || label.includes("iPad")) {
     return <Tablet className="w-5 h-5" />;
   }
-  if (label.includes("Windows") || label.includes("macOS") || label.includes("Linux") || label.includes("Chrome") || label.includes("Firefox") || label.includes("Edge") || label.includes("Safari")) {
+  if (
+    label.includes("Windows") ||
+    label.includes("macOS") ||
+    label.includes("Linux") ||
+    label.includes("Chrome") ||
+    label.includes("Firefox") ||
+    label.includes("Edge") ||
+    label.includes("Safari")
+  ) {
     return <Laptop className="w-5 h-5" />;
   }
   return <Globe className="w-5 h-5" />;
@@ -70,6 +78,41 @@ function formatDate(isoString: string): string {
   }
 }
 
+async function requestSessions(signal?: AbortSignal): Promise<{
+  sessions: SafeSessionProjection[] | null;
+  errorCode: string | null;
+}> {
+  try {
+    const res = await fetch("/api/admin/sessions", {
+      method: "GET",
+      headers: { "Cache-Control": "no-store" },
+      signal,
+    });
+
+    if (!res.ok) {
+      let errCode = "DATABASE_ERROR";
+      try {
+        const errData = await res.json();
+        errCode = errData?.error?.code || errCode;
+      } catch {
+        // Ignored
+      }
+      return { sessions: null, errorCode: errCode };
+    }
+
+    const data: SafeSessionProjection[] = await res.json();
+    return {
+      sessions: Array.isArray(data) ? data : [],
+      errorCode: null,
+    };
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw err;
+    }
+    return { sessions: null, errorCode: "DATABASE_ERROR" };
+  }
+}
+
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<SafeSessionProjection[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -78,46 +121,58 @@ export default function SessionsPage() {
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [revokingOthers, setRevokingOthers] = useState<boolean>(false);
 
-  const fetchSessions = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/sessions", {
-        method: "GET",
-        headers: { "Cache-Control": "no-store" },
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    requestSessions(controller.signal)
+      .then((result) => {
+        if (!active) return;
+
+        if (result.errorCode) {
+          setError(mapErrorCodeToMessage(result.errorCode));
+          setSessions([]);
+          return;
+        }
+
+        setSessions(result.sessions ?? []);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        if (err instanceof DOMException && err.name === "AbortError") return;
+
+        setError(mapErrorCodeToMessage("DATABASE_ERROR"));
+        setSessions([]);
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
       });
 
-      if (!res.ok) {
-        let errCode = "DATABASE_ERROR";
-        try {
-          const errData = await res.json();
-          errCode = errData?.error?.code || errCode;
-        } catch {
-          // Ignored
-        }
-        setError(mapErrorCodeToMessage(errCode));
-        setSessions([]);
-        return;
-      }
-
-      const data: SafeSessionProjection[] = await res.json();
-      setSessions(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch {
-      setError(mapErrorCodeToMessage("DATABASE_ERROR"));
-      setSessions([]);
-    } finally {
-      setLoading(false);
-    }
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, []);
 
   const refreshSessions = useCallback(async () => {
     setLoading(true);
     setError(null);
-    await fetchSessions();
-  }, [fetchSessions]);
 
-  useEffect(() => {
-    void fetchSessions();
-  }, [fetchSessions]);
+    const result = await requestSessions();
+
+    if (result.errorCode) {
+      setError(mapErrorCodeToMessage(result.errorCode));
+      setSessions([]);
+    } else {
+      setSessions(result.sessions ?? []);
+      setError(null);
+    }
+
+    setLoading(false);
+  }, []);
 
   const handleRevokeSingle = async (sessionId: string, deviceLabel: string) => {
     const confirmed = window.confirm(
