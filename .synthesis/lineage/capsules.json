@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 91,
+  "total_capsules": 92,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -657,6 +657,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR82",
       "sha256": "f9448657799bddcefb877b055d97323973463a7763d436826cec5a122f23b94e",
       "parent_capsule_id": "CAP-SYN-SESSIONS-002-20260928-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR82A-20260928-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR82A-TEST-BASELINE-REPAIR",
+      "title": "PR82 Lineage Test Baseline Repair",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR82A-TEST-BASELINE-REPAIR.json",
+      "base_sha": "0a93d7411f07c3bcb0c7730fc6078f1f32d678d7",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR82",
+      "sha256": "4e7ea59249266c23cabeb78105000b58625debc7e086b71e8010e827efb15316",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR82-20260928-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
