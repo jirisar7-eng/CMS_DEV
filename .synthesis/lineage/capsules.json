@@ -1,7 +1,21 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 93,
+  "total_capsules": 94,
   "capsules": [
+    {
+      "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
+      "task_id": "SYN-ADMIN-SCOPE-001",
+      "title": "Admin Scope & Surface Truthfulness Alignment",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-ADMIN-SCOPE-001.json",
+      "base_sha": "84866226c13485ed6b2f0c212dd26e4006c8f0db",
+      "expected_branch": "task/SYN-ADMIN-SCOPE-001",
+      "sha256": "a73b73f44a481b00be3ac4c762c0969589950ef8685db5b40c3e027d40458cbd",
+      "parent_capsule_id": null,
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
       "task_id": "SYN-ADMIN-STATUS-001-CAPABILITY-MAP",

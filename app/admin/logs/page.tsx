@@ -37,6 +37,13 @@ export default function LogsPage() {
     >
       {({ handleUnfinishedAction }) => (
         <div className="space-y-6">
+          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-1">
+            <span className="font-bold block">POUZE UI — UKÁZKOVÁ DATA:</span>
+            <span>
+              Zobrazené záznamy v terminálu jsou statické syntetické ukázky, nikoli živé aplikační logy ze serveru.
+            </span>
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border">
               {['ALL', 'INFO', 'WARN', 'ERROR'].map(l => (

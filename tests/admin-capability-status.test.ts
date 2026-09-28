@@ -129,6 +129,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('seo'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('projects'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('users'), 'FUNKČNÍ');
+      assert.strictEqual(getCapabilityStatus('roles'), 'FUNKČNÍ');
     });
 
     it('verified ZÁKLAD capabilities are correctly marked', () => {
@@ -137,9 +138,10 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('revisions'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('search'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('svg-editor'), 'ZÁKLAD');
-      assert.strictEqual(getCapabilityStatus('roles'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('audit'), 'ZÁKLAD');
       assert.strictEqual(getCapabilityStatus('sessions'), 'ZÁKLAD');
+      assert.strictEqual(getCapabilityStatus('system-map'), 'ZÁKLAD');
+      assert.strictEqual(getCapabilityStatus('modules'), 'ZÁKLAD');
     });
 
     it('verified PLÁNOVÁNO capabilities are correctly marked', () => {
@@ -173,8 +175,8 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['DOKONČENO'] + 
         stats['VYPNUTO'];
       assert.strictEqual(sum, 32);
-      assert.strictEqual(stats['FUNKČNÍ'], 8);
-      assert.strictEqual(stats['ZÁKLAD'], 10);
+      assert.strictEqual(stats['FUNKČNÍ'], 9);
+      assert.strictEqual(stats['ZÁKLAD'], 9);
       assert.strictEqual(stats['POUZE UI'], 11);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
@@ -378,6 +380,65 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.match(workspaceCode, /controller\.abort\(\)/);
       assert.match(workspaceCode, /return\s*\(\)\s*=>\s*\{\s*isMounted\s*=\s*false;\s*controller\.abort\(\);\s*\}/);
       assert.doesNotMatch(workspaceCode, /eslint-disable/);
+    });
+  });
+
+  describe('6. SYN-ADMIN-SCOPE-001: Admin Surface Truthfulness & Preview Fixture Labeling', () => {
+    it('roles capability is marked FUNKČNÍ in adminNav.ts', () => {
+      assert.strictEqual(getCapabilityStatus('roles'), 'FUNKČNÍ');
+    });
+
+    it('PWA capability is marked POUZE UI in adminNav.ts', () => {
+      assert.strictEqual(getCapabilityStatus('pwa'), 'POUZE UI');
+    });
+
+    it('PWA page CapabilityShell status is strictly POUZE UI', () => {
+      const pwaCode = fs.readFileSync(path.join(rootDir, 'app/admin/pwa/page.tsx'), 'utf8');
+      assert.match(pwaCode, /status=['"]POUZE UI['"]/);
+      assert.doesNotMatch(pwaCode, /status=['"]PLÁNOVÁNO['"]/);
+    });
+
+    it('notifications page contains explicit POUZE UI — UKÁZKOVÁ DATA marker and truthful heading', () => {
+      const notifCode = fs.readFileSync(path.join(rootDir, 'app/admin/notifications/page.tsx'), 'utf8');
+      assert.match(notifCode, /POUZE UI — UKÁZKOVÁ DATA/);
+      assert.match(notifCode, /Ukázkové notifikace/);
+      assert.doesNotMatch(notifCode, /Nedávná upozornění/);
+    });
+
+    it('integrations page contains explicit POUZE UI — UKÁZKOVÁ DATA marker and truthful heading', () => {
+      const integCode = fs.readFileSync(path.join(rootDir, 'app/admin/integrations/page.tsx'), 'utf8');
+      assert.match(integCode, /POUZE UI — UKÁZKOVÁ DATA/);
+      assert.match(integCode, /Ukázkové integrace/);
+      assert.doesNotMatch(integCode, /Aktivní integrace \(/);
+    });
+
+    it('logs page contains explicit POUZE UI — UKÁZKOVÁ DATA marker and clear synthetic notice', () => {
+      const logsCode = fs.readFileSync(path.join(rootDir, 'app/admin/logs/page.tsx'), 'utf8');
+      assert.match(logsCode, /POUZE UI — UKÁZKOVÁ DATA/);
+      assert.match(logsCode, /statické syntetické ukázky, nikoli živé aplikační logy/);
+    });
+
+    it('project-packs page contains explicit PLÁNOVÁNO — UKÁZKOVÝ KATALOG marker and rejects old PŘIPRAVENO fixture status', () => {
+      const packsCode = fs.readFileSync(path.join(rootDir, 'app/admin/project-packs/page.tsx'), 'utf8');
+      assert.match(packsCode, /PLÁNOVÁNO — UKÁZKOVÝ KATALOG/);
+      assert.doesNotMatch(packsCode, /status:\s*['"]PŘIPRAVENO['"]/);
+      assert.match(packsCode, /status:\s*['"]NÁHLED['"]/);
+      assert.doesNotMatch(packsCode, /certifikovaných bloků/);
+      assert.match(packsCode, /ukázkových bloků/);
+    });
+
+    it('queues page contains explicit PLÁNOVÁNO — UKÁZKOVÁ DATA marker and truthful heading', () => {
+      const queuesCode = fs.readFileSync(path.join(rootDir, 'app/admin/queues/page.tsx'), 'utf8');
+      assert.match(queuesCode, /PLÁNOVÁNO — UKÁZKOVÁ DATA/);
+      assert.match(queuesCode, /Ukázkové úlohy ve frontě/);
+      assert.doesNotMatch(queuesCode, /Úlohy ve frontě \(/);
+    });
+
+    it('templates page contains explicit PLÁNOVÁNO — UKÁZKOVÁ DATA marker and truthful heading', () => {
+      const tplCode = fs.readFileSync(path.join(rootDir, 'app/admin/templates/page.tsx'), 'utf8');
+      assert.match(tplCode, /PLÁNOVÁNO — UKÁZKOVÁ DATA/);
+      assert.match(tplCode, /Ukázkové šablony/);
+      assert.doesNotMatch(tplCode, /<h3[^>]*>Transakční šablony<\/h3>/);
     });
   });
 });

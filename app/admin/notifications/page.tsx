@@ -32,8 +32,15 @@ export default function NotificationsPage() {
     >
       {({ handleUnfinishedAction }) => (
         <div className="space-y-6 max-w-4xl">
+          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-1">
+            <span className="font-bold block">POUZE UI — UKÁZKOVÁ DATA:</span>
+            <span>
+              Tento modul momentálně zobrazuje statická ukázková data notifikací. Skutečné doručování a perzistence notifikací budou dopracovány v návazném kroku.
+            </span>
+          </div>
+
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">Nedávná upozornění</h3>
+            <h3 className="text-sm font-bold text-foreground">Ukázkové notifikace</h3>
             <button
               type="button"
               onClick={() => handleUnfinishedAction('Označit vše jako přečtené')}

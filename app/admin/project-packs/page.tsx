@@ -14,8 +14,8 @@ import {
 
 export default function ProjectPacksPage() {
   const packs = [
-    { id: 'pack-corporate', name: 'Corporate & Services Pack', desc: 'Kompletní sada pro prezentační weby, ceníky, portfolio, reference a poptávkové formuláře.', blocksCount: 28, status: 'PŘIPRAVENO' },
-    { id: 'pack-editorial', name: 'Editorial & Blog Pack', desc: 'Optimalizováno pro magazíny, novinky, autorské profily a čtenářské rubriky.', blocksCount: 19, status: 'PŘIPRAVENO' },
+    { id: 'pack-corporate', name: 'Corporate & Services Pack', desc: 'Kompletní sada pro prezentační weby, ceníky, portfolio, reference a poptávkové formuláře.', blocksCount: 28, status: 'NÁHLED' },
+    { id: 'pack-editorial', name: 'Editorial & Blog Pack', desc: 'Optimalizováno pro magazíny, novinky, autorské profily a čtenářské rubriky.', blocksCount: 19, status: 'NÁHLED' },
     { id: 'pack-commerce-lite', name: 'Product Showcase Pack', desc: 'Katalog produktů, detail položky, filtrace parametrů a lead generation.', blocksCount: 22, status: 'PLÁNOVÁNO' },
   ];
 
@@ -33,9 +33,9 @@ export default function ProjectPacksPage() {
       {({ handleUnfinishedAction }) => (
         <div className="space-y-6 max-w-4xl">
           <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Schválená schopnost v roadmapě:</span>
+            <span className="font-bold block">PLÁNOVÁNO — UKÁZKOVÝ KATALOG:</span>
             <span>
-              Project Packy definují standardizované balíčky bloků a předvoleb pro konkrétní doménové vertikály.
+              Project Packy definují standardizované balíčky bloků a předvoleb. Níže uvedené položky představují ukázkový katalog pro budoucí verzi CMS.
             </span>
           </div>
 
@@ -48,7 +48,7 @@ export default function ProjectPacksPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                      {pack.blocksCount} certifikovaných bloků
+                      {pack.blocksCount} ukázkových bloků
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-emerald-500/10 text-emerald-600">
                       {pack.status}
