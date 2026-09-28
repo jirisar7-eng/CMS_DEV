@@ -299,7 +299,7 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     assert.deepStrictEqual(pr65.touches_capabilities, []);
   });
 
-  it("27. Capability source provenance and last_merge_sha reflect post-baseline integrations through PR #80", () => {
+  it("27. Capability source provenance and last_merge_sha reflect post-baseline integrations through PR #82", () => {
     const gov = rawCapabilities.capabilities.find((c: any) => c.capability_id === "governance");
     assert.ok(gov.source_tasks.includes("SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE"));
     assert.ok(gov.source_tasks.includes("SYN-OPS-002"));
@@ -310,7 +310,8 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
     assert.ok(idRbac.source_tasks.includes("SYN-SYSTEM-MAP-001"));
     assert.ok(idRbac.source_tasks.includes("SYN-CONTENT-006"));
     assert.ok(idRbac.source_tasks.includes("SYN-RBAC-002"));
-    assert.strictEqual(idRbac.last_merge_sha, "3e6cbe1b258a94fdf5e77fbeeea4b2e36bbda6b9");
+    assert.ok(idRbac.source_tasks.includes("SYN-SESSIONS-002"));
+    assert.strictEqual(idRbac.last_merge_sha, "efa9defb5e8a901028a0dd267db64dbd068c079b");
 
     const content = rawCapabilities.capabilities.find((c: any) => c.capability_id === "content_lifecycle");
     assert.ok(content.source_tasks.includes("SYN-CONTENT-003"));

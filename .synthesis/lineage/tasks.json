@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 72,
+  "total_tasks": 73,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3629,6 +3629,72 @@
         "tests/rbac-migration-integrity.test.ts",
         "tests/rbac-permission-catalog-contract.test.ts",
         "tests/rbac-security-integrity.test.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 82,
+      "pr_title": "SYN-SESSIONS-002 \u2014 Sessions & Devices Management",
+      "task_id": "SYN-SESSIONS-002",
+      "branch": "task/SYN-SESSIONS-002",
+      "base_sha": "da7372eac972d3e80ac050800efd0d29dc042ba2",
+      "source_head_sha": "64b885c70f8bf075f5ca04677afdc00b81d594f7",
+      "merge_sha": "efa9defb5e8a901028a0dd267db64dbd068c079b",
+      "merged_at": "2026-09-28T13:45:38Z",
+      "capsule_present": true,
+      "capsule_declared_status": "IN_PROGRESS",
+      "derived_status": "MERGED",
+      "capsule_sha256": "239a5d1462e3f4fcc5e38a9f510dfa7572ee842d22f63db3425ae55db1f7e533",
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SESSIONS-002.json",
+        "app/(auth)/admin/login/actions.ts",
+        "app/(auth)/admin/login/mfa/actions.ts",
+        "app/admin/sessions/page.tsx",
+        "app/api/admin/sessions/route.ts",
+        "app/api/admin/sessions/[sessionId]/route.ts",
+        "app/api/admin/sessions/revoke-others/route.ts",
+        "lib/auth/mfa-login.ts",
+        "lib/auth/session.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/sessions/contracts.ts",
+        "lib/domain/sessions/service.ts",
+        "lib/domain/sessions/user-agent.ts",
+        "prisma/migrations/20260928100000_session_user_agent/migration.sql",
+        "prisma/schema.prisma",
+        "scripts/ci/test_manifest.mjs",
+        "tests/session-logout-regression.test.ts",
+        "tests/sessions-api-e2e.test.ts",
+        "tests/sessions-domain-service.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SESSIONS-002.json",
+        "app/(auth)/admin/login/actions.ts",
+        "app/(auth)/admin/login/mfa/actions.ts",
+        "app/admin/sessions/page.tsx",
+        "app/api/admin/sessions/[sessionId]/route.ts",
+        "app/api/admin/sessions/revoke-others/route.ts",
+        "app/api/admin/sessions/route.ts",
+        "lib/auth/mfa-login.ts",
+        "lib/auth/session.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/sessions/contracts.ts",
+        "lib/domain/sessions/service.ts",
+        "lib/domain/sessions/user-agent.ts",
+        "prisma/migrations/20260928100000_session_user_agent/migration.sql",
+        "prisma/schema.prisma",
+        "scripts/ci/test_manifest.mjs",
+        "tests/session-logout-regression.test.ts",
+        "tests/sessions-api-e2e.test.ts",
+        "tests/sessions-domain-service.test.ts"
       ]
     }
   ]
