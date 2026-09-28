@@ -490,6 +490,13 @@ export function parsePrNumberFromSubject(subject) {
   return { matched: true, prNumber: uniqueNums[0] };
 }
 
+// Immutable audited historical squash merge commits where the exact repair marker was lost during squash merge.
+// - PR #83 is immutable history; its squash merged an audited TEST-BASELINE-REPAIR child.
+// - The exact repair marker was lost from the squash merge message, so only its exact immutable SHA is grandfathered.
+export const AUDITED_HISTORICAL_REPAIR_SYNC_SHAS = new Set([
+  "6428f2ad74283d10865764ffa939c8cb47d7a3f3",
+]);
+
 export function isAllowedSyncPath(filePath, isRepair = false) {
   const norm = filePath.replace(/\\/g, "/");
   if (norm === ".synthesis/task-capsule.json") return true;
@@ -678,7 +685,8 @@ export function validateGitHistoryAlignment(options = {}) {
     const messageLines = fullMsg.split(/\r?\n/);
     const isSync = messageLines.some(line => line.startsWith("SYN-GOV-LINEAGE-SYNC"));
     if (isSync) {
-      const isRepair = messageLines.some(line => line === "SYN-GOV-LINEAGE-SYNC-TEST-BASELINE-REPAIR");
+      const isRepair = messageLines.some(line => line === "SYN-GOV-LINEAGE-SYNC-TEST-BASELINE-REPAIR") ||
+        Boolean(commit.sha && AUDITED_HISTORICAL_REPAIR_SYNC_SHAS.has(commit.sha));
       if (!Array.isArray(commit.changedFiles)) {
         errors.push(`Lineage-sync commit ${commit.sha} is missing changed-files evidence`);
         continue;

@@ -872,6 +872,88 @@ describe("SYN-GOV-LINEAGE-001 / SYN-GOV-LINEAGE-002: Authoritative Implementatio
       assert.strictEqual(res.valid, true, `Expected PR #76 to be classified and validated, got errors: ${res.errors.join(", ")}`);
       assert.strictEqual(res.summary.classifiedNormalPrs, commits.length);
     });
+
+    it("27. Audited historical squash merge SHA (PR #83) without explicit repair marker is recognized as repair sync => PASS", () => {
+      const synthetic = makeSyntheticCommits();
+      const pr83Commit = {
+        sha: "6428f2ad74283d10865764ffa939c8cb47d7a3f3",
+        subject: "SYN-GOV-LINEAGE-SYNC-PR82 — Synchronize PR #82 lineage (#83)",
+        message: "SYN-GOV-LINEAGE-SYNC-PR82 — Synchronize PR #82 lineage (#83)\n\nSYN-GOV-LINEAGE-SYNC",
+        changedFiles: [
+          ".synthesis/lineage/capabilities.json",
+          ".synthesis/lineage/capsules.json",
+          ".synthesis/lineage/tasks.json",
+          ".synthesis/task-capsule.json",
+          ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR82.json",
+          ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR82A-TEST-BASELINE-REPAIR.json",
+          "tests/lineage-registry.test.ts"
+        ]
+      };
+      const commits = [...synthetic, pr83Commit];
+
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits
+      });
+      assert.strictEqual(res.valid, true, `Expected PR #83 historical repair sync to pass, got errors: ${res.errors.join(", ")}`);
+    });
+
+    it("28. Unknown SHA with generic sync marker attempting repair path modifications => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const unknownShaCommit = {
+        sha: "1111111111111111111111111111111111111111",
+        subject: "SYN-GOV-LINEAGE-SYNC-UNKNOWN — Unknown sync commit",
+        message: "SYN-GOV-LINEAGE-SYNC-UNKNOWN — Unknown sync commit\n\nSYN-GOV-LINEAGE-SYNC",
+        changedFiles: [
+          ".synthesis/lineage/capabilities.json",
+          ".synthesis/lineage/capsules.json",
+          ".synthesis/lineage/tasks.json",
+          ".synthesis/task-capsule.json",
+          ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR82.json",
+          ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR82A-TEST-BASELINE-REPAIR.json",
+          "tests/lineage-registry.test.ts"
+        ]
+      };
+      const commits = [...synthetic, unknownShaCommit];
+
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits
+      });
+      assert.strictEqual(res.valid, false, "Expected unknown SHA with generic sync marker to fail when modifying test files");
+      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: tests/lineage-registry.test.ts")));
+    });
+
+    it("29. Audited historical squash merge SHA touching unauthorized runtime path => FAIL", () => {
+      const synthetic = makeSyntheticCommits();
+      const pr83WithRuntime = {
+        sha: "6428f2ad74283d10865764ffa939c8cb47d7a3f3",
+        subject: "SYN-GOV-LINEAGE-SYNC-PR82 — Synchronize PR #82 lineage (#83)",
+        message: "SYN-GOV-LINEAGE-SYNC-PR82 — Synchronize PR #82 lineage (#83)\n\nSYN-GOV-LINEAGE-SYNC",
+        changedFiles: [
+          ".synthesis/task-capsule.json",
+          "tests/lineage-registry.test.ts",
+          "app/page.tsx"
+        ]
+      };
+      const commits = [...synthetic, pr83WithRuntime];
+
+      const res = validateGitHistoryAlignment({
+        repoRoot,
+        tasksData: rawTasks,
+        isShallow: false,
+        mode: "local",
+        commits
+      });
+      assert.strictEqual(res.valid, false, "Expected historical SHA touching runtime path to fail");
+      assert.ok(res.errors.some((e: string) => e.includes("touches forbidden path: app/page.tsx")));
+    });
   });
 
 
