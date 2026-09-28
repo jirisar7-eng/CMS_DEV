@@ -75,6 +75,8 @@ export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidato
   },
   AUTH_SESSION_REVOKED: {
     targetUserId: safeString(100),
+    revokeMode: safeString(20),
+    revokedCount: safeNumber(),
   },
 
   // User & RBAC events
