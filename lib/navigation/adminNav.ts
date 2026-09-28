@@ -352,9 +352,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/settings',
         icon: Settings,
         group: 'SYSTÉM',
-        status: 'POUZE UI',
+        status: 'FUNKČNÍ',
         helpKey: 'system.settings.view',
-        description: 'Globální systémové parametry, lokalizace a režim údržby.',
+        description: 'Globální systémové parametry, lokalizace a projektová konfigurace.',
       },
       {
         id: 'integrations',

@@ -19,7 +19,9 @@
     "DOMAIN_SETTINGS",
     "AUDIT",
     "API",
-    "TEST"
+    "TEST",
+    "UI",
+    "NAVIGATION"
   ],
   "allowed_paths": [
     ".synthesis/lineage/capsules.json",
@@ -35,13 +37,16 @@
     "scripts/ci/test_manifest.mjs",
     "tests/settings-registry.test.ts",
     "tests/settings-api-security.test.ts",
-    "tests/settings-lifecycle-postgres.test.ts"
+    "tests/settings-lifecycle-postgres.test.ts",
+    "app/admin/settings/**",
+    "components/admin/settings/**",
+    "lib/navigation/adminNav.ts",
+    "tests/admin-capability-status.test.ts",
+    "tests/settings-admin-ui.test.ts"
   ],
   "forbidden_paths": [
     ".synthesis/lineage/tasks.json",
     ".synthesis/lineage/capabilities.json",
-    "app/admin/settings/page.tsx",
-    "lib/navigation/adminNav.ts",
     "lib/auth/permissions.ts",
     "lib/auth/rbac.ts",
     ".github/**",

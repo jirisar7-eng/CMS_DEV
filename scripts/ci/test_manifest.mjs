@@ -87,7 +87,8 @@ export const DETERMINISTIC_TESTS = [
   "tests/user-crud-api.test.ts",
   "tests/user-domain-validation.test.ts",
   "tests/settings-registry.test.ts",
-  "tests/settings-api-security.test.ts"
+  "tests/settings-api-security.test.ts",
+  "tests/settings-admin-ui.test.ts"
 ];
 
 export const POSTGRES_TESTS = [
