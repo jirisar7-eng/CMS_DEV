@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 92,
+  "total_capsules": 93,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -671,6 +671,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR82",
       "sha256": "4e7ea59249266c23cabeb78105000b58625debc7e086b71e8010e827efb15316",
       "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR82-20260928-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR83A-20260928-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR83A-MERGE-MARKER-REPAIR",
+      "title": "PR83 Squash Merge Marker Classification Repair",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR83A-MERGE-MARKER-REPAIR.json",
+      "base_sha": "6428f2ad74283d10865764ffa939c8cb47d7a3f3",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR83A-MERGE-MARKER-REPAIR",
+      "sha256": "6704208c178d35328cbcf60f9c627f9487a647e135046e20595084d955ff5d70",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR82A-20260928-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
