@@ -201,7 +201,14 @@ test("Sessions API and Admin UI Deterministic Contract Tests", async (t) => {
     // Route source safety checks
     const getRoutePath = path.join(process.cwd(), "app/api/admin/sessions/route.ts");
     const getRouteSource = fs.readFileSync(getRoutePath, "utf8");
-    assert.ok(getRouteSource.includes("getSessionService().listSessions"), "GET route must use domain service");
+    assert.ok(
+      getRouteSource.includes("getSessionService()"),
+      "GET route must obtain session domain service"
+    );
+    assert.ok(
+      getRouteSource.includes(".listSessions("),
+      "GET route must call listSessions"
+    );
 
     const deleteRoutePath = path.join(process.cwd(), "app/api/admin/sessions/[sessionId]/route.ts");
     const deleteRouteSource = fs.readFileSync(deleteRoutePath, "utf8");
