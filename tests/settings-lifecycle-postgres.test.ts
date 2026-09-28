@@ -7,7 +7,7 @@ describe('PostgreSQL Real Integration - SYN-SETTINGS-001 Settings Persistence', 
   let service: any;
   const timestamp = Date.now();
   const testUserId = `settings-test-user-${timestamp}`;
-  let createdProjectId: string;
+  const createdProjectId = `proj-settings-${timestamp}`;
   const projectKey = `postgres-settings-proj-${timestamp}`;
 
   before(async () => {
@@ -19,22 +19,94 @@ describe('PostgreSQL Real Integration - SYN-SETTINGS-001 Settings Persistence', 
     prisma = new PrismaClient();
     service = getSettingsService();
 
-    // Create test project
-    const proj = await prisma.project.create({
+    // 1. Create test project
+    await prisma.project.create({
       data: {
+        id: createdProjectId,
         key: projectKey,
         name: 'PostgreSQL Settings Test Project',
+        status: 'ACTIVE',
       },
     });
-    createdProjectId = proj.id;
+
+    // 2. Create ACTIVE test user
+    await prisma.user.create({
+      data: {
+        id: testUserId,
+        email: `${testUserId}@example.com`,
+        displayName: 'Settings Test Admin',
+        passwordHash: 'test-only-non-authenticating-hash',
+        status: 'ACTIVE',
+      },
+    });
+
+    // 3. Ensure system.manage and projects.manage permissions exist
+    const permsToEnsure = ['system.manage', 'projects.manage'];
+    const permMap: Record<string, string> = {};
+    for (const pKey of permsToEnsure) {
+      let perm = await prisma.permission.findUnique({ where: { key: pKey } });
+      if (!perm) {
+        perm = await prisma.permission.create({
+          data: {
+            key: pKey,
+            description: 'Permission for ' + pKey,
+          },
+        });
+      }
+      permMap[pKey] = perm.id;
+    }
+
+    // 4. Grant system.manage globally (projectId: null)
+    await prisma.userPermissionOverride.create({
+      data: {
+        userId: testUserId,
+        permissionId: permMap['system.manage'],
+        projectId: null,
+        isGranted: true,
+      },
+    });
+
+    // 5. Grant projects.manage scoped to createdProjectId
+    await prisma.userPermissionOverride.create({
+      data: {
+        userId: testUserId,
+        permissionId: permMap['projects.manage'],
+        projectId: createdProjectId,
+        isGranted: true,
+      },
+    });
   });
 
   after(async () => {
-    if (prisma && createdProjectId) {
-      await prisma.project.deleteMany({ where: { id: createdProjectId } });
+    if (!prisma) return;
+    try {
+      // Clean up in reverse dependency order
+      await prisma.userPermissionOverride.deleteMany({
+        where: { userId: testUserId },
+      });
+      await prisma.projectSetting.deleteMany({
+        where: { projectId: createdProjectId },
+      });
       await prisma.systemSetting.deleteMany({
         where: { key: { in: ['system.instance_name'] } },
       });
+      await prisma.auditLog.deleteMany({
+        where: {
+          OR: [
+            { actorId: testUserId },
+            { scopeId: createdProjectId },
+          ],
+        },
+      });
+      await prisma.project.deleteMany({
+        where: { id: createdProjectId },
+      });
+      await prisma.user.deleteMany({
+        where: { id: testUserId },
+      });
+    } catch (err) {
+      // Best-effort cleanup
+    } finally {
       await prisma.$disconnect();
     }
   });
