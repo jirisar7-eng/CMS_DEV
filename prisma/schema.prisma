@@ -35,6 +35,7 @@ model Project {
   redirectRules           RedirectRule[]
   searchDocuments         SearchDocument[]
   pluginStates            ProjectPluginState[]
+  settings                ProjectSetting[]
 }
 
 // -----------------------------------------------------------------------------
@@ -631,4 +632,29 @@ model MfaChallenge {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// -----------------------------------------------------------------------------
+// SETTINGS PERSISTENCE (System & Project Scopes)
+// -----------------------------------------------------------------------------
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectSetting {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, key])
+  @@index([projectId])
 }
