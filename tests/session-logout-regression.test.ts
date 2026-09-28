@@ -64,7 +64,12 @@ test("PostgreSQL Session Logout and User-Agent Regression Integration", async (t
     const mfaActionsPath = path.join(process.cwd(), "app/(auth)/admin/login/mfa/actions.ts");
     const mfaCode = fs.readFileSync(mfaActionsPath, "utf8");
     assert.ok(mfaCode.includes('headerList.get("user-agent")'), "mfa action must read user-agent header");
-    assert.ok(mfaCode.includes("completeMfaLogin(await getMfaChallengeCookieToken(), formData.get("code"), userAgent)"), "mfa action must pass userAgent");
+    assert.ok(
+      mfaCode.includes(
+        'completeMfaLogin(await getMfaChallengeCookieToken(), formData.get("code"), userAgent)'
+      ),
+      "mfa action must pass userAgent"
+    );
   });
 
   // 2. PostgreSQL persistence assertions
