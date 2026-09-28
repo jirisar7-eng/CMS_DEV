@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 71,
+  "total_tasks": 72,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -1221,7 +1221,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 24,
-      "pr_title": "SYN-CONTENT-002 — Admin Pages persistence and lifecycle cutover",
+      "pr_title": "SYN-CONTENT-002 \u2014 Admin Pages persistence and lifecycle cutover",
       "task_id": "SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER",
       "branch": "task/SYN-CONTENT-002-ADMIN-PERSISTENCE-ADAPTER",
       "base_sha": "f6a7ea108e38ad5c96ba27839fa167506dedeeec",
@@ -1317,7 +1317,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 25,
-      "pr_title": "SYN-SEC-004 — Dependency hardening",
+      "pr_title": "SYN-SEC-004 \u2014 Dependency hardening",
       "task_id": "SYN-SEC-004-DEPENDENCY-HARDENING",
       "branch": "task/SYN-SEC-004-DEPENDENCY-HARDENING",
       "base_sha": "e8f1cbf5dac5ea97d68384153da2bb832f476298",
@@ -1350,7 +1350,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 26,
-      "pr_title": "SYN-ADMIN-STATUS-001 — Authoritative Capability Map & Status Truthfulness",
+      "pr_title": "SYN-ADMIN-STATUS-001 \u2014 Authoritative Capability Map & Status Truthfulness",
       "task_id": "SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
       "branch": "task/SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
       "base_sha": "c0f3b9f776db98c9f7d9ad2c4931067d279e4b59",
@@ -1417,7 +1417,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 27,
-      "pr_title": "SYN-PLATFORM-001 — Project Context Foundation",
+      "pr_title": "SYN-PLATFORM-001 \u2014 Project Context Foundation",
       "task_id": "SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION",
       "branch": "task/SYN-PLATFORM-001-PROJECT-CONTEXT-FOUNDATION",
       "base_sha": "2cf4fcb9a4353bc2c48883fd1e4061631358d41c",
@@ -1485,7 +1485,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 28,
-      "pr_title": "SYN-NAV-001 — Navigation Foundation",
+      "pr_title": "SYN-NAV-001 \u2014 Navigation Foundation",
       "task_id": "SYN-NAV-001-NAVIGATION-FOUNDATION",
       "branch": "task/SYN-NAV-001-NAVIGATION-FOUNDATION",
       "base_sha": "91c947eb8dcf91995e5c06ba3859f7d862277fa7",
@@ -1783,7 +1783,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 33,
-      "pr_title": "SYN-MEDIA-001B — Media Library Runtime Security Cutover",
+      "pr_title": "SYN-MEDIA-001B \u2014 Media Library Runtime Security Cutover",
       "task_id": "SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER",
       "branch": "task/SYN-MEDIA-001B-MEDIA-LIBRARY-RUNTIME-SECURITY-CUTOVER",
       "base_sha": "6887f26deb3849676e9c0c3ac3bce40d11b8cf7b",
@@ -1846,7 +1846,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 34,
-      "pr_title": "SYN-WEB-003 — SEO & Redirects Admin Cutover",
+      "pr_title": "SYN-WEB-003 \u2014 SEO & Redirects Admin Cutover",
       "task_id": "SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER",
       "branch": "task/SYN-WEB-003-SEO-REDIRECTS-ADMIN-CUTOVER",
       "base_sha": "afdd8cbd51ecbd18357bc94da324f7bef00573b6",
@@ -1911,7 +1911,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 35,
-      "pr_title": "SYN-GOV-LINEAGE-001 — Immutable Task Archive & Lineage Registry",
+      "pr_title": "SYN-GOV-LINEAGE-001 \u2014 Immutable Task Archive & Lineage Registry",
       "task_id": "SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
       "branch": "task/SYN-GOV-LINEAGE-001-IMMUTABLE-TASK-ARCHIVE",
       "base_sha": "7c146b8f0fdb13100c6e11bc23381c30b2a60e5d",
@@ -1982,7 +1982,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 36,
-      "pr_title": "SYN-SYSTEM-MAP-001 — Secure Read-Only Resolver & Owner Boundary",
+      "pr_title": "SYN-SYSTEM-MAP-001 \u2014 Secure Read-Only Resolver & Owner Boundary",
       "task_id": "SYN-SYSTEM-MAP-001",
       "branch": "task/SYN-SYSTEM-MAP-001-SECURE-RESOLVER",
       "base_sha": "15fbff2ea0311d8551881cbe9e7a0d13ebb7aed9",
@@ -2022,7 +2022,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 37,
-      "pr_title": "SYN-SYSTEM-MAP-002 — Admin System Map UI",
+      "pr_title": "SYN-SYSTEM-MAP-002 \u2014 Admin System Map UI",
       "task_id": "SYN-SYSTEM-MAP-002",
       "branch": "task/SYN-SYSTEM-MAP-002-ADMIN-UI",
       "base_sha": "59aab75699b39b8081e0655091cf908e7e470346",
@@ -2067,7 +2067,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 38,
-      "pr_title": "SYN-PLUGIN-001 — Plugin Manifest & Registry Foundation",
+      "pr_title": "SYN-PLUGIN-001 \u2014 Plugin Manifest & Registry Foundation",
       "task_id": "SYN-PLUGIN-001",
       "branch": "task/SYN-PLUGIN-001-PLUGIN-MANIFEST-REGISTRY-FOUNDATION",
       "base_sha": "b1919ef082a38a5b9d8e07d09d58737ef288f602",
@@ -2103,7 +2103,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 39,
-      "pr_title": "SYN-PLUGIN-001A — Plugin Registry System Map Lineage Delta",
+      "pr_title": "SYN-PLUGIN-001A \u2014 Plugin Registry System Map Lineage Delta",
       "task_id": "SYN-PLUGIN-001A",
       "branch": "task/SYN-PLUGIN-001A-PLUGIN-REGISTRY-SYSTEM-MAP-LINEAGE-DELTA",
       "base_sha": "1cfdf81b29be8f93f03710590c71a72705ac8038",
@@ -2137,7 +2137,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 40,
-      "pr_title": "SYN-PLUGIN-002 — Project Plugin Lifecycle & Persistence",
+      "pr_title": "SYN-PLUGIN-002 \u2014 Project Plugin Lifecycle & Persistence",
       "task_id": "SYN-PLUGIN-002",
       "branch": "task/SYN-PLUGIN-002-PROJECT-PLUGIN-LIFECYCLE-PERSISTENCE",
       "base_sha": "9624c59bcb86bf8252efe6e116077fc7d39ce016",
@@ -2250,7 +2250,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 42,
-      "pr_title": "SYN-AUDIT-001 — Audit Admin Viewer Cutover",
+      "pr_title": "SYN-AUDIT-001 \u2014 Audit Admin Viewer Cutover",
       "task_id": "SYN-AUDIT-001",
       "branch": "task/SYN-AUDIT-001-ADMIN-VIEWER-CUTOVER",
       "base_sha": "2a3837fb06d86dac8f0c3edcfd1ac319bbf490e3",
@@ -2296,7 +2296,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 43,
-      "pr_title": "SYN-CI-002 — Technical Gate Hardening",
+      "pr_title": "SYN-CI-002 \u2014 Technical Gate Hardening",
       "task_id": "SYN-CI-002",
       "branch": "task/SYN-CI-002-TECHNICAL-GATE-HARDENING",
       "base_sha": "b4bdee8b49a4b185bbdfe874b1018be19302301e",
@@ -2338,7 +2338,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 44,
-      "pr_title": "SYN-SEC-005A — RBAC Precedence Contract",
+      "pr_title": "SYN-SEC-005A \u2014 RBAC Precedence Contract",
       "task_id": "SYN-SEC-005A",
       "branch": "task/SYN-SEC-005A-RBAC-PRECEDENCE-CONTRACT",
       "base_sha": "b3407c91d5409060b67ee2580161868fe2de72e3",
@@ -2370,7 +2370,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 45,
-      "pr_title": "SYN-GOV-CAPSULE-002 — Task Capsule Identity & Registry Foundation",
+      "pr_title": "SYN-GOV-CAPSULE-002 \u2014 Task Capsule Identity & Registry Foundation",
       "task_id": "SYN-GOV-CAPSULE-002",
       "branch": "task/SYN-GOV-CAPSULE-002-TASK-CAPSULE-IDENTITY-REGISTRY",
       "base_sha": "ff1fc6ced81a887ef6de319deee3fc4c2679b864",
@@ -2667,7 +2667,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 52,
-      "pr_title": "SYN-SEC-009 — Admin MFA — TOTP & Recovery",
+      "pr_title": "SYN-SEC-009 \u2014 Admin MFA \u2014 TOTP & Recovery",
       "task_id": "SYN-SEC-009",
       "branch": "task/SYN-SEC-009-ADMIN-MFA",
       "base_sha": "58d630bc272d940460e27595cb2734f4397fd8c8",
@@ -2745,7 +2745,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 53,
-      "pr_title": "SYN-SEC-010 — HTTP Security Headers",
+      "pr_title": "SYN-SEC-010 \u2014 HTTP Security Headers",
       "task_id": "SYN-SEC-010",
       "branch": "task/SYN-SEC-010-HTTP-SECURITY-HEADERS",
       "base_sha": "4d8cda538ddef8626e0dcbbfe9cfffd90cbb7edd",
@@ -2775,7 +2775,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 54,
-      "pr_title": "SYN-OPS-002 — Liveness & Readiness Contract",
+      "pr_title": "SYN-OPS-002 \u2014 Liveness & Readiness Contract",
       "task_id": "SYN-OPS-002",
       "branch": "task/SYN-OPS-002-LIVENESS-READINESS",
       "base_sha": "c8c3fa32eb0ce0d09c4443e927c506dcad6af8f4",
@@ -2811,7 +2811,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 55,
-      "pr_title": "SYN-DEP-003 — Toolchain & Dependency Baseline",
+      "pr_title": "SYN-DEP-003 \u2014 Toolchain & Dependency Baseline",
       "task_id": "SYN-DEP-003",
       "branch": "task/SYN-DEP-003-TOOLCHAIN-BASELINE",
       "base_sha": "ea5ca6dfb0619c5bbba6c9cb0306d39b0f14b440",
@@ -2974,7 +2974,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 60,
-      "pr_title": "SYN-EDITOR-002 — Puck Preview/Public Parity & Mobile UX",
+      "pr_title": "SYN-EDITOR-002 \u2014 Puck Preview/Public Parity & Mobile UX",
       "task_id": "SYN-EDITOR-002",
       "branch": "task/SYN-EDITOR-002-PUCK-PARITY-MOBILE",
       "base_sha": "7b45ffea82220946e3aab088768ca5d32e8a4598",
@@ -3019,7 +3019,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 61,
-      "pr_title": "SYN-GOV-EDITOR-002 — Close SYN-EDITOR-002 capsule",
+      "pr_title": "SYN-GOV-EDITOR-002 \u2014 Close SYN-EDITOR-002 capsule",
       "task_id": "SYN-GOV-EDITOR-002-CLOSEOUT",
       "branch": "task/SYN-GOV-EDITOR-002-CLOSEOUT",
       "base_sha": "73fe2192ee6354fc82c574d448d0e6aed90931cf",
@@ -3222,7 +3222,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 66,
-      "pr_title": "SYN-SEO-002 — SEO Runtime Completion",
+      "pr_title": "SYN-SEO-002 \u2014 SEO Runtime Completion",
       "task_id": "SYN-SEO-002",
       "branch": "task/SYN-SEO-002-SEO-RUNTIME",
       "base_sha": "1b225c240f3e1fe681f093e8ef583b01249072c8",
@@ -3276,7 +3276,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 67,
-      "pr_title": "SYN-GOV-LINEAGE-002 — Live Lineage Drift Repair",
+      "pr_title": "SYN-GOV-LINEAGE-002 \u2014 Live Lineage Drift Repair",
       "task_id": "SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
       "branch": "task/SYN-GOV-LINEAGE-002-LIVE-LINEAGE-DRIFT-REPAIR",
       "base_sha": "dab847fedfe086167b4932032e88dd3b3d46131b",
@@ -3337,7 +3337,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 69,
-      "pr_title": "SYN-MEDIA-003 — Align MediaPermission contract with canonical RBAC",
+      "pr_title": "SYN-MEDIA-003 \u2014 Align MediaPermission contract with canonical RBAC",
       "task_id": "SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
       "branch": "task/SYN-MEDIA-003-PERMISSION-CONTRACT-ALIGNMENT",
       "base_sha": "a9e3dc7a89f9728af8b00c349d7198729bc320a2",
@@ -3371,7 +3371,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 70,
-      "pr_title": "SYN-SEC-011 — Align Admin session policy and Security UI truthfulness",
+      "pr_title": "SYN-SEC-011 \u2014 Align Admin session policy and Security UI truthfulness",
       "task_id": "SYN-SEC-011-MAIN-ALIGNMENT",
       "branch": "task/SYN-SEC-011-ADMIN-SECURITY-POLICY-ALIGNMENT",
       "base_sha": "c0a02b6bcaf07dfb0bb0b8562265eb5d59f0bf66",
@@ -3417,7 +3417,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 74,
-      "pr_title": "SYN-PROJECTS-002 — Projects CRUD & Lifecycle",
+      "pr_title": "SYN-PROJECTS-002 \u2014 Projects CRUD & Lifecycle",
       "task_id": "SYN-PROJECTS-002-MAIN-ALIGNMENT",
       "branch": "task/SYN-PROJECTS-002-PROJECT-LIFECYCLE",
       "base_sha": "9b603ce5a8a6c07ed4d19fae47f82afbf24152db",
@@ -3475,7 +3475,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 76,
-      "pr_title": "SYN-USERS-001 — Users Management v1",
+      "pr_title": "SYN-USERS-001 \u2014 Users Management v1",
       "task_id": "SYN-USERS-001",
       "branch": "task/SYN-USERS-001-USERS-MANAGEMENT-V1",
       "base_sha": "02869df93926055ccd5127626262e4c1d88b3008",
@@ -3533,7 +3533,7 @@
     {
       "record_version": "1.0.0",
       "pr_number": 78,
-      "pr_title": "SYN-SEARCH-002 — Close Search Runtime Completion",
+      "pr_title": "SYN-SEARCH-002 \u2014 Close Search Runtime Completion",
       "task_id": "SYN-SEARCH-002",
       "branch": "task/SYN-SEARCH-002-CLOSEOUT",
       "base_sha": "1210a3e80095694423e74866dd68a0ced3b60a6c",
@@ -3556,6 +3556,79 @@
         ".synthesis/lineage/capsules.json",
         ".synthesis/task-capsule.json",
         ".synthesis/task-capsules/SYN-SEARCH-002.json"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 80,
+      "pr_title": "feat(rbac): complete roles and permissions management v1",
+      "task_id": "SYN-RBAC-002",
+      "branch": "task/SYN-RBAC-002",
+      "base_sha": "fd45bcb3c0fb61d9ebe3362d393469fad61864ae",
+      "source_head_sha": "ae34087f91b5e4d842083a70e2e4c81c403fde0c",
+      "merge_sha": "3e6cbe1b258a94fdf5e77fbeeea4b2e36bbda6b9",
+      "merged_at": "2026-09-27T19:48:44Z",
+      "capsule_present": true,
+      "capsule_declared_status": "IN_PROGRESS",
+      "derived_status": "MERGED",
+      "capsule_sha256": "5addb4cd1100fe8fd91ed442dc15c23460da497ae20fe8aaff7d2d723cdc34b6",
+      "touches_capabilities": [
+        "identity_rbac"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-RBAC-002.json",
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/lineage/capabilities.json",
+        "prisma/migrations/20260927160000_rbac_global_unique_indexes/**",
+        "lib/auth/rbac.ts",
+        "lib/domain/roles/**",
+        "lib/auth/audit.ts",
+        "lib/domain/audit/service.ts",
+        "app/api/admin/roles/**",
+        "app/api/admin/users/[userId]/roles/**",
+        "app/api/admin/users/[userId]/overrides/**",
+        "app/admin/roles/**",
+        "components/admin/roles/**",
+        "tests/rbac-domain-service.test.ts",
+        "tests/rbac-domain-validation.test.ts",
+        "tests/rbac-migration-integrity.test.ts",
+        "tests/rbac-permission-catalog-contract.test.ts",
+        "tests/rbac-security-integrity.test.ts",
+        "scripts/ci/test_manifest.mjs",
+        "lib/auth/permissions.ts",
+        "scripts/bootstrap-admin.ts",
+        "tests/content-rbac-foundation.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-RBAC-002.json",
+        "app/admin/roles/page.tsx",
+        "app/api/admin/roles/[roleId]/permissions/route.ts",
+        "app/api/admin/roles/[roleId]/route.ts",
+        "app/api/admin/roles/route.ts",
+        "app/api/admin/users/[userId]/overrides/route.ts",
+        "app/api/admin/users/[userId]/roles/route.ts",
+        "lib/auth/audit.ts",
+        "lib/auth/permissions.ts",
+        "lib/auth/rbac.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/roles/index.ts",
+        "lib/domain/roles/service.ts",
+        "lib/domain/roles/types.ts",
+        "lib/domain/roles/validation.ts",
+        "prisma/migrations/20260927160000_rbac_global_unique_indexes/migration.sql",
+        "scripts/bootstrap-admin.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/content-rbac-foundation.test.ts",
+        "tests/rbac-domain-service.test.ts",
+        "tests/rbac-domain-validation.test.ts",
+        "tests/rbac-migration-integrity.test.ts",
+        "tests/rbac-permission-catalog-contract.test.ts",
+        "tests/rbac-security-integrity.test.ts"
       ]
     }
   ]

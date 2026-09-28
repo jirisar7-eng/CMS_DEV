@@ -68,9 +68,10 @@
         "SYN-SEC-007",
         "SYN-SEC-008",
         "SYN-SEC-009",
-        "SYN-CONTENT-006"
+        "SYN-CONTENT-006",
+        "SYN-RBAC-002"
       ],
-      "last_merge_sha": "7b45ffea82220946e3aab088768ca5d32e8a4598",
+      "last_merge_sha": "3e6cbe1b258a94fdf5e77fbeeea4b2e36bbda6b9",
       "ssot_role": "Canonical identity, session, and role-based access control SSOT"
     },
     {
