@@ -173,6 +173,7 @@ export async function verifyMfaLogin(token: string | null, input: unknown): Prom
 export async function completeMfaLogin(
   token: string | null,
   input: unknown,
+  userAgent?: string | null,
 ): Promise<PendingSessionCookie | null> {
   const state: MfaTransactionState = {
     token: token && /^[a-f0-9]{64}$/.test(token) ? token : "",
@@ -193,7 +194,7 @@ export async function completeMfaLogin(
             resourceType: "UserMfa",
             tx,
           });
-          pending = await createSessionRecord(verifiedUserId, tx);
+          pending = await createSessionRecord(verifiedUserId, tx, userAgent);
         });
         return userId ? pending : null;
       },

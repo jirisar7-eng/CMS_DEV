@@ -1,0 +1,97 @@
+import "server-only";
+import { NextRequest, NextResponse } from "next/server";
+import { validateMutationOrigin } from "@/lib/domain/pages-api/origin";
+import { getSessionService } from "@/lib/domain/sessions/service";
+import { mapSessionErrorToResponse } from "@/lib/domain/sessions/contracts";
+
+function formatErrorResponse(code: string, message: string, status: number): NextResponse {
+  return NextResponse.json(
+    {
+      error: {
+        code,
+        message,
+        status,
+      },
+    },
+    {
+      status,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+    },
+  );
+}
+
+function validateSessionIdParam(raw: unknown): { valid: true; sessionId: string } | { valid: false; error: string } {
+  if (typeof raw !== "string") {
+    return { valid: false, error: "Session ID must be a string" };
+  }
+  if (raw.length === 0) {
+    return { valid: false, error: "Session ID is required" };
+  }
+  if (raw !== raw.trim() || /\s/.test(raw)) {
+    return { valid: false, error: "Session ID must not contain whitespace" };
+  }
+  if (/[\x00-\x1F\x7F]/.test(raw)) {
+    return { valid: false, error: "Session ID contains invalid control characters" };
+  }
+  if (raw.length > 128) {
+    return { valid: false, error: "Session ID exceeds maximum allowed length" };
+  }
+  return { valid: true, sessionId: raw };
+}
+
+function handleRouteError(err: unknown): NextResponse {
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === "CSRF_REJECTED"
+  ) {
+    const msg =
+      "message" in err && typeof (err as { message: unknown }).message === "string"
+        ? (err as { message: string }).message
+        : "Cross-origin request rejected";
+    return formatErrorResponse("CSRF_REJECTED", msg, 403);
+  }
+  if (err instanceof Error && err.message === "CSRF_REJECTED") {
+    return formatErrorResponse("CSRF_REJECTED", "Cross-origin request rejected", 403);
+  }
+  const mapped = mapSessionErrorToResponse(err);
+  return NextResponse.json(mapped.body, {
+    status: mapped.status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ sessionId: string }> },
+) {
+  try {
+    validateMutationOrigin(request);
+
+    const resolvedParams = await context.params;
+    const validation = validateSessionIdParam(resolvedParams?.sessionId);
+    if (!validation.valid) {
+      return formatErrorResponse("INVALID_INPUT", validation.error, 400);
+    }
+
+    const sessionService = getSessionService();
+    const result = await sessionService.revokeSessionById(validation.sessionId);
+
+    return NextResponse.json(result, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (err: unknown) {
+    return handleRouteError(err);
+  }
+}

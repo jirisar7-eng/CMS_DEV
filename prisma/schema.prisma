@@ -70,6 +70,7 @@ model Session {
   id            String    @id // session id (cuid or random hex)
   tokenHash     String?   @unique // SHA-256 hash of the bearer session token
   userId        String
+  userAgent     String?
   expiresAt     DateTime // Absolute session expiration
   idleExpiresAt DateTime? // Sliding idle expiration
   lastSeenAt    DateTime  @default(now())

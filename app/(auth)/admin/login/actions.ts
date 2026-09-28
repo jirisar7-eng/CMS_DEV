@@ -5,6 +5,7 @@ import {
   createSessionRecord,
   setSessionCookie,
   invalidateSession,
+  invalidateSessionByRawToken,
   type PendingSessionCookie,
 } from "@/lib/auth/session";
 import { logAudit } from "@/lib/auth/audit";
@@ -168,7 +169,14 @@ export async function loginAction(state: any, formData: FormData) {
     if (mfa?.status === "ENABLED") {
       return { outcome: "MFA_REQUIRED" };
     }
-    const pendingSession = await createSessionRecord(user.id, tx);
+    let userAgent: string | null = null;
+    try {
+      const headerList = await headers();
+      userAgent = headerList.get("user-agent");
+    } catch {
+      // Non-request context
+    }
+    const pendingSession = await createSessionRecord(user.id, tx, userAgent);
     await logAudit({
       action: "AUTH_LOGIN_SUCCESS",
       scopeType: "SYSTEM",
@@ -203,15 +211,15 @@ export async function loginAction(state: any, formData: FormData) {
 
 export async function logoutAction() {
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get("syn_admin_session")?.value;
-  if (sessionId) {
+  const rawToken = cookieStore.get("syn_admin_session")?.value;
+  if (rawToken) {
     if (isDatabaseConfigured()) {
       await logAudit({
         action: "AUTH_LOGOUT",
         scopeType: "SYSTEM",
       });
     }
-    await invalidateSession(sessionId);
+    await invalidateSessionByRawToken(rawToken);
   }
   redirect("/admin/login");
 }

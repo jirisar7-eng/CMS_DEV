@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 89,
+  "total_capsules": 90,
   "capsules": [
     {
       "capsule_id": "CAP-LEGACY-SYN-ADMIN-STATUS-001-CAPABILITY-MAP",
@@ -1133,6 +1133,20 @@
       "expected_branch": "task/SYN-SEO-002-SEO-RUNTIME",
       "sha256": "efe0162a47896da9f1f6b65f16bd4340fa0e76942de1d50881e629e0cdd2c294",
       "parent_capsule_id": "CAP-SYN-GOV-NAV-002-20260924-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-SESSIONS-002-20260928-001",
+      "task_id": "SYN-SESSIONS-002",
+      "title": "Sessions & Devices Management",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-SESSIONS-002.json",
+      "base_sha": "da7372eac972d3e80ac050800efd0d29dc042ba2",
+      "expected_branch": "task/SYN-SESSIONS-002",
+      "sha256": "239a5d1462e3f4fcc5e38a9f510dfa7572ee842d22f63db3425ae55db1f7e533",
+      "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": false
     },
