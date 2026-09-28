@@ -19,7 +19,7 @@ export default function PwaPage() {
       group="DESIGN"
       title="Progressive Web App (PWA)"
       description="Konfigurace instalačního manifestu pro mobilní telefony a desktop, offline mezipaměti a notifikací."
-      status="PLÁNOVÁNO"
+      status="POUZE UI"
       helpKey="design.pwa.view"
       emptyTitle="PWA modul zatím není v tomto projektu nakonfigurován"
       emptyDescription="Aktivujte PWA podporu pro umožnění instalace webu jako nativní aplikace."

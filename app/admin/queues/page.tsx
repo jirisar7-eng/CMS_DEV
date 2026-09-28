@@ -35,14 +35,14 @@ export default function QueuesPage() {
       {({ handleUnfinishedAction }) => (
         <div className="space-y-6 max-w-4xl">
           <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Schválená schopnost v roadmapě:</span>
+            <span className="font-bold block">PLÁNOVÁNO — UKÁZKOVÁ DATA:</span>
             <span>
-              Tento modul bude obsluhovat asynchronní fronty (Background Jobs) a plánovač úloh pro optimalizaci velkých objemů dat.
+              Zobrazené úlohy jsou syntetická ukázková data pro ověření rozhraní fronty. Skutečný background worker a plánovač úloh budou dopracovány.
             </span>
           </div>
 
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">Úlohy ve frontě ({queueJobs.length})</h3>
+            <h3 className="text-sm font-bold text-foreground">Ukázkové úlohy ve frontě ({queueJobs.length})</h3>
             <button
               type="button"
               onClick={() => handleUnfinishedAction('Pročistit dokončené úlohy')}

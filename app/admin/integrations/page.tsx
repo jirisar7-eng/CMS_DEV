@@ -34,8 +34,15 @@ export default function IntegrationsPage() {
     >
       {({ handleUnfinishedAction }) => (
         <div className="space-y-6">
+          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-1">
+            <span className="font-bold block">POUZE UI — UKÁZKOVÁ DATA:</span>
+            <span>
+              Tato sekce obsahuje ukázkové integrace a demonstrativní stavy propojení. Skutečná konfigurace a volání externích služeb budou napojeny v návazném kroku.
+            </span>
+          </div>
+
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">Aktivní integrace ({integrations.length})</h3>
+            <h3 className="text-sm font-bold text-foreground">Ukázkové integrace ({integrations.length})</h3>
             <button
               type="button"
               onClick={() => handleUnfinishedAction('Přidat novou integraci')}

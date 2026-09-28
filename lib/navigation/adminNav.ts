@@ -228,7 +228,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: '/admin/roles',
         icon: KeyRound,
         group: 'SPRÁVA',
-        status: 'ZÁKLAD',
+        status: 'FUNKČNÍ',
         helpKey: 'management.roles.view',
         description: 'Přístupová práva (RBAC) a politika nejnižších privilegií.',
       },

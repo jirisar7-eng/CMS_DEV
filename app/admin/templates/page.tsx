@@ -35,14 +35,14 @@ export default function TemplatesPage() {
       {({ handleUnfinishedAction }) => (
         <div className="space-y-6 max-w-4xl">
           <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-1">
-            <span className="font-bold block">Schválená schopnost v roadmapě:</span>
+            <span className="font-bold block">PLÁNOVÁNO — UKÁZKOVÁ DATA:</span>
             <span>
-              Tento modul bude plně napojen po dokončení základní e-mailové a formulářové infrastruktury.
+              Tento modul zobrazuje ukázkové transakční šablony. Skutečná správa a odesílání e-mailů budou napojeny po dokončení e-mailové infrastruktury.
             </span>
           </div>
 
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">Transakční šablony</h3>
+            <h3 className="text-sm font-bold text-foreground">Ukázkové šablony</h3>
             <button
               type="button"
               onClick={() => handleUnfinishedAction('Vytvořit novou šablonu zprávy')}
