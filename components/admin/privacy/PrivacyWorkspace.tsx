@@ -30,7 +30,8 @@ interface PrivacySettingsState {
 
 export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
   const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
-  const [loading, setLoading] = useState<boolean>(Boolean(initialProjectId));
+  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
+  const loading = Boolean(projectId) && loadedProjectId !== projectId;
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -102,7 +103,6 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
       }
     };
 
-    setLoading(true);
     fetchPrivacySettings(projectId).then((result) => {
       if (!isMounted || controller.signal.aborted) return;
       if (result.error) {
@@ -115,7 +115,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
         });
         setError(null);
       }
-      setLoading(false);
+      setLoadedProjectId(projectId);
     });
 
     return () => {
