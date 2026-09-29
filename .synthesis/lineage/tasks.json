@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 73,
+  "total_tasks": 74,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3695,6 +3695,52 @@
         "tests/session-logout-regression.test.ts",
         "tests/sessions-api-e2e.test.ts",
         "tests/sessions-domain-service.test.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 85,
+      "pr_title": "SYN-ADMIN-SCOPE-001 \u2014 Align CMS 1.0 admin surface truthfulness",
+      "task_id": "SYN-ADMIN-SCOPE-001",
+      "branch": "task/SYN-ADMIN-SCOPE-001",
+      "base_sha": "84866226c13485ed6b2f0c212dd26e4006c8f0db",
+      "source_head_sha": "13389a5b748efca8ae97370dc34636fb2832a49e",
+      "merge_sha": "ac80443acab7159c19c0c3355fdd08a39863bbcc",
+      "merged_at": "2026-09-28T18:12:47Z",
+      "capsule_present": true,
+      "capsule_declared_status": "IN_PROGRESS",
+      "derived_status": "MERGED",
+      "capsule_sha256": "a73b73f44a481b00be3ac4c762c0969589950ef8685db5b40c3e027d40458cbd",
+      "touches_capabilities": [],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-ADMIN-SCOPE-001.json",
+        "lib/navigation/adminNav.ts",
+        "app/admin/pwa/page.tsx",
+        "app/admin/notifications/page.tsx",
+        "app/admin/integrations/page.tsx",
+        "app/admin/logs/page.tsx",
+        "app/admin/project-packs/page.tsx",
+        "app/admin/queues/page.tsx",
+        "app/admin/templates/page.tsx",
+        "tests/admin-capability-status.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-ADMIN-SCOPE-001.json",
+        "app/admin/integrations/page.tsx",
+        "app/admin/logs/page.tsx",
+        "app/admin/notifications/page.tsx",
+        "app/admin/project-packs/page.tsx",
+        "app/admin/pwa/page.tsx",
+        "app/admin/queues/page.tsx",
+        "app/admin/templates/page.tsx",
+        "lib/navigation/adminNav.ts",
+        "tests/admin-capability-status.test.ts"
       ]
     }
   ]
