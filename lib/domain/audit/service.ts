@@ -48,6 +48,17 @@ export const safeStringArray = (maxItems = 50, maxLen = 100): FieldValidator => 
 
 // Event-specific safe metadata allowlists
 export const EVENT_METADATA_SCHEMAS: Record<string, Record<string, FieldValidator>> = {
+  // Settings events
+  SYSTEM_SETTINGS_UPDATED: {
+    changedKeys: safeStringArray(50, 100),
+    count: safeNumber(),
+  },
+  PROJECT_SETTINGS_UPDATED: {
+    projectId: safeString(100),
+    changedKeys: safeStringArray(50, 100),
+    count: safeNumber(),
+  },
+
   // Authentication events
   AUTH_LOGIN_SUCCESS: {
     ip: safeString(100),

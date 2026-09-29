@@ -4,7 +4,7 @@
   "task_id": "SYN-SETTINGS-001",
   "title": "Settings Persistence Foundation, Typed Registry and Security Alignment",
   "environment": "CMS_DEV",
-  "base_sha": "1dde02b1e2ebd11904637a395eb3c46362f7e683",
+  "base_sha": "ac80443acab7159c19c0c3355fdd08a39863bbcc",
   "expected_branch": "task/SYN-SETTINGS-001",
   "owner": "AI_STUDIO",
   "parent_capsule_id": null,
@@ -19,9 +19,7 @@
     "DOMAIN_SETTINGS",
     "AUDIT",
     "API",
-    "TEST",
-    "UI",
-    "NAVIGATION"
+    "TEST"
   ],
   "allowed_paths": [
     ".synthesis/lineage/capsules.json",
@@ -37,16 +35,13 @@
     "scripts/ci/test_manifest.mjs",
     "tests/settings-registry.test.ts",
     "tests/settings-api-security.test.ts",
-    "tests/settings-lifecycle-postgres.test.ts",
-    "app/admin/settings/**",
-    "components/admin/settings/**",
-    "lib/navigation/adminNav.ts",
-    "tests/admin-capability-status.test.ts",
-    "tests/settings-admin-ui.test.ts"
+    "tests/settings-lifecycle-postgres.test.ts"
   ],
   "forbidden_paths": [
     ".synthesis/lineage/tasks.json",
     ".synthesis/lineage/capabilities.json",
+    "app/admin/settings/page.tsx",
+    "lib/navigation/adminNav.ts",
     "lib/auth/permissions.ts",
     "lib/auth/rbac.ts",
     ".github/**",

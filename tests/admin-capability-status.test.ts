@@ -130,6 +130,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('projects'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('users'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('roles'), 'FUNKČNÍ');
+      assert.strictEqual(getCapabilityStatus('settings'), 'FUNKČNÍ');
     });
 
     it('verified ZÁKLAD capabilities are correctly marked', () => {
@@ -158,7 +159,6 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('import-export'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('security'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('privacy'), 'POUZE UI');
-      assert.strictEqual(getCapabilityStatus('settings'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('integrations'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('diagnostics'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('logs'), 'POUZE UI');
@@ -175,9 +175,9 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['DOKONČENO'] + 
         stats['VYPNUTO'];
       assert.strictEqual(sum, 32);
-      assert.strictEqual(stats['FUNKČNÍ'], 9);
+      assert.strictEqual(stats['FUNKČNÍ'], 10);
       assert.strictEqual(stats['ZÁKLAD'], 9);
-      assert.strictEqual(stats['POUZE UI'], 11);
+      assert.strictEqual(stats['POUZE UI'], 10);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
       assert.strictEqual(stats['VYPNUTO'], 0);
