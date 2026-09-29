@@ -158,7 +158,7 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
       assert.strictEqual(getCapabilityStatus('analytics'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('import-export'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('security'), 'POUZE UI');
-      assert.strictEqual(getCapabilityStatus('privacy'), 'POUZE UI');
+      assert.strictEqual(getCapabilityStatus('privacy'), 'FUNKČNÍ');
       assert.strictEqual(getCapabilityStatus('integrations'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('diagnostics'), 'POUZE UI');
       assert.strictEqual(getCapabilityStatus('logs'), 'POUZE UI');
