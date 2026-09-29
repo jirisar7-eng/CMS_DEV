@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 94,
+  "total_capsules": 95,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -699,6 +699,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR83A-MERGE-MARKER-REPAIR",
       "sha256": "6704208c178d35328cbcf60f9c627f9487a647e135046e20595084d955ff5d70",
       "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR82A-20260928-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR85-20260928-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR85",
+      "title": "Synchronize PR #85 lineage",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR85.json",
+      "base_sha": "ac80443acab7159c19c0c3355fdd08a39863bbcc",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR85",
+      "sha256": "86f34a057efc6a93b10a588a845baa481f5031e53b96f419c27adefcce872483",
+      "parent_capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
