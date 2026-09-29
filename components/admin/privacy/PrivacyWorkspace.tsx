@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { CapabilityShell } from '@/components/admin/CapabilityShell';
 import {
   ShieldCheck,
@@ -61,7 +62,6 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
   // Load project settings
   useEffect(() => {
     if (!projectId) {
-      setLoading(false);
       return;
     }
 
@@ -313,13 +313,13 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
                     disabled={loading || saving || !projectId}
                     className="flex-1 px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:ring-2 focus:ring-primary focus:outline-none"
                   />
-                  <a
+                  <Link
                     href="/admin/pages"
                     className="px-3 py-2 rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
                   >
                     <span>Spravovat stránky</span>
                     <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                  </Link>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Klíč: <code className="text-primary font-mono">project.privacy_policy_url</code>.
@@ -420,13 +420,13 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
                   a auditní záznamy zůstávají beze změny. Vazba v AuditLog (ON DELETE SET NULL) se v databázi
                   uplatní pouze při přímém fyzickém odstranění záznamu uživatele.
                 </p>
-                <a
+                <Link
                   href="/admin/users"
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline pt-1"
                 >
                   <span>Přejít do správy Uživatelů</span>
                   <ExternalLink className="w-3 h-3" />
-                </a>
+                </Link>
               </div>
 
               <div className="p-4 rounded-xl border border-border bg-background space-y-2">
