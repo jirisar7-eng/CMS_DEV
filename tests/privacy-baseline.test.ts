@@ -132,7 +132,7 @@ test('Privacy Baseline - Security Keyword and Scope Isolation', () => {
 });
 
 test('Privacy Baseline - Navigation Capability Status is FUNKČNÍ', () => {
-  const securityGroup = ADMIN_NAV_GROUPS.find((g) => g.group === 'BEZPEČNOST');
+  const securityGroup = ADMIN_NAV_GROUPS.find((g) => g.id === 'BEZPEČNOST');
   assert.ok(securityGroup, 'BEZPEČNOST nav group must exist');
 
   const privacyItem = securityGroup.items.find((item) => item.id === 'privacy');

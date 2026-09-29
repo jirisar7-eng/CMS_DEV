@@ -177,7 +177,8 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
       status="FUNKČNÍ"
       helpKey="security.privacy.view"
     >
-      <div className="space-y-6 max-w-4xl text-xs sm:text-sm">
+      {() => (
+        <div className="space-y-6 max-w-4xl text-xs sm:text-sm">
         {/* Project Selector Notice */}
         {!projectId && (
           <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 flex items-start gap-3">
@@ -472,6 +473,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
           </div>
         </form>
       </div>
+      )}
     </CapabilityShell>
   );
 }
