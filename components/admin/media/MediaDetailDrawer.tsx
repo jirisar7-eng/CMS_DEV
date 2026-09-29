@@ -170,22 +170,6 @@ export function MediaDetailDrawer({
   isRestoringVersion = false,
 }: MediaDetailDrawerProps) {
   const [isCopied, setIsCopied] = useState(false);
-
-  if (!isOpen || !asset) return null;
-
-  const handleCopyReference = async () => {
-    try {
-      await navigator.clipboard.writeText(asset.id);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch {
-      // Fallback ignore
-    }
-  };
-
-  const isArchived = (asset.status as string).toUpperCase() === 'ARCHIVED';
-  const isPublished = (asset.status as string).toUpperCase() === 'PUBLISHED';
-
   const drawerRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
@@ -234,6 +218,21 @@ export function MediaDetailDrawer({
       previouslyFocusedElementRef.current?.focus();
     };
   }, [isOpen, asset, onClose]);
+
+  if (!isOpen || !asset) return null;
+
+  const handleCopyReference = async () => {
+    try {
+      await navigator.clipboard.writeText(asset.id);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      // Fallback ignore
+    }
+  };
+
+  const isArchived = (asset.status as string).toUpperCase() === 'ARCHIVED';
+  const isPublished = (asset.status as string).toUpperCase() === 'PUBLISHED';
 
 
   return (
