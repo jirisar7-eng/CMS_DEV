@@ -1,0 +1,41 @@
+{
+  "version": "1.1.0",
+  "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR85-20260928-001",
+  "task_id": "SYN-GOV-LINEAGE-SYNC-PR85",
+  "title": "Synchronize PR #85 lineage",
+  "environment": "CMS_DEV",
+  "base_sha": "ac80443acab7159c19c0c3355fdd08a39863bbcc",
+  "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR85",
+  "owner": "AI_STUDIO",
+  "parent_capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
+  "supersedes_capsule_id": null,
+  "created_at": "2026-09-29T05:08:54Z",
+  "status": "COMPLETED",
+  "allowed_mutation_types": [
+    "GOVERNANCE",
+    "EVIDENCE"
+  ],
+  "allowed_paths": [
+    ".synthesis/task-capsule.json",
+    ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR85.json",
+    ".synthesis/lineage/tasks.json",
+    ".synthesis/lineage/capsules.json"
+  ],
+  "forbidden_paths": [
+    ".synthesis/task-capsules/SYN-ADMIN-SCOPE-001.json",
+    ".synthesis/lineage/capabilities.json",
+    "app/**",
+    "lib/**",
+    "components/**",
+    "prisma/**",
+    "tests/**",
+    ".github/**",
+    "deployment/**",
+    "infra/**",
+    "docs/**",
+    "scripts/**",
+    "package.json",
+    "package-lock.json",
+    ".env*"
+  ]
+}
