@@ -11,8 +11,6 @@ import {
   Loader2,
   FileText,
   Clock,
-  Mail,
-  Sliders,
   ExternalLink,
   Info,
   Cookie,
@@ -25,9 +23,8 @@ interface PrivacyWorkspaceProps {
 
 interface PrivacySettingsState {
   'project.privacy_policy_url': string;
-  'project.tracking_mode': string;
   'project.data_retention_days': number;
-  'project.dpo_contact_email': string;
+  'project.privacy_contact_email': string;
 }
 
 export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
@@ -38,10 +35,9 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [privacySettings, setPrivacySettings] = useState<PrivacySettingsState>({
-    'project.privacy_policy_url': '/privacy',
-    'project.tracking_mode': 'DISABLED',
+    'project.privacy_policy_url': '',
     'project.data_retention_days': 365,
-    'project.dpo_contact_email': '',
+    'project.privacy_contact_email': '',
   });
 
   // Sync project ID from cookie
@@ -113,10 +109,9 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
         setError(result.error);
       } else if (result.data) {
         setPrivacySettings({
-          'project.privacy_policy_url': result.data['project.privacy_policy_url'] ?? '/privacy',
-          'project.tracking_mode': result.data['project.tracking_mode'] ?? 'DISABLED',
+          'project.privacy_policy_url': result.data['project.privacy_policy_url'] ?? '',
           'project.data_retention_days': result.data['project.data_retention_days'] ?? 365,
-          'project.dpo_contact_email': result.data['project.dpo_contact_email'] ?? '',
+          'project.privacy_contact_email': result.data['project.privacy_contact_email'] ?? '',
         });
         setError(null);
       }
@@ -148,9 +143,8 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
         body: JSON.stringify({
           settings: {
             'project.privacy_policy_url': privacySettings['project.privacy_policy_url'].trim() || null,
-            'project.tracking_mode': privacySettings['project.tracking_mode'],
             'project.data_retention_days': Number(privacySettings['project.data_retention_days']),
-            'project.dpo_contact_email': privacySettings['project.dpo_contact_email'].trim() || null,
+            'project.privacy_contact_email': privacySettings['project.privacy_contact_email'].trim() || null,
           },
         }),
       });
@@ -166,7 +160,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
         throw new Error(data.message || 'Uložení nastavení soukromí selhalo.');
       }
 
-      setSuccess('Nastavení soukromí a GDPR bylo úspěšně uloženo a zaznamenáno do auditu.');
+      setSuccess('Nastavení soukromí bylo úspěšně uloženo a zaznamenáno do auditu.');
       setTimeout(() => setSuccess(null), 4000);
     } catch (err: any) {
       setError(err.message || 'Chyba při ukládání nastavení.');
@@ -220,52 +214,25 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
 
         {/* Main Privacy Form */}
         <form onSubmit={handleSave} className="space-y-6">
-          {/* Section 1: Cookie-free baseline & tracking mode */}
+          {/* Section 1: Cookie-free baseline */}
           <div className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-3">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <h3 className="text-sm font-bold text-foreground">
-                Výchozí režim bez sledování (Cookie-Free Baseline)
+                Veřejný web a sledování (Baseline soukromí)
               </h3>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-300 text-xs space-y-1.5">
-              <div className="flex items-center gap-2 font-bold text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Veřejný web je 100% bez sledovacích cookies (Privacy by Design)</span>
+            <div className="p-3.5 rounded-xl border border-border bg-muted/30 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-foreground">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Výchozí instalace jádra bez veřejného sledování</span>
               </div>
-              <p className="text-[11px] text-emerald-300/90 leading-relaxed">
-                Veřejný frontend Synthesis CMS ve výchozím stavu neukládá žádné soubory cookies neautentizovaným
-                návštěvníkům, nepoužívá skripty třetích stran, trackery ani marketingové majáky. V plném souladu
-                se směrnicí ePrivacy a GDPR není pro výchozí provoz vyžadována ani zobrazována žádná obtěžující
-                cookie lišta.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block font-semibold text-foreground text-xs">
-                Režim sledování a souhlasů projektu
-              </label>
-              <select
-                value={privacySettings['project.tracking_mode']}
-                onChange={(e) =>
-                  setPrivacySettings((prev) => ({
-                    ...prev,
-                    'project.tracking_mode': e.target.value,
-                  }))
-                }
-                disabled={loading || saving || !projectId}
-                className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:ring-2 focus:ring-primary focus:outline-none"
-              >
-                <option value="DISABLED">
-                  Vypnuto (Výchozí: Žádné cookies ani sledování na veřejném webu)
-                </option>
-                <option value="EXTERNAL_CONSENT_REQUIRED">
-                  Vyžadovat souhlas pro externí skripty (Při integraci volitelných modulů)
-                </option>
-              </select>
-              <p className="text-[11px] text-muted-foreground">
-                Klíč: <code className="text-primary font-mono">project.tracking_mode</code>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Jádro Synthesis CMS v základní konfiguraci neukládá veřejné sledovací cookies ani nespouští trackery
+                třetích stran, a proto výchozí instalace nezobrazuje cookie lištu. Pokud budoucí nasazení či
+                doplňkové moduly zavedou nepovinné sledování, musí příslušná integrace zajistit vlastní vyhodnocení
+                a řešení souhlasu.
               </p>
             </div>
           </div>
@@ -275,7 +242,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
             <div className="flex items-center gap-2 border-b border-border pb-3">
               <Cookie className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-bold text-foreground">
-                Přehled technických a administrátorských cookies (ROPA Evidence)
+                Technické cookies administrace
               </h3>
             </div>
 
@@ -291,7 +258,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
                     <th className="p-2.5">Název cookie</th>
                     <th className="p-2.5">Účel</th>
                     <th className="p-2.5">Kategorie</th>
-                    <th className="p-2.5">Vlastnosti</th>
+                    <th className="p-2.5">Vlastnosti v kódu</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-[11px]">
@@ -299,19 +266,19 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
                     <td className="p-2.5 font-mono font-bold text-foreground">syn_admin_session</td>
                     <td className="p-2.5 text-muted-foreground">Udržování zabezpečené relace administrátora</td>
                     <td className="p-2.5 text-emerald-400 font-semibold">Nezbytná (Security)</td>
-                    <td className="p-2.5 font-mono text-muted-foreground">HttpOnly, Secure, SameSite=Lax</td>
+                    <td className="p-2.5 font-mono text-muted-foreground">HttpOnly, Secure (v produkci), SameSite=Lax, Path=/</td>
                   </tr>
                   <tr>
                     <td className="p-2.5 font-mono font-bold text-foreground">syn_admin_mfa_challenge</td>
                     <td className="p-2.5 text-muted-foreground">Ověřovací krok pro vícefaktorovou autentizaci (MFA)</td>
                     <td className="p-2.5 text-emerald-400 font-semibold">Nezbytná (Security)</td>
-                    <td className="p-2.5 font-mono text-muted-foreground">HttpOnly, Secure, MaxAge=300s</td>
+                    <td className="p-2.5 font-mono text-muted-foreground">HttpOnly, Secure (v produkci), SameSite=Lax, MaxAge=300s, Path=/</td>
                   </tr>
                   <tr>
                     <td className="p-2.5 font-mono font-bold text-foreground">syn_project_id</td>
                     <td className="p-2.5 text-muted-foreground">Aktivní kontext projektu pro pracovní plochu</td>
                     <td className="p-2.5 text-blue-400 font-semibold">Funkční (Workspace)</td>
-                    <td className="p-2.5 font-mono text-muted-foreground">SameSite=Lax, Path=/</td>
+                    <td className="p-2.5 font-mono text-muted-foreground">Path=/, max-age=31536000 (SameSite/Secure nejsou v kódu explicitně nastaveny)</td>
                   </tr>
                 </tbody>
               </table>
@@ -342,7 +309,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
                         'project.privacy_policy_url': e.target.value,
                       }))
                     }
-                    placeholder="/privacy nebo https://example.com/privacy"
+                    placeholder="/privacy nebo https://example.com/privacy (ponechte prázdné, pokud stránka dosud není publikována)"
                     disabled={loading || saving || !projectId}
                     className="flex-1 px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:ring-2 focus:ring-primary focus:outline-none"
                   />
@@ -362,23 +329,23 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
 
               <div>
                 <label className="block font-semibold text-foreground text-xs mb-1">
-                  Kontakt na pověřence pro ochranu osobních údajů (DPO / Správce)
+                  Kontakt pro otázky ochrany osobních údajů
                 </label>
                 <input
                   type="email"
-                  value={privacySettings['project.dpo_contact_email']}
+                  value={privacySettings['project.privacy_contact_email']}
                   onChange={(e) =>
                     setPrivacySettings((prev) => ({
                       ...prev,
-                      'project.dpo_contact_email': e.target.value,
+                      'project.privacy_contact_email': e.target.value,
                     }))
                   }
-                  placeholder="dpo@vasedomena.cz"
+                  placeholder="soukromi@vasedomena.cz"
                   disabled={loading || saving || !projectId}
                   className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:ring-2 focus:ring-primary focus:outline-none"
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Klíč: <code className="text-primary font-mono">project.dpo_contact_email</code>
+                  Klíč: <code className="text-primary font-mono">project.privacy_contact_email</code>
                 </p>
               </div>
             </div>
@@ -396,7 +363,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
             <div className="space-y-3">
               <div>
                 <label className="block font-semibold text-foreground text-xs mb-1">
-                  Deklarovaná doba uchovávání provozních a kontaktních záznamů (dny)
+                  Výchozí deklarovaná retenční hodnota pro provozní plán projektu (dny)
                 </label>
                 <input
                   type="number"
@@ -420,12 +387,12 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
               <div className="p-3 rounded-xl border border-border bg-muted/30 text-[11px] text-muted-foreground space-y-1">
                 <div className="flex items-center gap-1.5 font-semibold text-foreground">
                   <Info className="w-3.5 h-3.5 text-primary" />
-                  <span>Provozní deklarace bez automatizované destrukce:</span>
+                  <span>Deklarovaná provozní hodnota bez automatizovaného výmazu:</span>
                 </div>
                 <p>
-                  V Synthesis CMS 1.0 je uplatňována deklarovaná provozní retence. Z důvodu ochrany integrity a
-                  neměnnosti auditního protokolu a verzování obsahu není spuštěn automatizovaný destruktivní výmaz dat.
-                  Archivace a vyřazování dat probíhá podle schváleného provozního řádu organizace.
+                  Konfigurovaná hodnota představuje deklarovaný provozní cíl projektu. Synthesis CMS 1.0 neprovádí
+                  na základě této hodnoty žádné automatické mazání záznamů. Uchovávání auditních protokolů,
+                  historie verzí a dalších datových kategorií se řídí samostatnými provozními a archivačními pravidly.
                 </p>
               </div>
             </div>
@@ -436,7 +403,7 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
             <div className="flex items-center gap-2 border-b border-border pb-3">
               <Users className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-bold text-foreground">
-                Práva subjektů údajů (Čl. 15–20 GDPR - DSAR Postup)
+                Práva subjektů údajů (DSAR Postup)
               </h3>
             </div>
 
@@ -444,13 +411,14 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
               <div className="p-4 rounded-xl border border-border bg-background space-y-2">
                 <h4 className="font-bold text-foreground flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Výmaz a deaktivace (Čl. 17)</span>
+                  <span>Správa a deaktivace účtů</span>
                 </h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Žádosti o výmaz se v souladu s architekturou CMS 1.0 zpracovávají provozním postupem:
-                  v modulu <strong>Uživatelé</strong> správce deaktivuje účet (nastavením stavu <code>DISABLED</code>)
-                  a okamžitě zneplatní všechny aktivní relace. Vazby v auditních logách jsou zachovány jako anonymizované
-                  nebo s odpojenou identitou (SET NULL).
+                  Správa uživatelů v CMS 1.0 podporuje změnu stavu na <code>DISABLED</code> a okamžitou revokaci
+                  aktivních relací. Jedná se o bezpečnostní a životní cyklus účtu, nikoliv o automatizovaný výmaz
+                  či anonymizaci. Fyzické mazání uživatelů není v aktuálním administrátorském API implementováno
+                  a auditní záznamy zůstávají beze změny. Vazba v AuditLog (ON DELETE SET NULL) se v databázi
+                  uplatní pouze při přímém fyzickém odstranění záznamu uživatele.
                 </p>
                 <a
                   href="/admin/users"
@@ -464,12 +432,12 @@ export function PrivacyWorkspace({ initialProjectId }: PrivacyWorkspaceProps) {
               <div className="p-4 rounded-xl border border-border bg-background space-y-2">
                 <h4 className="font-bold text-foreground flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Přístup a export (Čl. 15 & 20)</span>
+                  <span>Přístup a export údajů</span>
                 </h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Export osobních údajů probíhá autorizovaným operátorským procesem na žádost subjektu údajů.
-                  Rozhraní neobsahuje fiktivní automatizovaná tlačítka pro nekontrolovaný dump dat; požadavky
-                  jsou evidovány v auditním deníku a vyřizovány v zákonné 30denní lhůtě.
+                  Žádosti subjektů údajů jsou zpracovávány autorizovaným operátorským postupem podle schváleného
+                  provozního postupu a příslušných právních lhůt. Rozhraní neobsahuje fiktivní automatizovaná tlačítka
+                  pro nekontrolovaný dump dat.
                 </p>
               </div>
             </div>

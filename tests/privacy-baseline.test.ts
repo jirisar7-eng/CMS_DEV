@@ -1,9 +1,7 @@
 import assert from 'node:assert';
 import test from 'node:test';
 import {
-  SETTINGS_REGISTRY,
   getRegisteredSetting,
-  getScopeDefaults,
   isSecurityPolicyOrSecretKey,
 } from '../lib/domain/settings/registry';
 import { validateSettingsPayload } from '../lib/domain/settings/validation';
@@ -14,22 +12,29 @@ test('Privacy Baseline - Registry Keys Registration', () => {
   const policyUrlDef = getRegisteredSetting('project.privacy_policy_url');
   assert.ok(policyUrlDef, 'project.privacy_policy_url must be registered');
   assert.strictEqual(policyUrlDef.scope, 'PROJECT');
-  assert.strictEqual(policyUrlDef.defaultValue, '/privacy');
-
-  const trackingModeDef = getRegisteredSetting('project.tracking_mode');
-  assert.ok(trackingModeDef, 'project.tracking_mode must be registered');
-  assert.strictEqual(trackingModeDef.scope, 'PROJECT');
-  assert.strictEqual(trackingModeDef.defaultValue, 'DISABLED');
+  assert.strictEqual(policyUrlDef.defaultValue, null, 'Default privacy policy URL must be null (no assumed page)');
 
   const retentionDef = getRegisteredSetting('project.data_retention_days');
   assert.ok(retentionDef, 'project.data_retention_days must be registered');
   assert.strictEqual(retentionDef.scope, 'PROJECT');
   assert.strictEqual(retentionDef.defaultValue, 365);
 
-  const dpoEmailDef = getRegisteredSetting('project.dpo_contact_email');
-  assert.ok(dpoEmailDef, 'project.dpo_contact_email must be registered');
-  assert.strictEqual(dpoEmailDef.scope, 'PROJECT');
-  assert.strictEqual(dpoEmailDef.defaultValue, null);
+  const privacyContactDef = getRegisteredSetting('project.privacy_contact_email');
+  assert.ok(privacyContactDef, 'project.privacy_contact_email must be registered');
+  assert.strictEqual(privacyContactDef.scope, 'PROJECT');
+  assert.strictEqual(privacyContactDef.defaultValue, null);
+
+  // Confirm removed/renamed keys do NOT exist
+  assert.strictEqual(
+    getRegisteredSetting('project.dpo_contact_email'),
+    undefined,
+    'project.dpo_contact_email must not exist (renamed to generic privacy_contact_email)'
+  );
+  assert.strictEqual(
+    getRegisteredSetting('project.tracking_mode'),
+    undefined,
+    'project.tracking_mode must not exist (no fake runtime consent enforcement)'
+  );
 });
 
 test('Privacy Baseline - project.privacy_policy_url Validation', () => {
@@ -55,22 +60,6 @@ test('Privacy Baseline - project.privacy_policy_url Validation', () => {
   assert.strictEqual(def.validate(12345).valid, false);
 });
 
-test('Privacy Baseline - project.tracking_mode Validation', () => {
-  const def = getRegisteredSetting('project.tracking_mode')!;
-
-  assert.deepStrictEqual(def.validate('DISABLED'), { valid: true, sanitized: 'DISABLED' });
-  assert.deepStrictEqual(def.validate('disabled '), { valid: true, sanitized: 'DISABLED' });
-  assert.deepStrictEqual(def.validate('EXTERNAL_CONSENT_REQUIRED'), {
-    valid: true,
-    sanitized: 'EXTERNAL_CONSENT_REQUIRED',
-  });
-
-  // Invalid values
-  assert.strictEqual(def.validate('ENABLED').valid, false);
-  assert.strictEqual(def.validate('OPT_IN').valid, false);
-  assert.strictEqual(def.validate(true).valid, false);
-});
-
 test('Privacy Baseline - project.data_retention_days Validation', () => {
   const def = getRegisteredSetting('project.data_retention_days')!;
 
@@ -87,11 +76,11 @@ test('Privacy Baseline - project.data_retention_days Validation', () => {
   assert.strictEqual(def.validate(null).valid, false);
 });
 
-test('Privacy Baseline - project.dpo_contact_email Validation', () => {
-  const def = getRegisteredSetting('project.dpo_contact_email')!;
+test('Privacy Baseline - project.privacy_contact_email Validation', () => {
+  const def = getRegisteredSetting('project.privacy_contact_email')!;
 
-  assert.deepStrictEqual(def.validate('dpo@example.com'), { valid: true, sanitized: 'dpo@example.com' });
-  assert.deepStrictEqual(def.validate(' DPO@Example.COM '), { valid: true, sanitized: 'dpo@example.com' });
+  assert.deepStrictEqual(def.validate('privacy@example.com'), { valid: true, sanitized: 'privacy@example.com' });
+  assert.deepStrictEqual(def.validate(' Privacy@Example.COM '), { valid: true, sanitized: 'privacy@example.com' });
   assert.deepStrictEqual(def.validate(null), { valid: true, sanitized: null });
   assert.deepStrictEqual(def.validate(''), { valid: true, sanitized: null });
 
@@ -106,23 +95,20 @@ test('Privacy Baseline - Security Keyword and Scope Isolation', () => {
 
   // Confirm privacy keys are not forbidden
   assert.strictEqual(isSecurityPolicyOrSecretKey('project.privacy_policy_url'), false);
-  assert.strictEqual(isSecurityPolicyOrSecretKey('project.tracking_mode'), false);
   assert.strictEqual(isSecurityPolicyOrSecretKey('project.data_retention_days'), false);
-  assert.strictEqual(isSecurityPolicyOrSecretKey('project.dpo_contact_email'), false);
+  assert.strictEqual(isSecurityPolicyOrSecretKey('project.privacy_contact_email'), false);
 
   // Validate payload through validateSettingsPayload
   const payload = {
     'project.privacy_policy_url': '/gdpr-zasady',
-    'project.tracking_mode': 'DISABLED',
     'project.data_retention_days': 180,
-    'project.dpo_contact_email': 'poverenec@firma.cz',
+    'project.privacy_contact_email': 'soukromi@firma.cz',
   };
 
   const validated = validateSettingsPayload('PROJECT', payload);
   assert.strictEqual(validated.sanitizedSettings['project.privacy_policy_url'], '/gdpr-zasady');
-  assert.strictEqual(validated.sanitizedSettings['project.tracking_mode'], 'DISABLED');
   assert.strictEqual(validated.sanitizedSettings['project.data_retention_days'], 180);
-  assert.strictEqual(validated.sanitizedSettings['project.dpo_contact_email'], 'poverenec@firma.cz');
+  assert.strictEqual(validated.sanitizedSettings['project.privacy_contact_email'], 'soukromi@firma.cz');
 
   // Attempting to save under SYSTEM scope must fail
   assert.throws(() => {
@@ -132,6 +118,16 @@ test('Privacy Baseline - Security Keyword and Scope Isolation', () => {
   // Attempting to save forbidden cookie keys must fail
   assert.throws(() => {
     validateSettingsPayload('PROJECT', { 'project.cookie_banner': true });
+  }, SettingsValidationError);
+
+  // Attempting to save removed fake tracking_mode must fail
+  assert.throws(() => {
+    validateSettingsPayload('PROJECT', { 'project.tracking_mode': 'DISABLED' });
+  }, SettingsValidationError);
+
+  // Attempting to save removed dpo_contact_email must fail
+  assert.throws(() => {
+    validateSettingsPayload('PROJECT', { 'project.dpo_contact_email': 'dpo@test.cz' });
   }, SettingsValidationError);
 });
 

@@ -121,22 +121,6 @@ function validateEmail(val: unknown): SettingValidationResult<string | null> {
 }
 
 
-const ALLOWED_TRACKING_MODES = new Set(['DISABLED', 'EXTERNAL_CONSENT_REQUIRED']);
-
-function validateTrackingMode(val: unknown): SettingValidationResult<string> {
-  if (typeof val !== 'string') {
-    return { valid: false, error: 'Tracking mode must be a string' };
-  }
-  const trimmed = val.trim().toUpperCase();
-  if (!ALLOWED_TRACKING_MODES.has(trimmed)) {
-    return {
-      valid: false,
-      error: `Invalid tracking mode. Allowed: ${Array.from(ALLOWED_TRACKING_MODES).join(', ')}`,
-    };
-  }
-  return { valid: true, sanitized: trimmed };
-}
-
 function validatePrivacyPolicyUrl(val: unknown): SettingValidationResult<string | null> {
   if (val === null || val === undefined || val === '') {
     return { valid: true, sanitized: null };
@@ -244,15 +228,8 @@ export const SETTINGS_REGISTRY: Record<string, SettingDefinition<any>> = {
     key: 'project.privacy_policy_url',
     scope: 'PROJECT',
     description: 'Public Privacy Policy page path or URL',
-    defaultValue: '/privacy',
+    defaultValue: null,
     validate: validatePrivacyPolicyUrl,
-  },
-  'project.tracking_mode': {
-    key: 'project.tracking_mode',
-    scope: 'PROJECT',
-    description: 'Client tracking and identifier consent mode',
-    defaultValue: 'DISABLED',
-    validate: validateTrackingMode,
   },
   'project.data_retention_days': {
     key: 'project.data_retention_days',
@@ -261,10 +238,10 @@ export const SETTINGS_REGISTRY: Record<string, SettingDefinition<any>> = {
     defaultValue: 365,
     validate: validateDataRetentionDays,
   },
-  'project.dpo_contact_email': {
-    key: 'project.dpo_contact_email',
+  'project.privacy_contact_email': {
+    key: 'project.privacy_contact_email',
     scope: 'PROJECT',
-    description: 'Data Protection Officer or privacy contact email',
+    description: 'Privacy inquiries contact email',
     defaultValue: null,
     validate: validateEmail,
   },
