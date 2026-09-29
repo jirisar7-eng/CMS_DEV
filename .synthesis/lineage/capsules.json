@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 97,
+  "total_capsules": 99,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -925,6 +925,34 @@
       "parent_capsule_id": null,
       "supersedes_capsule_id": null,
       "legacy": true
+    },
+    {
+      "capsule_id": "CAP-SYN-PRIVACY-001-MAIN-ALIGNMENT-20260929-001",
+      "task_id": "SYN-PRIVACY-001-MAIN-ALIGNMENT",
+      "title": "SYN-PRIVACY-001 Main Alignment After PR #89 Lineage Repair",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-PRIVACY-001-MAIN-ALIGNMENT.json",
+      "base_sha": "87a27fde07bf00b9b10cf429828a6a78fa17895b",
+      "expected_branch": "task/SYN-PRIVACY-001",
+      "sha256": "e32ccdf56c18d4921dbdb103dc34468c3f57bf0c0aeff34cd4cfb57a4f10904d",
+      "parent_capsule_id": "CAP-SYN-PRIVACY-001-20260929-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-PRIVACY-001-20260929-001",
+      "task_id": "SYN-PRIVACY-001",
+      "title": "Privacy & GDPR Baseline v1",
+      "version": "1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-PRIVACY-001.json",
+      "base_sha": "a92d160ef64676b4dd0cf80e71ff80e790d01749",
+      "expected_branch": "task/SYN-PRIVACY-001",
+      "sha256": "0375831da7ac261952b3b60c1819b2bc144a1695ca4245408f2e674084f12cc8",
+      "parent_capsule_id": "CAP-SYN-SETTINGS-001-20260928-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
     },
     {
       "capsule_id": "CAP-SYN-PROJECTS-002-MAIN-ALIGNMENT-20260926-001",

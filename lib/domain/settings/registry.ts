@@ -120,6 +120,50 @@ function validateEmail(val: unknown): SettingValidationResult<string | null> {
   return { valid: true, sanitized: trimmed };
 }
 
+
+function validatePrivacyPolicyUrl(val: unknown): SettingValidationResult<string | null> {
+  if (val === null || val === undefined || val === '') {
+    return { valid: true, sanitized: null };
+  }
+  if (typeof val !== 'string') {
+    return { valid: false, error: 'Privacy policy URL must be a string or null' };
+  }
+  const trimmed = val.trim();
+  if (trimmed === '') {
+    return { valid: true, sanitized: null };
+  }
+  if (trimmed.startsWith('/')) {
+    if (/[<>\s"']/.test(trimmed) || trimmed.length > 200) {
+      return { valid: false, error: 'Privacy policy path contains invalid characters or exceeds 200 chars' };
+    }
+    return { valid: true, sanitized: trimmed };
+  }
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return { valid: false, error: 'Privacy policy URL must use http or https scheme' };
+    }
+    return { valid: true, sanitized: url.origin + (url.pathname === '/' ? '' : url.pathname) };
+  } catch {
+    return { valid: false, error: 'Invalid URL or path format' };
+  }
+}
+
+function validateDataRetentionDays(val: unknown): SettingValidationResult<number> {
+  let num: number;
+  if (typeof val === 'number') {
+    num = val;
+  } else if (typeof val === 'string' && /^\d+$/.test(val.trim())) {
+    num = parseInt(val.trim(), 10);
+  } else {
+    return { valid: false, error: 'Retention days must be an integer between 30 and 3650' };
+  }
+  if (!Number.isInteger(num) || num < 30 || num > 3650) {
+    return { valid: false, error: 'Retention days must be an integer between 30 and 3650' };
+  }
+  return { valid: true, sanitized: num };
+}
+
 export const SETTINGS_REGISTRY: Record<string, SettingDefinition<any>> = {
   // SYSTEM SCOPE
   'system.instance_name': {
@@ -177,6 +221,27 @@ export const SETTINGS_REGISTRY: Record<string, SettingDefinition<any>> = {
     key: 'project.contact_email',
     scope: 'PROJECT',
     description: 'Public contact email',
+    defaultValue: null,
+    validate: validateEmail,
+  },
+  'project.privacy_policy_url': {
+    key: 'project.privacy_policy_url',
+    scope: 'PROJECT',
+    description: 'Public Privacy Policy page path or URL',
+    defaultValue: null,
+    validate: validatePrivacyPolicyUrl,
+  },
+  'project.data_retention_days': {
+    key: 'project.data_retention_days',
+    scope: 'PROJECT',
+    description: 'Declared operational data retention period in days',
+    defaultValue: 365,
+    validate: validateDataRetentionDays,
+  },
+  'project.privacy_contact_email': {
+    key: 'project.privacy_contact_email',
+    scope: 'PROJECT',
+    description: 'Privacy inquiries contact email',
     defaultValue: null,
     validate: validateEmail,
   },
