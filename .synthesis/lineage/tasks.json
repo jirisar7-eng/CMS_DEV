@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 74,
+  "total_tasks": 75,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3741,6 +3741,65 @@
         "app/admin/templates/page.tsx",
         "lib/navigation/adminNav.ts",
         "tests/admin-capability-status.test.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 86,
+      "pr_title": "feat(settings): add secure settings persistence and admin UI",
+      "task_id": "SYN-SETTINGS-001",
+      "branch": "task/SYN-SETTINGS-001",
+      "base_sha": "1dde02b1e2ebd11904637a395eb3c46362f7e683",
+      "source_head_sha": "45b46e3e47382cd2767d521f91af4bbf49b4865d",
+      "merge_sha": "a92d160ef64676b4dd0cf80e71ff80e790d01749",
+      "merged_at": "2026-09-29T11:49:25Z",
+      "capsule_present": true,
+      "capsule_declared_status": "IN_PROGRESS",
+      "derived_status": "MERGED",
+      "capsule_sha256": "4245391f6437bc789693a704b0b7989bb935ce168eec5b414c32f7a4eb2c425d",
+      "touches_capabilities": [],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SETTINGS-001.json",
+        "prisma/schema.prisma",
+        "prisma/migrations/**",
+        "lib/auth/audit.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/settings/**",
+        "app/api/admin/settings/**",
+        "app/api/admin/projects/[projectId]/settings/**",
+        "scripts/ci/test_manifest.mjs",
+        "tests/settings-registry.test.ts",
+        "tests/settings-api-security.test.ts",
+        "tests/settings-lifecycle-postgres.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-SETTINGS-001.json",
+        "app/admin/settings/page.tsx",
+        "app/api/admin/projects/[projectId]/settings/route.ts",
+        "app/api/admin/settings/route.ts",
+        "components/admin/settings/SettingsWorkspace.tsx",
+        "lib/auth/audit.ts",
+        "lib/domain/audit/service.ts",
+        "lib/domain/settings/contracts.ts",
+        "lib/domain/settings/index.ts",
+        "lib/domain/settings/registry.ts",
+        "lib/domain/settings/service.ts",
+        "lib/domain/settings/validation.ts",
+        "lib/navigation/adminNav.ts",
+        "prisma/migrations/20260928120000_settings_persistence_v1/migration.sql",
+        "prisma/schema.prisma",
+        "scripts/ci/test_manifest.mjs",
+        "tests/admin-capability-status.test.ts",
+        "tests/settings-admin-ui.test.ts",
+        "tests/settings-api-security.test.ts",
+        "tests/settings-lifecycle-postgres.test.ts",
+        "tests/settings-registry.test.ts"
       ]
     }
   ]
