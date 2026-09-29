@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Trash2, AlertTriangle, ShieldAlert, Archive, X, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { MediaAsset } from '@/lib/domain/media/types';
@@ -21,6 +21,55 @@ export function MediaDeleteModal({
   onConfirmDelete,
   onArchiveInstead,
 }: MediaDeleteModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !asset) return;
+    previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const focusables = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusables && focusables.length > 0) {
+      focusables[0].focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableEls = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableEls.length === 0) return;
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previouslyFocusedElementRef.current?.focus();
+    };
+  }, [isOpen, asset, onClose]);
+
   if (!isOpen || !asset) return null;
 
   const isUsed = asset.usageCount > 0;
@@ -28,7 +77,11 @@ export function MediaDeleteModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div
+        ref={modalRef}
         id="media-delete-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="media-delete-modal-title"
         className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Header */}
@@ -42,7 +95,7 @@ export function MediaDeleteModal({
               {isUsed ? <ShieldAlert className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-foreground">
+              <h3 id="media-delete-modal-title" className="text-sm sm:text-base font-bold text-foreground">
                 {isUsed ? 'Smazání blokováno systémem' : 'Potvrdit smazání média'}
               </h3>
               <p className="text-[11px] text-muted-foreground truncate max-w-[240px]">

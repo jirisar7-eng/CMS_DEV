@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, CheckCircle2, AlertTriangle, ShieldCheck, FileText, Image as ImageIcon } from 'lucide-react';
 import { DEFAULT_UPLOAD_POLICY } from '@/lib/domain/media/mockProviders';
 import { MediaAsset } from '@/lib/domain/media/types';
@@ -33,6 +33,55 @@ export function MediaUploadModal({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const focusables = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusables && focusables.length > 0) {
+      focusables[0].focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableEls = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableEls.length === 0) return;
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previouslyFocusedElementRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -124,7 +173,11 @@ export function MediaUploadModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div
+        ref={modalRef}
         id="media-upload-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="media-upload-modal-title"
         className="w-full max-w-xl rounded-2xl border border-border bg-card shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Header */}
@@ -134,7 +187,7 @@ export function MediaUploadModal({
               <Upload className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-foreground">Nahrát nové médium</h3>
+              <h3 id="media-upload-modal-title" className="text-sm sm:text-base font-bold text-foreground">Nahrát nové médium</h3>
               <p className="text-[11px] text-muted-foreground">
                 Bezpečné nahrání do knihovny aktiv (max. 25 MB)
               </p>

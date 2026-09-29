@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 100,
+  "total_capsules": 101,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -1357,6 +1357,20 @@
       "expected_branch": "task/SYN-USERS-001-USERS-MANAGEMENT-V1",
       "sha256": "0912daa49fbbeefbec80277a03221ac98095d2e6d1a3a591a40dc77b126368dc",
       "parent_capsule_id": null,
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-UX-001-20260929-001",
+      "task_id": "SYN-UX-001",
+      "title": "Mobile, Tablet & Accessibility Closure",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-UX-001.json",
+      "base_sha": "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
+      "expected_branch": "task/SYN-UX-001",
+      "sha256": "c75093ef118446100b99f740b395218943d57a92e34ecab309c85fab3070f92b",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR88-20260929-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },

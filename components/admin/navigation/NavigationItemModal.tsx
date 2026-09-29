@@ -72,6 +72,54 @@ const NavigationItemModalInner: React.FC<Omit<NavigationItemModalProps, 'isOpen'
     }
   };
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const focusables = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusables && focusables.length > 0) {
+      focusables[0].focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableEls = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableEls.length === 0) return;
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previouslyFocusedElementRef.current?.focus();
+    };
+  }, [onClose]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
@@ -134,6 +182,7 @@ const NavigationItemModalInner: React.FC<Omit<NavigationItemModalProps, 'isOpen'
       aria-labelledby="nav-item-modal-title"
     >
       <div
+        ref={modalRef}
         className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto"
         id="nav-item-modal-container"
       >

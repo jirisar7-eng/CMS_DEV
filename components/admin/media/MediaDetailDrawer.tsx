@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -186,16 +186,70 @@ export function MediaDetailDrawer({
   const isArchived = (asset.status as string).toUpperCase() === 'ARCHIVED';
   const isPublished = (asset.status as string).toUpperCase() === 'PUBLISHED';
 
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !asset) return;
+    previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const focusables = drawerRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusables && focusables.length > 0) {
+      focusables[0].focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && drawerRef.current) {
+        const focusableEls = drawerRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableEls.length === 0) return;
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previouslyFocusedElementRef.current?.focus();
+    };
+  }, [isOpen, asset, onClose]);
+
+
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end">
       <div
+        ref={drawerRef}
         id="media-detail-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="media-drawer-title"
         className="w-full max-w-lg bg-card border-l border-border h-full overflow-y-auto shadow-2xl animate-in slide-in-from-right duration-200 flex flex-col"
       >
         {/* Drawer Header */}
         <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between sticky top-0 bg-card/95 backdrop-blur-xs z-10">
           <div className="min-w-0 pr-2">
-            <h2 className="text-base sm:text-lg font-bold text-foreground truncate">
+            <h2 id="media-drawer-title" className="text-base sm:text-lg font-bold text-foreground truncate">
               {asset.metadata.title}
             </h2>
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono truncate">

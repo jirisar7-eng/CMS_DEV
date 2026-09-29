@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Menu, 
   X, 
@@ -30,6 +30,19 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
 
   const currentItem = getNavItemByPath(pathname);
 
+  // Close mobile sidebar on Escape while open
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarOpen]);
+
+
   // Toggle group collapse
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups((prev) => ({
@@ -55,13 +68,26 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
 
   return (
     <div className="flex h-screen bg-muted/30 overflow-hidden">
+      {/* Accessible Skip to Main Content */}
+      <a
+        href="#admin-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-background focus:text-primary focus:font-bold focus:shadow-lg focus:rounded-lg focus:ring-2 focus:ring-primary"
+      >
+        Přeskočit na hlavní obsah
+      </a>
+
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <button type="button" aria-label="Zavřít navigaci" className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden border-0 outline-none w-full h-full cursor-pointer p-0 m-0" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-[min(18rem,calc(100vw-2rem))] md:w-72 bg-card border-r transition-transform duration-[var(--duration-slow)] ease-in-out md:translate-x-0 md:static md:flex md:flex-col shadow-lg md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside
+        id="admin-sidebar"
+        className={`fixed inset-y-0 left-0 z-50 w-[min(18rem,calc(100vw-2rem))] md:w-72 bg-card border-r transition-transform duration-[var(--duration-slow)] ease-in-out md:translate-x-0 md:static md:flex md:flex-col shadow-lg md:shadow-none ${
+          sidebarOpen ? 'translate-x-0 max-md:visible' : '-translate-x-full max-md:invisible'
+        }`}
+      >
         {/* Brand header */}
         <div className="flex items-center justify-between h-16 px-4 border-b shrink-0">
           <Link href="/admin" className="flex items-center gap-2.5 font-bold text-base text-foreground tracking-tight">
@@ -257,6 +283,8 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
               className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted min-h-[44px] min-w-[44px] flex items-center justify-center"
               onClick={() => setSidebarOpen(true)}
               aria-label={dict.shell.open_menu}
+              aria-expanded={sidebarOpen}
+              aria-controls="admin-sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -304,7 +332,10 @@ export function AdminShell({ children, user }: { children: React.ReactNode, user
         </header>
 
         {/* Main scrollable area */}
-        <main className={`flex-1 overflow-auto ${pathname?.endsWith('/edit') ? 'p-0' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>
+        <main
+          id="admin-main"
+          className={`flex-1 overflow-auto ${pathname?.endsWith('/edit') ? 'p-0' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}
+        >
           {children}
         </main>
       </div>
