@@ -175,9 +175,9 @@ describe('SYN-ADMIN-STATUS-001: Admin Capability Map, Status Truthfulness & Secu
         stats['DOKONČENO'] + 
         stats['VYPNUTO'];
       assert.strictEqual(sum, 32);
-      assert.strictEqual(stats['FUNKČNÍ'], 10);
+      assert.strictEqual(stats['FUNKČNÍ'], 11);
       assert.strictEqual(stats['ZÁKLAD'], 9);
-      assert.strictEqual(stats['POUZE UI'], 10);
+      assert.strictEqual(stats['POUZE UI'], 9);
       assert.strictEqual(stats['PLÁNOVÁNO'], 3);
       assert.strictEqual(stats['DOKONČENO'], 0);
       assert.strictEqual(stats['VYPNUTO'], 0);
