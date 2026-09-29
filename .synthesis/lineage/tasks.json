@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 75,
+  "total_tasks": 76,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3800,6 +3800,50 @@
         "tests/settings-api-security.test.ts",
         "tests/settings-lifecycle-postgres.test.ts",
         "tests/settings-registry.test.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 88,
+      "pr_title": "feat(privacy): add privacy and GDPR baseline",
+      "task_id": "SYN-PRIVACY-001-MAIN-ALIGNMENT",
+      "branch": "task/SYN-PRIVACY-001",
+      "base_sha": "87a27fde07bf00b9b10cf429828a6a78fa17895b",
+      "source_head_sha": "22b0b97c7755a1cbc4225b88c25f7a69e2bef2bc",
+      "merge_sha": "3e2432028769cbf5b45bb48a5154034ff518287d",
+      "merged_at": "2026-09-29T18:31:12Z",
+      "capsule_present": true,
+      "capsule_declared_status": "COMPLETED",
+      "derived_status": "MERGED",
+      "capsule_sha256": "e32ccdf56c18d4921dbdb103dc34468c3f57bf0c0aeff34cd4cfb57a4f10904d",
+      "touches_capabilities": [],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-PRIVACY-001.json",
+        ".synthesis/task-capsules/SYN-PRIVACY-001-MAIN-ALIGNMENT.json",
+        ".synthesis/lineage/capsules.json",
+        "lib/domain/settings/registry.ts",
+        "app/admin/privacy/page.tsx",
+        "components/admin/privacy/**",
+        "lib/navigation/adminNav.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/admin-capability-status.test.ts",
+        "tests/privacy-baseline.test.ts"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-PRIVACY-001-MAIN-ALIGNMENT.json",
+        ".synthesis/task-capsules/SYN-PRIVACY-001.json",
+        "app/admin/privacy/page.tsx",
+        "components/admin/privacy/PrivacyWorkspace.tsx",
+        "lib/domain/settings/registry.ts",
+        "lib/navigation/adminNav.ts",
+        "scripts/ci/test_manifest.mjs",
+        "tests/admin-capability-status.test.ts",
+        "tests/privacy-baseline.test.ts"
       ]
     }
   ]
