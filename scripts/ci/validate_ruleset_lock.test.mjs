@@ -4,7 +4,13 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
-import { validateRulesetLock, REQUIRED_CONTRACT_IDS } from "./validate_ruleset_lock.mjs";
+import {
+  validateRulesetLock,
+  REQUIRED_CONTRACT_IDS,
+  EXPECTED_CONTRACTS_MAP,
+  EXPECTED_FROZEN_AT,
+  EXPECTED_FROZEN_BASE
+} from "./validate_ruleset_lock.mjs";
 
 function setupFixture(tDir) {
   fs.mkdirSync(path.join(tDir, ".synthesis"), { recursive: true });
@@ -14,6 +20,7 @@ function setupFixture(tDir) {
 
   const contracts = [];
   for (const id of REQUIRED_CONTRACT_IDS) {
+    const meta = EXPECTED_CONTRACTS_MAP[id];
     const snapRel = `docs/governance/${id}.md`;
     const canonRel = `docs/governance/${id}.canonical.json`;
     const fullSnap = path.join(tDir, snapRel);
@@ -27,27 +34,27 @@ function setupFixture(tDir) {
       canonicalization: "SYN-NOTION-CANONICAL-1",
       schema: "SYN-GOVERNANCE-SNAPSHOT-1",
       contract_id: id,
-      version: "1.0.0",
+      version: meta.version,
       status: "CURRENT_REVIEW",
-      source_notion_page_id: "test-page-id",
-      source_notion_url: "https://notion.example/page",
-      frozen_at: "2026-09-30T09:58:22+02:00",
-      frozen_base_main_sha: "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
+      source_notion_page_id: meta.page_id,
+      source_notion_url: meta.url,
+      frozen_at: EXPECTED_FROZEN_AT,
+      frozen_base_main_sha: EXPECTED_FROZEN_BASE,
       snapshot_path: snapRel,
       snapshot_sha256: hash,
-      supersedes: null
+      supersedes: meta.supersedes
     };
     fs.writeFileSync(fullCanon, JSON.stringify(canonDoc), "utf8");
 
     contracts.push({
       contract_id: id,
-      version: "1.0.0",
+      version: meta.version,
       required: true,
       snapshot_path: snapRel,
       canonical_metadata_path: canonRel,
       sha256: hash,
-      source_notion_page_id: "test-page-id",
-      source_notion_url: "https://notion.example/page"
+      source_notion_page_id: meta.page_id,
+      source_notion_url: meta.url
     });
   }
 
@@ -55,8 +62,8 @@ function setupFixture(tDir) {
     schema: "SYN-RULESET-LOCK-1",
     ruleset_id: "SYN-RULEBOOK-ROOT",
     ruleset_version: "0.2.0",
-    frozen_at: "2026-09-30T09:58:22+02:00",
-    frozen_base_main_sha: "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
+    frozen_at: EXPECTED_FROZEN_AT,
+    frozen_base_main_sha: EXPECTED_FROZEN_BASE,
     hash_algorithm: "SHA-256",
     encoding: "UTF-8",
     line_endings: "LF",
@@ -67,7 +74,7 @@ function setupFixture(tDir) {
 }
 
 describe("Ruleset Lock Validation Test Suite", () => {
-  it("PASS: valid fixture passes deterministically", () => {
+  it("PASS: valid fixture passes deterministically with real versions", () => {
     const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-pass-"));
     try {
       setupFixture(tDir);
@@ -277,6 +284,103 @@ describe("Ruleset Lock Validation Test Suite", () => {
       const res = validateRulesetLock(tDir);
       assert.strictEqual(res.valid, false);
       assert.ok(res.errors.some(e => e.includes("canonical metadata version mismatch")));
+    } finally {
+      fs.rmSync(tDir, { recursive: true, force: true });
+    }
+  });
+
+  // NEW HARDENING TESTS
+  it("FAIL: wrong current contract version in lock", () => {
+    const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-fail-"));
+    try {
+      setupFixture(tDir);
+      const lockPath = path.join(tDir, ".synthesis/ruleset.lock.json");
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+      lock.contracts[0].version = "0.9.9"; // instead of 0.2.0
+      fs.writeFileSync(lockPath, JSON.stringify(lock), "utf8");
+      const res = validateRulesetLock(tDir);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some(e => e.includes("version mismatch in lock")));
+    } finally {
+      fs.rmSync(tDir, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL: wrong source page ID in lock", () => {
+    const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-fail-"));
+    try {
+      setupFixture(tDir);
+      const lockPath = path.join(tDir, ".synthesis/ruleset.lock.json");
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+      lock.contracts[0].source_notion_page_id = "00000000-0000-0000-0000-000000000000";
+      fs.writeFileSync(lockPath, JSON.stringify(lock), "utf8");
+      const res = validateRulesetLock(tDir);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some(e => e.includes("source_notion_page_id mismatch in lock")));
+    } finally {
+      fs.rmSync(tDir, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL: wrong source URL in lock", () => {
+    const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-fail-"));
+    try {
+      setupFixture(tDir);
+      const lockPath = path.join(tDir, ".synthesis/ruleset.lock.json");
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+      lock.contracts[0].source_notion_url = "https://app.notion.com/p/tampered";
+      fs.writeFileSync(lockPath, JSON.stringify(lock), "utf8");
+      const res = validateRulesetLock(tDir);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some(e => e.includes("source_notion_url mismatch in lock")));
+    } finally {
+      fs.rmSync(tDir, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL: wrong frozen_at in lock", () => {
+    const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-fail-"));
+    try {
+      setupFixture(tDir);
+      const lockPath = path.join(tDir, ".synthesis/ruleset.lock.json");
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+      lock.frozen_at = "1970-01-01T00:00:00+00:00";
+      fs.writeFileSync(lockPath, JSON.stringify(lock), "utf8");
+      const res = validateRulesetLock(tDir);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some(e => e.includes("Invalid frozen_at in lock")));
+    } finally {
+      fs.rmSync(tDir, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL: wrong frozen_base_main_sha in lock", () => {
+    const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-fail-"));
+    try {
+      setupFixture(tDir);
+      const lockPath = path.join(tDir, ".synthesis/ruleset.lock.json");
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+      lock.frozen_base_main_sha = "0000000000000000000000000000000000000000";
+      fs.writeFileSync(lockPath, JSON.stringify(lock), "utf8");
+      const res = validateRulesetLock(tDir);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some(e => e.includes("Invalid frozen_base_main_sha in lock")));
+    } finally {
+      fs.rmSync(tDir, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL: canonical frozen identity mismatch (wrong frozen_base_main_sha)", () => {
+    const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-fail-"));
+    try {
+      setupFixture(tDir);
+      const canonPath = path.join(tDir, "docs/governance/SYN-RULEBOOK-ROOT.canonical.json");
+      const doc = JSON.parse(fs.readFileSync(canonPath, "utf8"));
+      doc.frozen_base_main_sha = "0000000000000000000000000000000000000000";
+      fs.writeFileSync(canonPath, JSON.stringify(doc), "utf8");
+      const res = validateRulesetLock(tDir);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some(e => e.includes("canonical metadata frozen_base_main_sha mismatch")));
     } finally {
       fs.rmSync(tDir, { recursive: true, force: true });
     }
