@@ -81,7 +81,23 @@ describe("Ruleset Lock Validation Test Suite", () => {
       const res = validateRulesetLock(tDir);
       assert.strictEqual(res.valid, true);
       assert.strictEqual(res.errors.length, 0);
-      assert.strictEqual(res.contractCount, 6);
+      assert.strictEqual(res.contractCount, 7);
+    } finally {
+      fs.rmSync(tDir, { recursive: true, force: true });
+    }
+  });
+
+  it("FAIL: missing SYN-HASH-CONTRACT", () => {
+    const tDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-lock-fail-"));
+    try {
+      setupFixture(tDir);
+      const lockPath = path.join(tDir, ".synthesis/ruleset.lock.json");
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+      lock.contracts = lock.contracts.filter(c => c.contract_id !== "SYN-HASH-CONTRACT");
+      fs.writeFileSync(lockPath, JSON.stringify(lock), "utf8");
+      const res = validateRulesetLock(tDir);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.errors.some(e => e.includes("Missing required contract: SYN-HASH-CONTRACT")));
     } finally {
       fs.rmSync(tDir, { recursive: true, force: true });
     }

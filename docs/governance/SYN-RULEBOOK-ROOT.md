@@ -54,5 +54,8 @@ SECURITY -> DATA INTEGRITY -> PRIVACY -> AUTHORIZATION -> STABILITY -> TESTABILI
 - Every new mutating or test AI Studio command must carry a stable COMMAND_ID and map to exactly one centralized ledger row.
 - Provider or tool failure recovery preserves all verified work and strictly prevents blind mutation retries.
 
+## 8. Required Governance Contracts & Hash Contract Dependency
+- SYN-HASH-CONTRACT@1.0.0 is a REQUIRED governance dependency for canonicalization, Git mirror hashing, integrity verification and governance synchronization.
+
 ---
 *Note: Historical evidence, incident reports, and revision audits remain recorded in Notion and Git history.*
