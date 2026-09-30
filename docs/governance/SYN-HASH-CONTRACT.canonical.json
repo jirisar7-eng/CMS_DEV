@@ -1,14 +1,1 @@
-{
-  "canonicalization": "SYN-NOTION-CANONICAL-1",
-  "contract_id": "SYN-HASH-CONTRACT",
-  "frozen_at": "2026-09-30T09:58:22+02:00",
-  "frozen_base_main_sha": "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
-  "schema": "SYN-GOVERNANCE-SNAPSHOT-1",
-  "snapshot_path": "docs/governance/SYN-HASH-CONTRACT.md",
-  "snapshot_sha256": "c70e238db19de6ca3e6af9bb2193d084bfdfb0c4c3f2a690e1e7b2d89b0125c7",
-  "source_notion_page_id": "3daa127f-178a-8114-8d01-fea220ac1ac5",
-  "source_notion_url": "https://app.notion.com/p/3daa127f178a81148d01fea220ac1ac5",
-  "status": "CURRENT_REVIEW",
-  "supersedes": null,
-  "version": "1.0.0"
-}
+{"canonicalization":"SYN-NOTION-CANONICAL-1","contract_id":"SYN-HASH-CONTRACT","frozen_at":"2026-09-30T09:58:22+02:00","frozen_base_main_sha":"da6a7b0d8cf667f10db9025982af4d708b61e7a3","schema":"SYN-GOVERNANCE-SNAPSHOT-1","snapshot_path":"docs/governance/SYN-HASH-CONTRACT.md","snapshot_sha256":"c70e238db19de6ca3e6af9bb2193d084bfdfb0c4c3f2a690e1e7b2d89b0125c7","source_notion_page_id":"3daa127f-178a-8114-8d01-fea220ac1ac5","source_notion_url":"https://app.notion.com/p/3daa127f178a81148d01fea220ac1ac5","status":"CURRENT_REVIEW","supersedes":null,"version":"1.0.0"}
