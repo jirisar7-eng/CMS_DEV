@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 101,
+  "total_capsules": 102,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -741,6 +741,20 @@
       "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR88",
       "sha256": "f3c7e08a8fe99878035caa2ae45fb08f8546748d9584805195a68e0dd8df6c81",
       "parent_capsule_id": "CAP-SYN-PRIVACY-001-MAIN-ALIGNMENT-20260929-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR91-20260930-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR91",
+      "title": "Synchronize PR #91 lineage",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR91.json",
+      "base_sha": "4a6dce08b7db6458c45ad9e03fb66ef22aaa2b1b",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR91",
+      "sha256": "30178cc8bf4ce6dced106becd4e93fbfa5249d3f871b6c7c2db636e66eaf5dab",
+      "parent_capsule_id": "CAP-SYN-GOV-RULESET-MIRROR-001-20260930-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },

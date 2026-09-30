@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 76,
+  "total_tasks": 77,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3844,6 +3844,59 @@
         "scripts/ci/test_manifest.mjs",
         "tests/admin-capability-status.test.ts",
         "tests/privacy-baseline.test.ts"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 91,
+      "pr_title": "feat(governance): lock current ruleset mirror",
+      "task_id": "SYN-GOV-RULESET-MIRROR-001",
+      "branch": "task/SYN-GOV-RULESET-MIRROR-001",
+      "base_sha": "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
+      "source_head_sha": "35ce5882141d10054483e0591552d71721bfac45",
+      "merge_sha": "4a6dce08b7db6458c45ad9e03fb66ef22aaa2b1b",
+      "merged_at": "2026-09-30T08:45:59Z",
+      "capsule_present": true,
+      "capsule_declared_status": "IN_PROGRESS",
+      "derived_status": "MERGED",
+      "capsule_sha256": "79bac7e706ded85cd038cf3348901f5f9ea157d895618141afa104cb5a4dc8a0",
+      "touches_capabilities": [
+        "governance"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GIT_SHOW_HEAD_CAPSULE_AND_GITHUB_PR_API",
+      "allowed_paths": [
+        "AGENTS.md",
+        ".synthesis/ruleset.lock.json",
+        "docs/governance/**",
+        "scripts/ci/validate_ruleset_lock.mjs",
+        "scripts/ci/validate_ruleset_lock.test.mjs",
+        ".github/workflows/governance-ci.yml",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-GOV-RULESET-MIRROR-001.json",
+        ".synthesis/lineage/capsules.json"
+      ],
+      "actual_changed_files": [
+        ".github/workflows/governance-ci.yml",
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/ruleset.lock.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-GOV-RULESET-MIRROR-001.json",
+        "AGENTS.md",
+        "docs/governance/ENV-CMS-DEV.canonical.json",
+        "docs/governance/ENV-CMS-DEV.md",
+        "docs/governance/SYN-AI-STUDIO-CAGE.canonical.json",
+        "docs/governance/SYN-AI-STUDIO-CAGE.md",
+        "docs/governance/SYN-AI-STUDIO-GLOBAL.canonical.json",
+        "docs/governance/SYN-AI-STUDIO-GLOBAL.md",
+        "docs/governance/SYN-CHATGPT-WORKING-CONTRACT.canonical.json",
+        "docs/governance/SYN-CHATGPT-WORKING-CONTRACT.md",
+        "docs/governance/SYN-CODE-COMMAND-CONTRACT.canonical.json",
+        "docs/governance/SYN-CODE-COMMAND-CONTRACT.md",
+        "docs/governance/SYN-RULEBOOK-ROOT.canonical.json",
+        "docs/governance/SYN-RULEBOOK-ROOT.md",
+        "scripts/ci/validate_ruleset_lock.mjs",
+        "scripts/ci/validate_ruleset_lock.test.mjs"
       ]
     }
   ]
