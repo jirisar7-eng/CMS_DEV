@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 77,
+  "total_tasks": 78,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3893,6 +3893,50 @@
         "docs/governance/SYN-CHATGPT-WORKING-CONTRACT.md",
         "docs/governance/SYN-CODE-COMMAND-CONTRACT.canonical.json",
         "docs/governance/SYN-CODE-COMMAND-CONTRACT.md",
+        "docs/governance/SYN-RULEBOOK-ROOT.canonical.json",
+        "docs/governance/SYN-RULEBOOK-ROOT.md",
+        "scripts/ci/validate_ruleset_lock.mjs",
+        "scripts/ci/validate_ruleset_lock.test.mjs"
+      ]
+    },
+    {
+      "record_version": "1.0.0",
+      "pr_number": 93,
+      "pr_title": "fix(governance): reconcile required hash contract mirror",
+      "task_id": "SYN-GOV-CONTRACT-REGISTRY-DRIFT-001",
+      "branch": "task/SYN-GOV-CONTRACT-REGISTRY-DRIFT-001",
+      "base_sha": "74d6bd3f863ffeed869777b6a064f5f7c552ba9f",
+      "source_head_sha": "b51f53e3def6b94faf18581284e4c0aa32b4e81d",
+      "merge_sha": "1e6a22b544ec64e690a4efaea4ab84d9a88feb01",
+      "merged_at": "2026-09-30T16:41:25Z",
+      "capsule_present": true,
+      "capsule_declared_status": "IN_PROGRESS",
+      "derived_status": "MERGED",
+      "capsule_sha256": "58d781d605f0785988784c20fccd3b305fc0f2497cd614ff1247ed496537ca32",
+      "touches_capabilities": [
+        "governance"
+      ],
+      "depends_on_tasks": [],
+      "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+      "allowed_paths": [
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-GOV-CONTRACT-REGISTRY-DRIFT-001.json",
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/ruleset.lock.json",
+        "docs/governance/SYN-RULEBOOK-ROOT.md",
+        "docs/governance/SYN-RULEBOOK-ROOT.canonical.json",
+        "docs/governance/SYN-HASH-CONTRACT.md",
+        "docs/governance/SYN-HASH-CONTRACT.canonical.json",
+        "scripts/ci/validate_ruleset_lock.mjs",
+        "scripts/ci/validate_ruleset_lock.test.mjs"
+      ],
+      "actual_changed_files": [
+        ".synthesis/lineage/capsules.json",
+        ".synthesis/ruleset.lock.json",
+        ".synthesis/task-capsule.json",
+        ".synthesis/task-capsules/SYN-GOV-CONTRACT-REGISTRY-DRIFT-001.json",
+        "docs/governance/SYN-HASH-CONTRACT.canonical.json",
+        "docs/governance/SYN-HASH-CONTRACT.md",
         "docs/governance/SYN-RULEBOOK-ROOT.canonical.json",
         "docs/governance/SYN-RULEBOOK-ROOT.md",
         "scripts/ci/validate_ruleset_lock.mjs",
