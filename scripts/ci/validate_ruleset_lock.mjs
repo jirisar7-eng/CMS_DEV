@@ -42,6 +42,12 @@ export const EXPECTED_CONTRACTS_MAP = {
     page_id: "3daa127f-178a-816f-9323-d97ee71a6eb2",
     url: "https://app.notion.com/p/3daa127f178a816f9323d97ee71a6eb2",
     supersedes: null
+  },
+  "SYN-HASH-CONTRACT": {
+    version: "1.0.0",
+    page_id: "3daa127f-178a-8114-8d01-fea220ac1ac5",
+    url: "https://app.notion.com/p/3daa127f178a81148d01fea220ac1ac5",
+    supersedes: null
   }
 };
 
@@ -116,8 +122,8 @@ export function validateRulesetLock(repoRoot = process.cwd()) {
     return { valid: false, errors };
   }
 
-  if (lock.contracts.length !== 6) {
-    fail(`lock.contracts must contain exactly 6 contracts, found: ${lock.contracts.length}`);
+  if (lock.contracts.length !== 7) {
+    fail(`lock.contracts must contain exactly 7 contracts, found: ${lock.contracts.length}`);
   }
 
   const seenIds = new Set();

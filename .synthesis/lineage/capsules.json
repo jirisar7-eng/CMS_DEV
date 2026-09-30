@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 102,
+  "total_capsules": 103,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -391,6 +391,20 @@
       "expected_branch": "task/SYN-GOV-CAPSULE-002-TASK-CAPSULE-IDENTITY-REGISTRY",
       "sha256": "992a204f9340106ba36398f28e814c254c25ba975cfbccc8c502fd27a2f917ba",
       "parent_capsule_id": null,
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-CONTRACT-REGISTRY-DRIFT-001-20260930-001",
+      "task_id": "SYN-GOV-CONTRACT-REGISTRY-DRIFT-001",
+      "title": "Required Contract Registry and Hash Contract Mirror Drift Repair",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-CONTRACT-REGISTRY-DRIFT-001.json",
+      "base_sha": "74d6bd3f863ffeed869777b6a064f5f7c552ba9f",
+      "expected_branch": "task/SYN-GOV-CONTRACT-REGISTRY-DRIFT-001",
+      "sha256": "58d781d605f0785988784c20fccd3b305fc0f2497cd614ff1247ed496537ca32",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR91-20260930-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
