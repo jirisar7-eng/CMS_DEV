@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 101,
+  "total_capsules": 104,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -745,6 +745,20 @@
       "legacy": false
     },
     {
+      "capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR91-20260930-001",
+      "task_id": "SYN-GOV-LINEAGE-SYNC-PR91",
+      "title": "Synchronize PR #91 lineage",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-LINEAGE-SYNC-PR91.json",
+      "base_sha": "4a6dce08b7db6458c45ad9e03fb66ef22aaa2b1b",
+      "expected_branch": "task/SYN-GOV-LINEAGE-SYNC-PR91",
+      "sha256": "30178cc8bf4ce6dced106becd4e93fbfa5249d3f871b6c7c2db636e66eaf5dab",
+      "parent_capsule_id": "CAP-SYN-GOV-RULESET-MIRROR-001-20260930-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
       "capsule_id": "CAP-SYN-GOV-MEDIA-002-20260924-001",
       "task_id": "SYN-GOV-MEDIA-002-CLOSEOUT",
       "title": "Governance Closeout for SYN-MEDIA-002",
@@ -769,6 +783,20 @@
       "expected_branch": "task/SYN-GOV-NAV-002-CLOSEOUT",
       "sha256": "f6823c79c8eada82cd7ea59a07db3fa432f2d8370230fd724ce2b2f14d0ef224",
       "parent_capsule_id": "CAP-SYN-NAV-002-20260924-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-RULESET-MIRROR-001-20260930-001",
+      "task_id": "SYN-GOV-RULESET-MIRROR-001",
+      "title": "Governance Ruleset Mirror and Lockfile Foundation",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-RULESET-MIRROR-001.json",
+      "base_sha": "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
+      "expected_branch": "task/SYN-GOV-RULESET-MIRROR-001",
+      "sha256": "79bac7e706ded85cd038cf3348901f5f9ea157d895618141afa104cb5a4dc8a0",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR88-20260929-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
@@ -1357,6 +1385,20 @@
       "expected_branch": "task/SYN-USERS-001-USERS-MANAGEMENT-V1",
       "sha256": "0912daa49fbbeefbec80277a03221ac98095d2e6d1a3a591a40dc77b126368dc",
       "parent_capsule_id": null,
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-UX-001-MAIN-ALIGNMENT-20260930-001",
+      "task_id": "SYN-UX-001-MAIN-ALIGNMENT",
+      "title": "SYN-UX-001 Main Alignment After Governance Closeout",
+      "version": "1.1.0",
+      "status": "COMPLETED",
+      "archive_path": ".synthesis/task-capsules/SYN-UX-001-MAIN-ALIGNMENT.json",
+      "base_sha": "74d6bd3f863ffeed869777b6a064f5f7c552ba9f",
+      "expected_branch": "task/SYN-UX-001",
+      "sha256": "c63596761edb1003f3d37e5014783f01519b058101ec99a26dee067aeaff3401",
+      "parent_capsule_id": "CAP-SYN-UX-001-20260929-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
