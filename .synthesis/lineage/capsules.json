@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 100,
+  "total_capsules": 101,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -769,6 +769,20 @@
       "expected_branch": "task/SYN-GOV-NAV-002-CLOSEOUT",
       "sha256": "f6823c79c8eada82cd7ea59a07db3fa432f2d8370230fd724ce2b2f14d0ef224",
       "parent_capsule_id": "CAP-SYN-NAV-002-20260924-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-RULESET-MIRROR-001-20260930-001",
+      "task_id": "SYN-GOV-RULESET-MIRROR-001",
+      "title": "Governance Ruleset Mirror and Lockfile Foundation",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-RULESET-MIRROR-001.json",
+      "base_sha": "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
+      "expected_branch": "task/SYN-GOV-RULESET-MIRROR-001",
+      "sha256": "79bac7e706ded85cd038cf3348901f5f9ea157d895618141afa104cb5a4dc8a0",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR88-20260929-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },

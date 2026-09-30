@@ -1,0 +1,73 @@
+{
+  "schema": "SYN-RULESET-LOCK-1",
+  "ruleset_id": "SYN-RULEBOOK-ROOT",
+  "ruleset_version": "0.2.0",
+  "frozen_at": "2026-09-30T09:58:22+02:00",
+  "frozen_base_main_sha": "da6a7b0d8cf667f10db9025982af4d708b61e7a3",
+  "hash_algorithm": "SHA-256",
+  "encoding": "UTF-8",
+  "line_endings": "LF",
+  "agents_path": "AGENTS.md",
+  "contracts": [
+    {
+      "contract_id": "SYN-RULEBOOK-ROOT",
+      "version": "0.2.0",
+      "required": true,
+      "snapshot_path": "docs/governance/SYN-RULEBOOK-ROOT.md",
+      "canonical_metadata_path": "docs/governance/SYN-RULEBOOK-ROOT.canonical.json",
+      "sha256": "99997638264b1c3be69e64aba754d95bdbedf7ac263ebe88cc01d15880a98f13",
+      "source_notion_page_id": "3daa127f-178a-81d9-8dc8-d6790ee39c37",
+      "source_notion_url": "https://app.notion.com/p/3daa127f178a81d98dc8d6790ee39c37"
+    },
+    {
+      "contract_id": "ENV-CMS-DEV",
+      "version": "0.2.0",
+      "required": true,
+      "snapshot_path": "docs/governance/ENV-CMS-DEV.md",
+      "canonical_metadata_path": "docs/governance/ENV-CMS-DEV.canonical.json",
+      "sha256": "11e91caeeb26b0a06b063c85c689e21d68a8aed059832d4bc84aaa97d680ce69",
+      "source_notion_page_id": "3daa127f-178a-8141-8a2b-d21d8c7f4191",
+      "source_notion_url": "https://app.notion.com/p/3daa127f178a81418a2bd21d8c7f4191"
+    },
+    {
+      "contract_id": "SYN-AI-STUDIO-GLOBAL",
+      "version": "8.0",
+      "required": true,
+      "snapshot_path": "docs/governance/SYN-AI-STUDIO-GLOBAL.md",
+      "canonical_metadata_path": "docs/governance/SYN-AI-STUDIO-GLOBAL.canonical.json",
+      "sha256": "f9a9efc705a7a6e006f704f526862c539518eec144c4c2ca8293fbf5ba853bc8",
+      "source_notion_page_id": "3dfa127f-178a-81a3-a3d8-ca343565c71a",
+      "source_notion_url": "https://app.notion.com/p/3dfa127f178a81a3a3d8ca343565c71a"
+    },
+    {
+      "contract_id": "SYN-CHATGPT-WORKING-CONTRACT",
+      "version": "1.0.0",
+      "required": true,
+      "snapshot_path": "docs/governance/SYN-CHATGPT-WORKING-CONTRACT.md",
+      "canonical_metadata_path": "docs/governance/SYN-CHATGPT-WORKING-CONTRACT.canonical.json",
+      "sha256": "06ef6b0fad049ab068138211fdab796ec71af0cd975f55678ef3bcda4bcfc3a0",
+      "source_notion_page_id": "3e6a127f-178a-8173-b462-c11c075c717c",
+      "source_notion_url": "https://app.notion.com/p/3e6a127f178a8173b462c11c075c717c"
+    },
+    {
+      "contract_id": "SYN-AI-STUDIO-CAGE",
+      "version": "1.0.0",
+      "required": true,
+      "snapshot_path": "docs/governance/SYN-AI-STUDIO-CAGE.md",
+      "canonical_metadata_path": "docs/governance/SYN-AI-STUDIO-CAGE.canonical.json",
+      "sha256": "d5067086f43176ec89a4be27bd64dddc43e51c3ad0d2aca441595a690dbdd49b",
+      "source_notion_page_id": "3daa127f-178a-81e4-b499-c638f1dd112b",
+      "source_notion_url": "https://app.notion.com/p/3daa127f178a81e4b499c638f1dd112b"
+    },
+    {
+      "contract_id": "SYN-CODE-COMMAND-CONTRACT",
+      "version": "1.0.0",
+      "required": true,
+      "snapshot_path": "docs/governance/SYN-CODE-COMMAND-CONTRACT.md",
+      "canonical_metadata_path": "docs/governance/SYN-CODE-COMMAND-CONTRACT.canonical.json",
+      "sha256": "42cf71c8fcd93e1a487534aa481bd23effea276234fc1b0e5112f8d5e769d7ef",
+      "source_notion_page_id": "3daa127f-178a-816f-9323-d97ee71a6eb2",
+      "source_notion_url": "https://app.notion.com/p/3daa127f178a816f9323d97ee71a6eb2"
+    }
+  ]
+}
