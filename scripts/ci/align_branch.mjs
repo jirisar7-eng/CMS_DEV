@@ -580,7 +580,7 @@ export function applyAlignment(options = {}) {
     }
 
     // F. Ruleset & Registry & Lineage Validators
-    const rulesetRes = validateRulesetLock({ repoRoot });
+    const rulesetRes = validateRulesetLock(repoRoot);
     if (!rulesetRes.valid) {
       throw new Error(`Ruleset lock validation failed: ${rulesetRes.errors.join("; ")}`);
     }
