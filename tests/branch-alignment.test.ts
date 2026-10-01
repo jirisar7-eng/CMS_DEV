@@ -19,6 +19,7 @@ const shared = [".synthesis/task-capsule.json", ".synthesis/lineage/capsules.jso
 const archivePath = `.synthesis/task-capsules/${taskId}.json`;
 const alignmentPath = `.synthesis/task-capsules/${taskId}-MAIN-ALIGNMENT.json`;
 type Fixture = { dir: string; base: string; main: string; head: string; branch: string };
+type FixtureSetup = { base?: (dir: string) => void; main?: (dir: string) => void; task?: (dir: string) => void; allowedPaths?: string[] };
 type Fault = { event?: string; action?: string; file?: string; content?: string; mode?: string; command?: string; status?: number; stdout?: string; abortFails?: boolean; once?: boolean };
 type ApplyResult = { success: boolean; errors?: string[]; status?: string; recovery?: string; recoveryVerified?: boolean; postCommitFailure?: boolean; newHeadSha?: string; alignmentTaskId?: string; alignmentCapsuleId?: string; validatorEvidence?: { pre: string[]; post: string[] } };
 function git(dir: string, args: string[]): string {
@@ -42,7 +43,7 @@ function capsule(dir: string, id: string, expectedBranch: string, base: string, 
   write(dir, ".synthesis/task-capsule.json", bytes); write(dir, `.synthesis/task-capsules/${id}.json`, bytes);
   generateCapsuleRegistry({ repoRoot: dir });
 }
-function fixture(conflict = false): Fixture {
+function fixture(conflict = false, setup: FixtureSetup = {}): Fixture {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-align-test-"));
   try {
     git(dir, ["init", "-b", "main"]); git(dir, ["config", "user.name", "Security Test Runner"]);
@@ -62,12 +63,15 @@ function fixture(conflict = false): Fixture {
     }
     write(dir, "base.txt", "base\n"); write(dir, "domain.txt", "one\ntwo\nthree\n"); write(dir, "remove.txt", "remove me\n");
     capsule(dir, "SYN-TEST-BASE", "task/SYN-TEST-BASE", "0".repeat(40));
+    setup.base?.(dir);
     const base = commit(dir, "fixture base");
     write(dir, "main.txt", "main adoption\n");
     if (conflict) capsule(dir, "SYN-TEST-MAIN", "task/SYN-TEST-MAIN", base);
+    setup.main?.(dir);
     const main = commit(dir, "fixture main advance");
-    git(dir, ["switch", "-c", branch, base]); capsule(dir, taskId, branch, base);
-    write(dir, "task.txt", "protected task\n"); const head = commit(dir, "fixture feature");
+    git(dir, ["switch", "-c", branch, base]); capsule(dir, taskId, branch, base, setup.allowedPaths);
+    write(dir, "task.txt", "protected task\n"); setup.task?.(dir);
+    const head = commit(dir, "fixture feature");
     return { dir, base, main, head, branch };
   } catch (primary) {
     try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 4, retryDelay: 25 }); }
@@ -75,12 +79,22 @@ function fixture(conflict = false): Fixture {
     throw primary;
   }
 }
-function withFixture(body: (f: Fixture) => void, conflict = false): void {
-  const f = fixture(conflict); let primary: unknown;
-  try { body(f); } catch (err) { primary = err; }
-  try { fs.rmSync(f.dir, { recursive: true, force: true, maxRetries: 4, retryDelay: 25 }); }
-  catch (cleanup) { throw primary ? new AggregateError([primary, cleanup], "Assertion and fixture cleanup failed") : cleanup; }
-  if (primary) throw primary;
+function withFixture(body: (f: Fixture) => void, conflict = false, setup: FixtureSetup = {}): void {
+  // Disposable fixtures must not inherit host LFS or other external callbacks.
+  // Explicit repository configuration below remains visible to the real engine.
+  const previous = { GIT_CONFIG_GLOBAL: process.env.GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM: process.env.GIT_CONFIG_NOSYSTEM };
+  process.env.GIT_CONFIG_GLOBAL = "/dev/null"; process.env.GIT_CONFIG_NOSYSTEM = "1";
+  try {
+    const f = fixture(conflict, setup); let primary: unknown;
+    try { body(f); } catch (err) { primary = err; }
+    try { fs.rmSync(f.dir, { recursive: true, force: true, maxRetries: 4, retryDelay: 25 }); }
+    catch (cleanup) { throw primary ? new AggregateError([primary, cleanup], "Assertion and fixture cleanup failed") : cleanup; }
+    if (primary) throw primary;
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 }
 function plan(f: Fixture) {
   const res = planAlignment({ repoRoot: f.dir, targetMain: f.main });
@@ -226,15 +240,35 @@ test("Branch Alignment Security Engine — 26 behavioral integration cases", asy
     const cap = JSON.parse(fs.readFileSync(path.join(f.dir, ".synthesis/task-capsule.json"), "utf8")); cap.expected_branch = "task/OTHER";
     write(f.dir, ".synthesis/task-capsule.json", JSON.stringify(cap)); commit(f.dir); assert.equal(planAlignment({ repoRoot: f.dir, targetMain: f.main }).valid, false);
   }));
-  await t.test("13. Hash binds nested OID, mode, authority and stale authorization", () => withFixture(f => {
-    const p = plan(f); const payload = structuredClone(p.hashPayload); assert.ok(payload);
-    for (const field of ["oid", "mode"] as const) {
-      const changed = structuredClone(payload); assert.ok(changed); changed.preserved_blobs[0][field] = field === "mode" ? "100755" : "0".repeat(40);
+  await t.test("13. Stale hashes reject real nested OID, mode and capsule-authority changes", () => {
+    for (const mutation of ["oid", "mode", "authority"]) withFixture(f => {
+      const p = plan(f), original = p.preservedBlobs?.find(e => e.path === "task.txt"); assert.ok(original);
+      if (mutation === "oid") write(f.dir, "task.txt", "changed task object\n");
+      else if (mutation === "mode") fs.chmodSync(path.join(f.dir, "task.txt"), 0o755);
+      else {
+        const cap = JSON.parse(fs.readFileSync(path.join(f.dir, ".synthesis/task-capsule.json"), "utf8"));
+        cap.allowed_paths.push("future-authorized.txt"); cap.forbidden_paths.push("future-denied.txt");
+        write(f.dir, ".synthesis/task-capsule.json", JSON.stringify(cap, null, 2) + "\n");
+      }
+      f.head = commit(f.dir, `fixture ${mutation} drift`);
+      const current = plan(f); assert.notEqual(current.planHash, p.planHash);
+      if (mutation === "authority") {
+        assert.ok(current.activeCapsule?.allowed_paths.includes("future-authorized.txt"));
+        assert.ok(current.activeCapsule?.forbidden_paths.includes("future-denied.txt"));
+      } else {
+        const entry = current.preservedBlobs?.find(e => e.path === "task.txt"); assert.ok(entry);
+        assert.notEqual(entry[mutation as "oid" | "mode"], original[mutation as "oid" | "mode"]);
+      }
+      const before = snapshotDirectory(f.dir), r = apply(f, p.planHash);
+      assert.equal(r.success, false); assert.match(r.errors?.join(" ") || "", /Plan hash mismatch/);
+      assert.equal(snapshotDirectory(f.dir), before); assertRestored(f);
+      // Direct nested-field hash checks supplement the real stale APPLY above.
+      const changed = structuredClone(p.hashPayload); assert.ok(changed);
+      if (mutation === "authority") changed.active_capsule.forbidden_paths.push("task.txt");
+      else changed.preserved_blobs[0][mutation as "oid" | "mode"] = mutation === "mode" ? "100755" : "0".repeat(40);
       assert.notEqual(computePlanHash(changed), p.planHash);
-    }
-    const changed = structuredClone(payload); assert.ok(changed); changed.active_capsule.forbidden_paths.push("task.txt"); assert.notEqual(computePlanHash(changed), p.planHash);
-    const r = apply(f, "0".repeat(64)); assert.equal(r.success, false); assert.match(r.errors?.join(" ") || "", /Plan hash mismatch/); assertRestored(f);
-  }));
+    });
+  });
   await t.test("14. Sequence advances from real prior alignment archive on next APPLY", () => withFixture(f => {
     assert.equal(apply(f).success, true); git(f.dir, ["switch", "main"]); write(f.dir, "second-main.txt", "second\n"); f.main = commit(f.dir);
     git(f.dir, ["switch", branch]); const p = plan(f); assert.equal(p.nextSeq, "002"); assert.match(p.targetArchivePath || "", /-002\.json$/);
@@ -286,7 +320,7 @@ test("Branch Alignment Security Engine — 26 behavioral integration cases", asy
     });
     withFixture(f => withFault(f, { event: "after-add", action: "stage", file: "fourth-category.txt" }, () => { const r = apply(f); assert.equal(r.success, false); assertRestored(f); }));
   });
-  await t.test("21. Actual pre-commit validation failure aborts only its proven merge", () => withFixture(f => {
+  await t.test("21. Prepared-index pre-commit validation failure aborts only its proven merge", () => withFixture(f => {
     withFault(f, { event: "after-add", action: "stage", file: "task.txt" }, () => {
       const r = apply(f); assert.equal(r.success, false); assert.equal(r.recoveryVerified, true); assert.equal(r.recovery, "RESTORED");
       assert.ok(trace(f).some(a => a.includes("merge") && a.includes("--abort"))); assertRestored(f);
@@ -346,12 +380,60 @@ test("Mixed-case external Git driver names cannot execute during PLAN or APPLY",
     write(f.dir, ".git/info/attributes", `.synthesis/task-capsule.json ${kind}=${driver}\n`);
     const r = planAlignment({ repoRoot: f.dir, targetMain: f.main });
     assert.equal(r.valid, false, `${kind}=${driver}: callback executed=${fs.existsSync(path.join(f.dir, ".git/callback-ran"))}`);
-    assert.match(r.errors.join(" "), new RegExp(`Unsupported active external Git ${kind} driver`));
+    assert.match(r.errors.join(" "), /Unsupported configured external Git callback/);
     assert.equal(apply(f, hash).success, false);
     assert.equal(fs.existsSync(path.join(f.dir, ".git/callback-ran")), false);
     assertRestored(f);
   }, true);
 });
+
+test("Composed merge attributes cannot activate a source-inactive filter during APPLY", () => withFixture(f => {
+  assert.equal(git(f.dir, ["check-attr", `--source=${f.head}`, "filter", "--", ".synthesis/task-capsule.json"]), ".synthesis/task-capsule.json: filter: unset");
+  assert.equal(git(f.dir, ["check-attr", `--source=${f.main}`, "filter", "--", ".synthesis/task-capsule.json"]), ".synthesis/task-capsule.json: filter: unspecified");
+  const hash = plan(f).planHash;
+  git(f.dir, ["config", "filter.Untrusted.clean", "touch .git/callback-ran; cat"]);
+  const before = snapshotDirectory(f.dir);
+  const r = planAlignment({ repoRoot: f.dir, targetMain: f.main });
+  assert.equal(r.valid, false, "A configured source-inactive filter must fail closed before the merged attributes can activate it");
+  assert.match(r.errors.join(" "), /Unsupported configured external Git callback: filter\.Untrusted\.clean/);
+  const applied = apply(f, hash); assert.equal(applied.success, false);
+  assert.match((applied.errors || []).join(" "), /Unsupported configured external Git callback/);
+  assert.equal(fs.existsSync(path.join(f.dir, ".git/callback-ran")), false);
+  assert.equal(snapshotDirectory(f.dir), before); assertRestored(f);
+}, false, {
+  allowedPaths: [".gitattributes"],
+  base: dir => { write(dir, ".gitattributes", "# base attributes\n"); write(dir, ".synthesis/.gitattributes", "task-capsule.json -filter\n"); },
+  main: dir => fs.unlinkSync(path.join(dir, ".synthesis/.gitattributes")),
+  task: dir => write(dir, ".gitattributes", ".synthesis/task-capsule.json filter=Untrusted\n")
+}));
+
+test("Configured inactive Git callbacks/strategies and inherited execution overrides fail closed", () => withFixture(f => {
+  const hash = plan(f).planHash;
+  for (const key of ["merge.Mixed.Case.driver", "filter.Mixed.Case.clean", "filter.Mixed.Case.smudge", "filter.Mixed.Case.process", "diff.external", "diff.Mixed.Case.command", "diff.Mixed.Case.textconv", `branch.${branch}.mergeOptions`, "pull.twohead", "pull.octopus"]) {
+    git(f.dir, ["config", key, "exit 0"]);
+    const before = snapshotDirectory(f.dir);
+    try {
+      const r = planAlignment({ repoRoot: f.dir, targetMain: f.main }); assert.equal(r.valid, false, key);
+      assert.match(r.errors.join(" "), /Unsupported configured external Git callback/);
+      assert.equal(apply(f, hash).success, false); assert.equal(snapshotDirectory(f.dir), before); assertRestored(f);
+    } finally { git(f.dir, ["config", "--unset", key]); }
+  }
+  for (const key of ["GIT_EXTERNAL_DIFF", "GIT_EXEC_PATH"]) {
+    const old = process.env[key]; process.env[key] = "unsupported-execution-override";
+    try {
+      const before = snapshotDirectory(f.dir);
+      const r = planAlignment({ repoRoot: f.dir, targetMain: f.main }); assert.equal(r.valid, false);
+      assert.match(r.errors.join(" "), new RegExp(`Unsupported inherited Git environment: ${key}`));
+      assert.equal(apply(f, hash).success, false); assert.equal(snapshotDirectory(f.dir), before); assertRestored(f);
+    } finally { if (old === undefined) delete process.env[key]; else process.env[key] = old; }
+  }
+  for (const fault of [{ status: 128, stdout: "" }, { status: 0, stdout: "malformed" }, { status: 1, stdout: "unexpected\0" }]) {
+    withFault(f, { event: "before", command: "config", ...fault }, () => {
+      const r = planAlignment({ repoRoot: f.dir, targetMain: f.main }); assert.equal(r.valid, false);
+      assert.match(r.errors.join(" "), /configuration discovery/); assert.equal(apply(f, hash).success, false); assertRestored(f);
+    });
+  }
+}));
 
 test("Alignment rejects failing Git discovery, missing validators and unsafe state", () => {
   withFixture(f => {

@@ -30,7 +30,8 @@ const DEFAULT_LOCKED_PATHS = [
 const UNSUPPORTED_GIT_ENV = [
   "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
   "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE",
-  "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS", "GIT_REPLACE_REF_BASE"
+  "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS", "GIT_REPLACE_REF_BASE",
+  "GIT_EXTERNAL_DIFF", "GIT_EXEC_PATH"
 ];
 
 export function canonicalJsonStringify(value) {
@@ -57,8 +58,9 @@ export function computePlanHash(payload) {
 }
 
 function runGit(repoRoot, args, options = {}) {
+  const safeArgs = args[0] === "diff" ? ["diff", "--no-ext-diff", "--no-textconv", ...args.slice(1)] : args;
   const res = spawnSync("git", [
-    "--no-optional-locks", "--no-replace-objects", "-c", "gc.auto=0", "-c", "maintenance.auto=false", ...args
+    "--no-optional-locks", "--no-replace-objects", "-c", "gc.auto=0", "-c", "maintenance.auto=false", ...safeArgs
   ], { cwd: repoRoot, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"], ...options });
   if (res.error || res.signal) {
     throw new Error(`Git execution failed (${args[0]}): ${res.error?.message || res.signal}`);
@@ -125,6 +127,18 @@ function mergeHead(repoRoot) {
   return fs.readFileSync(p, "utf8").trim();
 }
 function ensureSupportedState(repoRoot) {
+  // Merged attributes can activate a driver inactive in both source snapshots.
+  // Reject configured commands before status, merge-tree, or any index operation;
+  // name-only discovery avoids interpreting (or reporting) arbitrary command text.
+  const drivers = runGit(repoRoot, ["config", "--null", "--name-only", "--get-regexp",
+    "^(merge\\..*\\.driver|filter\\..*\\.(clean|smudge|process)|diff\\.(external|.*\\.(command|textconv))|branch\\..*\\.mergeoptions|pull\\.(twohead|octopus))$"]);
+  if (![0,1].includes(drivers.status)) throw new Error("Git driver configuration discovery failed.");
+  if (drivers.status === 1 && drivers.stdout) throw new Error("Malformed Git driver configuration discovery.");
+  if (drivers.status === 0) {
+    const keys = (drivers.stdout || "").split("\0");
+    if (keys.pop() !== "" || !keys.length || keys.some(key => !key || /[\x00-\x20\x7f]/.test(key))) throw new Error("Malformed Git driver configuration discovery.");
+    throw new Error(`Unsupported configured external Git callback: ${keys[0]}`);
+  }
   const callbacks = runGit(repoRoot, ["config", "--get-regexp", "^(core\\.(hookspath|fsmonitor)|gpg\\..*program|commit\\.gpgsign)$"]);
   if (![0,1].includes(callbacks.status)) throw new Error("Git callback configuration discovery failed.");
   for (const line of (callbacks.stdout || "").split("\n").filter(Boolean)) {
@@ -148,25 +162,6 @@ function ensureSupportedState(repoRoot) {
   }
   if (gitText(repoRoot, ["ls-files", "-v", "-z"]).split("\0").filter(Boolean).some(s => !s.startsWith("H "))) {
     throw new Error("Unsupported index flags or unmerged entries.");
-  }
-}
-function assertNoExternalDrivers(repoRoot, refs, paths) {
-  const configured = runGit(repoRoot,["config","--get-regexp","^(merge\\..*\\.driver|merge\\.default|filter\\..*\\.(clean|smudge|process))$"]);
-  if (![0,1].includes(configured.status)) throw new Error("Git driver configuration discovery failed.");
-  // Git normalizes section/variable names, but driver subsections are case-sensitive.
-  // Preserve them so an attribute such as merge=Untrusted cannot bypass discovery.
-  const keys = new Set((configured.stdout || "").split("\n").filter(Boolean).map(line => line.split(" ")[0]));
-  const defaultDriver = (configured.stdout || "").split("\n").find(line => line.startsWith("merge.default "))?.slice(14).trim();
-  if (defaultDriver && keys.has(`merge.${defaultDriver}.driver`)) throw new Error("Unsupported external default Git merge driver.");
-  for (const ref of refs) {
-    const attrs = gitText(repoRoot,["check-attr",`--source=${ref}`,"-z","merge","filter","--",...paths]).split("\0");
-    if (attrs.pop() !== "" || attrs.length % 3) throw new Error("Malformed Git attribute discovery.");
-    for (let i = 0; i < attrs.length; i += 3) {
-      const key = attrs[i + 1], driver = attrs[i + 2];
-      if ((key === "merge" && keys.has(`merge.${driver}.driver`)) || (key === "filter" && ["clean","smudge","process"].some(name => keys.has(`filter.${driver}.${name}`)))) {
-        throw new Error(`Unsupported active external Git ${key} driver.`);
-      }
-    }
   }
 }
 export function detectConflictsReadOnly(repoRoot, mergeBase, headSha, targetMainSha) {
@@ -270,7 +265,6 @@ function planInternal(options) {
   for (const p of CANONICAL_SHARED_PATHS) confinedFile(repoRoot, p);
   for (const p of REQUIRED_SCRIPTS) confinedFile(repoRoot, p);
   const taskTree = readTree(repoRoot, taskHead), mainTree = readTree(repoRoot, targetMain), baseTree = readTree(repoRoot, mergeBase);
-  assertNoExternalDrivers(repoRoot,[taskHead,targetMain],[...new Set([...taskTree,...mainTree].map(e => e.path).concat(targetArchivePath))]);
   if (runGitOrThrow(repoRoot,["status","--porcelain","--untracked-files=all"])) throw new Error("Worktree or index is dirty. Alignment requires a clean working tree.");
   const taskChangedPaths = changedPaths(repoRoot, mergeBase, taskHead);
   const mainChangedPaths = changedPaths(repoRoot, mergeBase, targetMain);
@@ -401,7 +395,7 @@ export function applyAlignment(options = {}) {
   const validatorEvidence = { pre: [], post: [] };
   try {
     mergeAttempted = true;
-    const merge = runGit(repoRoot, ["merge", "--no-commit", "--no-ff", "--no-autostash", "--no-edit", plan.targetMain]);
+    const merge = runGit(repoRoot, ["merge", "--strategy=ort", "--no-commit", "--no-ff", "--no-autostash", "--no-edit", plan.targetMain]);
     if (mergeHead(repoRoot) !== plan.targetMain || runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]) !== plan.taskHead || runGitOrThrow(repoRoot, ["rev-parse", "ORIG_HEAD"]) !== plan.taskHead) throw new Error("Expected owned merge state was not established.");
     const conflicts = gitText(repoRoot, ["diff", "--name-only", "--diff-filter=U", "-z"]).split("\0").filter(Boolean).map(validPath).sort();
     if (canonicalJsonStringify(conflicts) !== canonicalJsonStringify(plan.conflictPaths) || (merge.status !== 0 && (merge.status !== 1 || !conflicts.length))) throw new Error("Merge command failed or conflict result drifted.");
