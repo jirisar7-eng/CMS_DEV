@@ -7,7 +7,7 @@ import { validateCapsuleRegistry } from "./validate_capsule_registry.mjs";
 import { validateRulesetLock } from "./validate_ruleset_lock.mjs";
 import { validateLineage } from "../lineage/validate.mjs";
 
-export const TOOL_CONTRACT_VERSION = "1.1.0";
+export const TOOL_CONTRACT_VERSION = "1.2.0";
 export const CANONICAL_SHARED_PATHS = Object.freeze([
   ".synthesis/lineage/capsules.json",
   ".synthesis/task-capsule.json"
@@ -19,6 +19,12 @@ const SHA1_REGEX = /^[0-9a-f]{40}$/;
 
 export function canonicalJsonStringify(value) {
   if (value === null || typeof value !== "object") {
+    if (typeof value === "undefined" || typeof value === "symbol" || typeof value === "function") {
+      throw new Error(`Unsupported non-serializable value in canonical JSON: ${typeof value}`);
+    }
+    if (typeof value === "number" && (!Number.isFinite(value) || Number.isNaN(value))) {
+      throw new Error(`Non-finite number cannot be serialized canonically: ${value}`);
+    }
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -57,7 +63,7 @@ function runGitOrThrow(repoRoot, args, options = {}) {
 
 export function detectConflictsReadOnly(repoRoot, mergeBase, headSha, targetMainSha) {
   const res = runGit(repoRoot, ["merge-tree", mergeBase, headSha, targetMainSha]);
-  if (res.status !== 0 && !res.stdout) {
+  if (res.status !== 0 && (!res.stdout || res.stdout.trim().length === 0)) {
     throw new Error(`git merge-tree failed unexpectedly with code ${res.status}: ${(res.stderr || "").trim()}`);
   }
   const output = (res.stdout || "") + "\n" + (res.stderr || "");
@@ -70,6 +76,8 @@ export function detectConflictsReadOnly(repoRoot, mergeBase, headSha, targetMain
       const match = next.match(/\s(?:base|our|their)\s+\d+\s+[0-9a-f]+\s+(.+)$/);
       if (match) {
         conflicts.add(match[1].trim());
+      } else {
+        throw new Error(`Malformed merge-tree conflict record at line ${i + 1}: ${line}`);
       }
     }
   }
@@ -79,10 +87,21 @@ export function detectConflictsReadOnly(repoRoot, mergeBase, headSha, targetMain
 export function snapshotBlobs(repoRoot, paths, ref) {
   const results = [];
   for (const p of paths) {
-    const res = runGit(repoRoot, ["rev-parse", `${ref}:${p}`]);
-    if (res.status === 0) {
-      const oid = res.stdout.trim();
-      results.push({ path: p, oid });
+    const res = runGit(repoRoot, ["ls-tree", ref, p]);
+    if (res.status !== 0 || !res.stdout || !res.stdout.trim()) {
+      // Fallback check with rev-parse
+      const rp = runGit(repoRoot, ["rev-parse", "--verify", `${ref}:${p}`]);
+      if (rp.status !== 0 || !rp.stdout || !rp.stdout.trim()) {
+        throw new Error(`Failed to resolve Git object for tracked path '${p}' at ref '${ref}': ${rp.stderr || res.stderr}`);
+      }
+      const oid = rp.stdout.trim();
+      results.push({ path: p, oid, mode: "100644" });
+    } else {
+      const match = res.stdout.trim().match(/^(\d+)\s+(\w+)\s+([0-9a-f]{40})\s+(.+)$/);
+      if (!match) {
+        throw new Error(`Unrecognized ls-tree output format for '${p}': ${res.stdout.trim()}`);
+      }
+      results.push({ path: p, oid: match[3], mode: match[1] });
     }
   }
   return results.sort((a, b) => a.path.localeCompare(b.path));
@@ -127,6 +146,32 @@ export function computeCumulativeAllowedPaths(taskChangedPaths, canonicalSharedP
   }
   set.add(newArchivePath);
   return Array.from(set).sort();
+}
+
+function verifyArchiveSafety(repoRoot, targetArchivePath) {
+  const resolvedRepoRoot = fs.realpathSync(repoRoot);
+  const archivesDir = path.join(resolvedRepoRoot, ".synthesis/task-capsules");
+  if (!fs.existsSync(archivesDir)) {
+    throw new Error(`Archive directory does not exist: ${archivesDir}`);
+  }
+  const lstatDir = fs.lstatSync(archivesDir);
+  if (lstatDir.isSymbolicLink()) {
+    throw new Error(`Archive directory is a symlink: ${archivesDir}`);
+  }
+  const resolvedArchivesDir = fs.realpathSync(archivesDir);
+  const resolvedTarget = path.resolve(resolvedRepoRoot, targetArchivePath);
+  if (!resolvedTarget.startsWith(resolvedArchivesDir + path.sep)) {
+    throw new Error(`Target archive path '${targetArchivePath}' escapes allowed directory boundary.`);
+  }
+  // Check if destination exists (including dangling symlinks)
+  try {
+    const lstatFile = fs.lstatSync(resolvedTarget);
+    throw new Error(`Target alignment archive collision: ${targetArchivePath} already exists on filesystem.`);
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      throw err;
+    }
+  }
 }
 
 export function planAlignment(options = {}) {
@@ -219,15 +264,10 @@ export function planAlignment(options = {}) {
     : `${rootTaskId}-MAIN-ALIGNMENT-${nextSeq}.json`;
 
   const targetArchivePath = `.synthesis/task-capsules/${newArchiveFilename}`;
-  const resolvedTarget = path.resolve(repoRoot, targetArchivePath);
-  const resolvedArchivesDir = path.resolve(repoRoot, ".synthesis/task-capsules");
-  if (!resolvedTarget.startsWith(resolvedArchivesDir + path.sep)) {
-    errors.push(`Target archive path '${targetArchivePath}' escapes allowed directory boundary.`);
-    return { valid: false, errors };
-  }
-
-  if (fs.existsSync(resolvedTarget)) {
-    errors.push(`Target alignment archive collision: ${targetArchivePath} already exists.`);
+  try {
+    verifyArchiveSafety(repoRoot, targetArchivePath);
+  } catch (e) {
+    errors.push(e.message);
     return { valid: false, errors };
   }
 
@@ -265,13 +305,23 @@ export function planAlignment(options = {}) {
   const taskArchivePaths = taskArchivesOut.status === 0 && taskArchivesOut.stdout
     ? taskArchivesOut.stdout.split(/\r?\n/).map((s) => s.trim()).filter((p) => p.endsWith(".json")).sort()
     : [];
-  const taskArchives = snapshotBlobs(repoRoot, taskArchivePaths, actualHead);
+  let taskArchives = [];
+  try {
+    taskArchives = snapshotBlobs(repoRoot, taskArchivePaths, actualHead);
+  } catch (e) {
+    errors.push(e.message);
+  }
 
   const mainArchivesOut = runGit(repoRoot, ["ls-tree", "-r", "--name-only", targetMain, ".synthesis/task-capsules"]);
   const mainArchivePaths = mainArchivesOut.status === 0 && mainArchivesOut.stdout
     ? mainArchivesOut.stdout.split(/\r?\n/).map((s) => s.trim()).filter((p) => p.endsWith(".json")).sort()
     : [];
-  const mainArchives = snapshotBlobs(repoRoot, mainArchivePaths, targetMain);
+  let mainArchives = [];
+  try {
+    mainArchives = snapshotBlobs(repoRoot, mainArchivePaths, targetMain);
+  } catch (e) {
+    errors.push(e.message);
+  }
 
   // Check archive collisions with different OIDs
   const mainArchiveMap = new Map(mainArchives.map((a) => [a.path, a.oid]));
@@ -286,7 +336,23 @@ export function planAlignment(options = {}) {
   const preservedPaths = taskChangedPaths.filter((p) =>
     !CANONICAL_SHARED_PATHS.includes(p) && !p.startsWith(".synthesis/task-capsules/")
   ).sort();
-  const preservedBlobs = snapshotBlobs(repoRoot, preservedPaths, actualHead);
+  let preservedBlobs = [];
+  try {
+    preservedBlobs = snapshotBlobs(repoRoot, preservedPaths, actualHead);
+  } catch (e) {
+    errors.push(e.message);
+  }
+
+  // Adopted main blobs
+  const adoptedMainPaths = mainChangedPaths.filter((p) =>
+    !CANONICAL_SHARED_PATHS.includes(p) && !p.startsWith(".synthesis/task-capsules/")
+  ).sort();
+  let adoptedMainBlobs = [];
+  try {
+    adoptedMainBlobs = snapshotBlobs(repoRoot, adoptedMainPaths, targetMain);
+  } catch (e) {
+    errors.push(e.message);
+  }
 
   // Cumulative allowed_paths
   const projectedAllowedPaths = computeCumulativeAllowedPaths(taskChangedPaths, CANONICAL_SHARED_PATHS, targetArchivePath);
@@ -295,6 +361,7 @@ export function planAlignment(options = {}) {
 
   const hashPayload = {
     active_capsule_id: activeCapsule.capsule_id || activeCapsule.task_id,
+    adopted_main_blobs: adoptedMainBlobs,
     branch: actualBranch,
     canonical_shared_paths: [...CANONICAL_SHARED_PATHS].sort(),
     concurrent_paths: concurrentPaths,
@@ -314,7 +381,12 @@ export function planAlignment(options = {}) {
     tool_contract_version: TOOL_CONTRACT_VERSION
   };
 
-  const planHash = computePlanHash(hashPayload);
+  let planHash = "";
+  try {
+    planHash = computePlanHash(hashPayload);
+  } catch (e) {
+    errors.push(`Plan hash computation failed: ${e.message}`);
+  }
 
   if (errors.length > 0) {
     return { valid: false, errors, planHash, details: hashPayload };
@@ -339,6 +411,7 @@ export function planAlignment(options = {}) {
     taskArchives,
     mainArchives,
     preservedBlobs,
+    adoptedMainBlobs,
     projectedAllowedPaths,
     hashPayload
   };
@@ -364,7 +437,7 @@ export function applyAlignment(options = {}) {
     };
   }
 
-  const { targetMain, activeCapsule, rootTaskId, nextSeq, targetArchivePath, preservedBlobs, projectedAllowedPaths, taskArchives, mainArchives } = plan;
+  const { targetMain, activeCapsule, rootTaskId, nextSeq, targetArchivePath, preservedBlobs, adoptedMainBlobs, projectedAllowedPaths, taskArchives, mainArchives } = plan;
   let mergeInitiated = false;
   let commitCreated = false;
 
@@ -373,15 +446,24 @@ export function applyAlignment(options = {}) {
   mergeInitiated = true;
 
   if (mergeRes.status !== 0) {
-    // Check conflicts
+    // Check unmerged conflicts
     const unmergedOut = runGitOrThrow(repoRoot, ["diff", "--name-only", "--diff-filter=U"]);
     const actualConflicts = unmergedOut ? unmergedOut.split(/\r?\n/).map((s) => s.trim()).filter(Boolean) : [];
     for (const ac of actualConflicts) {
       if (!CANONICAL_SHARED_PATHS.includes(ac)) {
-        runGit(repoRoot, ["merge", "--abort"]);
+        const abortRes = runGit(repoRoot, ["merge", "--abort"]);
+        const headAfterAbort = runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]);
+        const statusAfterAbort = runGitOrThrow(repoRoot, ["status", "--porcelain"]);
+        if (headAfterAbort !== plan.taskHead || statusAfterAbort.length > 0) {
+          return {
+            success: false,
+            recovery: "RECOVERY_REQUIRED",
+            errors: [`Merge aborted due to non-canonical conflict '${ac}', but worktree could not be proven clean.`]
+          };
+        }
         return {
           success: false,
-          errors: [`Merge aborted: conflict in non-canonical path '${ac}'. Worktree restored.`]
+          errors: [`Merge aborted: conflict in non-canonical path '${ac}'. Worktree cleanly restored.`]
         };
       }
     }
@@ -442,7 +524,13 @@ export function applyAlignment(options = {}) {
     runGitOrThrow(repoRoot, ["add", ".synthesis/task-capsule.json", targetArchivePath, ".synthesis/lineage/capsules.json"]);
 
     // 4. Pre-Commit Verifications
-    // A. Staged index diff vs targetMain
+    // A. Verify no remaining unmerged entries
+    const unmergedCheck = runGitOrThrow(repoRoot, ["diff", "--name-only", "--diff-filter=U"]);
+    if (unmergedCheck.length > 0) {
+      throw new Error(`Unmerged index entries remain before commit: ${unmergedCheck}`);
+    }
+
+    // B. Staged index diff vs targetMain
     const stagedDiffOut = runGitOrThrow(repoRoot, ["diff", "--cached", "--name-only", targetMain]);
     const stagedPaths = stagedDiffOut ? stagedDiffOut.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort() : [];
 
@@ -451,7 +539,7 @@ export function applyAlignment(options = {}) {
       throw new Error(`Staged merge index diff does not equal projected allowed_paths.\nStaged: ${JSON.stringify(stagedPaths)}\nExpected: ${JSON.stringify(expectedAllowed)}`);
     }
 
-    // B. Preserved Blobs Integrity
+    // C. Preserved Blobs Integrity
     for (const pb of preservedBlobs) {
       const fullP = path.join(repoRoot, pb.path);
       if (!fs.existsSync(fullP)) {
@@ -463,7 +551,19 @@ export function applyAlignment(options = {}) {
       }
     }
 
-    // C. Historical Archives Integrity
+    // D. Adopted Main Blobs Integrity
+    for (const ab of adoptedMainBlobs) {
+      const fullP = path.join(repoRoot, ab.path);
+      if (!fs.existsSync(fullP)) {
+        throw new Error(`Adopted main file missing after merge: ${ab.path}`);
+      }
+      const hashRes = runGitOrThrow(repoRoot, ["hash-object", ab.path]);
+      if (hashRes !== ab.oid) {
+        throw new Error(`Adopted main file blob OID mismatch for ${ab.path}: expected ${ab.oid} != current ${hashRes}`);
+      }
+    }
+
+    // E. Historical Archives Integrity
     const allHistoricalArchives = new Map();
     for (const a of [...taskArchives, ...mainArchives]) {
       allHistoricalArchives.set(a.path, a.oid);
@@ -479,7 +579,7 @@ export function applyAlignment(options = {}) {
       }
     }
 
-    // D. Ruleset & Registry & Lineage Validators
+    // F. Ruleset & Registry & Lineage Validators
     const rulesetRes = validateRulesetLock({ repoRoot });
     if (!rulesetRes.valid) {
       throw new Error(`Ruleset lock validation failed: ${rulesetRes.errors.join("; ")}`);
@@ -495,7 +595,7 @@ export function applyAlignment(options = {}) {
       throw new Error(`Lineage validation failed: ${lineageRes.errors.join("; ")}`);
     }
 
-    // E. git diff --cached --check
+    // G. git diff --cached --check
     const diffCheckRes = runGit(repoRoot, ["diff", "--cached", "--check"]);
     if (diffCheckRes.status !== 0) {
       throw new Error(`git diff --cached --check failed: ${diffCheckRes.stderr || diffCheckRes.stdout}`);
@@ -515,15 +615,17 @@ export function applyAlignment(options = {}) {
 
     // 6. Post-Commit Verifications
     const newHead = runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]);
-    const parents = runGitOrThrow(repoRoot, ["rev-parse", "HEAD^1", "HEAD^2"]).split(/\r?\n/).filter(Boolean);
-    if (parents.length !== 2) {
-      throw new Error(`Created commit ${newHead} does not have exactly 2 parents (parents: ${parents.join(", ")})`);
+    const parentListOut = runGitOrThrow(repoRoot, ["rev-list", "--parents", "-n", "1", "HEAD"]);
+    const parentHashes = parentListOut.split(/\s+/).filter(Boolean);
+    // parentHashes = [HEAD, parent1, parent2]
+    if (parentHashes.length !== 3) {
+      throw new Error(`Created commit ${newHead} does not have exactly 2 parents (parents: ${parentHashes.slice(1).join(", ")})`);
     }
-    if (parents[0] !== plan.taskHead) {
-      throw new Error(`First parent ${parents[0]} does not equal pre-merge task HEAD ${plan.taskHead}`);
+    if (parentHashes[1] !== plan.taskHead) {
+      throw new Error(`First parent ${parentHashes[1]} does not equal pre-merge task HEAD ${plan.taskHead}`);
     }
-    if (parents[1] !== targetMain) {
-      throw new Error(`Second parent ${parents[1]} does not equal target main ${targetMain}`);
+    if (parentHashes[2] !== targetMain) {
+      throw new Error(`Second parent ${parentHashes[2]} does not equal target main ${targetMain}`);
     }
 
     // Final diff against targetMain
@@ -549,9 +651,18 @@ export function applyAlignment(options = {}) {
       if (fs.existsSync(fullArchivePath)) {
         try { fs.unlinkSync(fullArchivePath); } catch {}
       }
+      const headAfterAbort = runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]);
+      const statusAfterAbort = runGitOrThrow(repoRoot, ["status", "--porcelain"]);
+      if (headAfterAbort !== plan.taskHead || statusAfterAbort.length > 0) {
+        return {
+          success: false,
+          recovery: "RECOVERY_REQUIRED",
+          errors: [`Apply failed pre-commit and worktree recovery could not be proven clean: ${err.message}`]
+        };
+      }
       return {
         success: false,
-        errors: [`Apply failed pre-commit: ${err.message}. Merge aborted and worktree restored.`]
+        errors: [`Apply failed pre-commit: ${err.message}. Merge cleanly aborted and worktree restored.`]
       };
     } else {
       // Post-commit failure: NEVER destructive rollback!
@@ -598,6 +709,7 @@ if (process.argv[1] && process.argv[1].endsWith("align_branch.mjs")) {
       conflict_paths: res.conflictPaths,
       concurrent_paths: res.concurrentPaths,
       preserved_blob_count: res.preservedBlobs.length,
+      adopted_main_blob_count: res.adoptedMainBlobs.length,
       projected_allowed_paths: res.projectedAllowedPaths
     }, null, 2));
     process.exit(0);
