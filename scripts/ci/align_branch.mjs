@@ -35,8 +35,7 @@ function runGitOrThrow(repoRoot, args, options = {}) {
 
 export function detectConflictsReadOnly(repoRoot, mergeBase, headSha, targetMainSha) {
   const res = runGit(repoRoot, ["merge-tree", mergeBase, headSha, targetMainSha]);
-  const output = (res.stdout || "") + "
-" + (res.stderr || "");
+  const output = (res.stdout || "") + "\n" + (res.stderr || "");
   const conflicts = new Set();
   const lines = output.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
