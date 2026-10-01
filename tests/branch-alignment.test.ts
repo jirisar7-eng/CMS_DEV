@@ -383,7 +383,11 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
       const staleHash = "0000000000000000000000000000000000000000000000000000000000000000";
       const applyRes = applyAlignment({ repoRoot: tmpDir, targetMain: runGitIn(tmpDir, ["rev-parse", "main"]), planHash: staleHash });
       assert.equal(applyRes.success, false);
-      assert.ok(applyRes.errors.some(e => e.includes("Plan hash mismatch")));
+      assert.equal(
+        applyRes.errors?.some(e => e.includes("Plan hash mismatch")),
+        true,
+        "APPLY must reject a stale plan hash"
+      );
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
