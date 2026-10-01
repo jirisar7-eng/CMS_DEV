@@ -89,7 +89,6 @@ export function snapshotBlobs(repoRoot, paths, ref) {
   for (const p of paths) {
     const res = runGit(repoRoot, ["ls-tree", ref, p]);
     if (res.status !== 0 || !res.stdout || !res.stdout.trim()) {
-      // Fallback check with rev-parse
       const rp = runGit(repoRoot, ["rev-parse", "--verify", `${ref}:${p}`]);
       if (rp.status !== 0 || !rp.stdout || !rp.stdout.trim()) {
         throw new Error(`Failed to resolve Git object for tracked path '${p}' at ref '${ref}': ${rp.stderr || res.stderr}`);
@@ -163,7 +162,6 @@ function verifyArchiveSafety(repoRoot, targetArchivePath) {
   if (!resolvedTarget.startsWith(resolvedArchivesDir + path.sep)) {
     throw new Error(`Target archive path '${targetArchivePath}' escapes allowed directory boundary.`);
   }
-  // Check if destination exists (including dangling symlinks)
   try {
     const lstatFile = fs.lstatSync(resolvedTarget);
     throw new Error(`Target alignment archive collision: ${targetArchivePath} already exists on filesystem.`);
@@ -610,14 +608,25 @@ export function applyAlignment(options = {}) {
       `PARENT_CAPSULE_ID: ${alignmentCapsule.parent_capsule_id}\n` +
       `PLAN_HASH: ${plan.planHash}`;
 
-    runGitOrThrow(repoRoot, ["commit", "-m", commitMsg]);
+    const treeSha = runGitOrThrow(repoRoot, ["write-tree"]);
+    const newCommitSha = runGitOrThrow(repoRoot, [
+      "commit-tree",
+      treeSha,
+      "-p",
+      plan.taskHead,
+      "-p",
+      targetMain,
+      "-m",
+      commitMsg
+    ]);
+    runGitOrThrow(repoRoot, ["update-ref", `refs/heads/${plan.branch}`, newCommitSha]);
+    runGitOrThrow(repoRoot, ["reset", "--mixed", newCommitSha]);
     commitCreated = true;
 
     // 6. Post-Commit Verifications
     const newHead = runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]);
     const parentListOut = runGitOrThrow(repoRoot, ["rev-list", "--parents", "-n", "1", "HEAD"]);
     const parentHashes = parentListOut.split(/\s+/).filter(Boolean);
-    // parentHashes = [HEAD, parent1, parent2]
     if (parentHashes.length !== 3) {
       throw new Error(`Created commit ${newHead} does not have exactly 2 parents (parents: ${parentHashes.slice(1).join(", ")})`);
     }
@@ -626,6 +635,15 @@ export function applyAlignment(options = {}) {
     }
     if (parentHashes[2] !== targetMain) {
       throw new Error(`Second parent ${parentHashes[2]} does not equal target main ${targetMain}`);
+    }
+
+    // Canonical Diff Firewall execution
+    const diffFirewallScript = path.join(repoRoot, "scripts/ci/diff_firewall.mjs");
+    if (fs.existsSync(diffFirewallScript)) {
+      const firewallRes = spawnSync("node", [diffFirewallScript], { cwd: repoRoot, encoding: "utf8" });
+      if (firewallRes.status !== 0) {
+        throw new Error(`Canonical Diff Firewall rejected post-commit tree: ${firewallRes.stderr || firewallRes.stdout}`);
+      }
     }
 
     // Final diff against targetMain
@@ -645,7 +663,6 @@ export function applyAlignment(options = {}) {
     };
   } catch (err) {
     if (!commitCreated && mergeInitiated) {
-      // Safe pre-commit rollback
       runGit(repoRoot, ["merge", "--abort"]);
       const fullArchivePath = path.join(repoRoot, targetArchivePath);
       if (fs.existsSync(fullArchivePath)) {
@@ -665,7 +682,6 @@ export function applyAlignment(options = {}) {
         errors: [`Apply failed pre-commit: ${err.message}. Merge cleanly aborted and worktree restored.`]
       };
     } else {
-      // Post-commit failure: NEVER destructive rollback!
       return {
         success: false,
         postCommitFailure: true,
