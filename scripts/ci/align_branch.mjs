@@ -1,16 +1,38 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { generateCapsuleRegistry, resolveRepoRoot } from "./generate_capsule_registry.mjs";
 import { validateCapsuleRegistry } from "./validate_capsule_registry.mjs";
 import { validateRulesetLock } from "./validate_ruleset_lock.mjs";
+import { validateLineage } from "../lineage/validate.mjs";
 
-export const TOOL_CONTRACT_VERSION = "1.0.0";
+export const TOOL_CONTRACT_VERSION = "1.1.0";
 export const CANONICAL_SHARED_PATHS = Object.freeze([
   ".synthesis/lineage/capsules.json",
   ".synthesis/task-capsule.json"
 ]);
+
+const TASK_ID_REGEX = /^[A-Z0-9]+(-[A-Z0-9]+)+$/;
+const BRANCH_NAME_REGEX = /^task\/[A-Za-z0-9._-]+$/;
+const SHA1_REGEX = /^[0-9a-f]{40}$/;
+
+export function canonicalJsonStringify(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return "[" + value.map(canonicalJsonStringify).join(",") + "]";
+  }
+  const keys = Object.keys(value).sort();
+  const pairs = keys.map((k) => JSON.stringify(k) + ":" + canonicalJsonStringify(value[k]));
+  return "{" + pairs.join(",") + "}";
+}
+
+export function computePlanHash(payload) {
+  const canonicalString = canonicalJsonStringify(payload);
+  return crypto.createHash("sha256").update(canonicalString).digest("hex");
+}
 
 function runGit(repoRoot, args, options = {}) {
   const res = spawnSync("git", args, {
@@ -35,6 +57,9 @@ function runGitOrThrow(repoRoot, args, options = {}) {
 
 export function detectConflictsReadOnly(repoRoot, mergeBase, headSha, targetMainSha) {
   const res = runGit(repoRoot, ["merge-tree", mergeBase, headSha, targetMainSha]);
+  if (res.status !== 0 && !res.stdout) {
+    throw new Error(`git merge-tree failed unexpectedly with code ${res.status}: ${(res.stderr || "").trim()}`);
+  }
   const output = (res.stdout || "") + "\n" + (res.stderr || "");
   const conflicts = new Set();
   const lines = output.split(/\r?\n/);
@@ -81,7 +106,6 @@ export function allocateNextSequence(repoRoot, originalTaskId) {
     }
   }
   if (maxSeq === 0) {
-    // Check if unnumbered -MAIN-ALIGNMENT exists
     if (files.includes(`${originalTaskId}-MAIN-ALIGNMENT.json`)) {
       return "002";
     }
@@ -105,11 +129,6 @@ export function computeCumulativeAllowedPaths(taskChangedPaths, canonicalSharedP
   return Array.from(set).sort();
 }
 
-export function computePlanHash(payload) {
-  const canonicalString = JSON.stringify(payload, Object.keys(payload).sort(), 0);
-  return crypto.createHash("sha256").update(canonicalString).digest("hex");
-}
-
 export function planAlignment(options = {}) {
   const repoRoot = options.repoRoot || resolveRepoRoot();
   const errors = [];
@@ -121,15 +140,32 @@ export function planAlignment(options = {}) {
     return { valid: false, errors };
   }
 
-  // 2. Branch Check
-  const currentBranch = options.branch || runGitOrThrow(repoRoot, ["rev-parse", "--abbrev-ref", "HEAD"]);
-  if (currentBranch === "main" || currentBranch === "master") {
-    errors.push(`Current branch is '${currentBranch}'. Alignment is only permitted on task branches.`);
+  // 2. Branch & Identity Check
+  const actualBranch = runGitOrThrow(repoRoot, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  if (actualBranch === "HEAD") {
+    errors.push("Detached HEAD state detected. Alignment must run on an authorized task branch.");
+    return { valid: false, errors };
+  }
+  if (actualBranch === "main" || actualBranch === "master") {
+    errors.push(`Current branch is '${actualBranch}'. Alignment is only permitted on task branches.`);
+    return { valid: false, errors };
+  }
+  if (!BRANCH_NAME_REGEX.test(actualBranch)) {
+    errors.push(`Branch '${actualBranch}' does not match authorized task branch pattern 'task/*'.`);
+    return { valid: false, errors };
+  }
+  if (options.branch && options.branch !== actualBranch) {
+    errors.push(`Supplied branch '${options.branch}' does not match actual Git branch '${actualBranch}'.`);
     return { valid: false, errors };
   }
 
   // 3. Resolve SHAs
-  const taskHead = options.taskHead || runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]);
+  const actualHead = runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]);
+  if (options.taskHead && options.taskHead !== actualHead) {
+    errors.push(`Supplied taskHead '${options.taskHead}' does not match actual Git HEAD '${actualHead}'.`);
+    return { valid: false, errors };
+  }
+
   let targetMain = options.targetMain;
   if (!targetMain) {
     try {
@@ -138,12 +174,16 @@ export function planAlignment(options = {}) {
       targetMain = runGitOrThrow(repoRoot, ["rev-parse", "main"]);
     }
   }
+  if (!SHA1_REGEX.test(targetMain)) {
+    errors.push(`Target main '${targetMain}' is not a valid 40-character commit SHA.`);
+    return { valid: false, errors };
+  }
 
   let mergeBase;
   try {
-    mergeBase = runGitOrThrow(repoRoot, ["merge-base", taskHead, targetMain]);
+    mergeBase = runGitOrThrow(repoRoot, ["merge-base", actualHead, targetMain]);
   } catch (e) {
-    errors.push(`Failed to calculate merge-base between ${taskHead} and ${targetMain}: ${e.message}`);
+    errors.push(`Failed to calculate merge-base between ${actualHead} and ${targetMain}: ${e.message}`);
     return { valid: false, errors };
   }
 
@@ -161,27 +201,45 @@ export function planAlignment(options = {}) {
     return { valid: false, errors };
   }
 
-  const rootTaskId = activeCapsule.task_id.replace(/-MAIN-ALIGNMENT(-\d{3})?$/, "");
+  if (activeCapsule.expected_branch && activeCapsule.expected_branch !== actualBranch) {
+    errors.push(`Active capsule expected_branch '${activeCapsule.expected_branch}' does not match current branch '${actualBranch}'.`);
+    return { valid: false, errors };
+  }
+
+  const rawTaskId = activeCapsule.task_id || "";
+  const rootTaskId = rawTaskId.replace(/-MAIN-ALIGNMENT(-\d{3})?$/, "");
+  if (!TASK_ID_REGEX.test(rootTaskId)) {
+    errors.push(`Invalid task ID format '${rootTaskId}'. Must match standard uppercase alphanumeric hyphen pattern.`);
+    return { valid: false, errors };
+  }
+
   const nextSeq = allocateNextSequence(repoRoot, rootTaskId);
   const newArchiveFilename = nextSeq === "001"
     ? `${rootTaskId}-MAIN-ALIGNMENT.json`
     : `${rootTaskId}-MAIN-ALIGNMENT-${nextSeq}.json`;
-  const targetArchivePath = `.synthesis/task-capsules/${newArchiveFilename}`;
 
-  if (fs.existsSync(path.join(repoRoot, targetArchivePath))) {
+  const targetArchivePath = `.synthesis/task-capsules/${newArchiveFilename}`;
+  const resolvedTarget = path.resolve(repoRoot, targetArchivePath);
+  const resolvedArchivesDir = path.resolve(repoRoot, ".synthesis/task-capsules");
+  if (!resolvedTarget.startsWith(resolvedArchivesDir + path.sep)) {
+    errors.push(`Target archive path '${targetArchivePath}' escapes allowed directory boundary.`);
+    return { valid: false, errors };
+  }
+
+  if (fs.existsSync(resolvedTarget)) {
     errors.push(`Target alignment archive collision: ${targetArchivePath} already exists.`);
     return { valid: false, errors };
   }
 
   // 5. Diff sets
-  const taskChangedOut = runGitOrThrow(repoRoot, ["diff", "--name-only", `${mergeBase}..${taskHead}`]);
-  const taskChangedPaths = taskChangedOut ? taskChangedOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean).sort() : [];
+  const taskChangedOut = runGitOrThrow(repoRoot, ["diff", "--name-only", `${mergeBase}..${actualHead}`]);
+  const taskChangedPaths = taskChangedOut ? taskChangedOut.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort() : [];
 
   const mainChangedOut = runGitOrThrow(repoRoot, ["diff", "--name-only", `${mergeBase}..${targetMain}`]);
-  const mainChangedPaths = mainChangedOut ? mainChangedOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean).sort() : [];
+  const mainChangedPaths = mainChangedOut ? mainChangedOut.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort() : [];
 
   // Concurrent paths = intersection
-  const concurrentPaths = taskChangedPaths.filter(p => mainChangedPaths.includes(p)).sort();
+  const concurrentPaths = taskChangedPaths.filter((p) => mainChangedPaths.includes(p)).sort();
   for (const cp of concurrentPaths) {
     if (!CANONICAL_SHARED_PATHS.includes(cp)) {
       errors.push(`Concurrent edit detected outside canonical shared paths: ${cp}`);
@@ -189,28 +247,34 @@ export function planAlignment(options = {}) {
   }
 
   // Read-only conflict discovery
-  const conflictPaths = detectConflictsReadOnly(repoRoot, mergeBase, taskHead, targetMain);
+  let conflictPaths = [];
+  try {
+    conflictPaths = detectConflictsReadOnly(repoRoot, mergeBase, actualHead, targetMain);
+  } catch (e) {
+    errors.push(`Merge-tree conflict detection failed: ${e.message}`);
+  }
+
   for (const c of conflictPaths) {
     if (!CANONICAL_SHARED_PATHS.includes(c)) {
       errors.push(`Unexpected merge conflict detected outside canonical shared paths: ${c}`);
     }
   }
 
-  // Snapshot archives
-  const taskArchivesOut = runGit(repoRoot, ["ls-tree", "-r", "--name-only", taskHead, ".synthesis/task-capsules"]);
+  // Snapshot archives from both task head and target main
+  const taskArchivesOut = runGit(repoRoot, ["ls-tree", "-r", "--name-only", actualHead, ".synthesis/task-capsules"]);
   const taskArchivePaths = taskArchivesOut.status === 0 && taskArchivesOut.stdout
-    ? taskArchivesOut.stdout.split(/\r?\n/).map(s => s.trim()).filter(p => p.endsWith(".json")).sort()
+    ? taskArchivesOut.stdout.split(/\r?\n/).map((s) => s.trim()).filter((p) => p.endsWith(".json")).sort()
     : [];
-  const taskArchives = snapshotBlobs(repoRoot, taskArchivePaths, taskHead);
+  const taskArchives = snapshotBlobs(repoRoot, taskArchivePaths, actualHead);
 
   const mainArchivesOut = runGit(repoRoot, ["ls-tree", "-r", "--name-only", targetMain, ".synthesis/task-capsules"]);
   const mainArchivePaths = mainArchivesOut.status === 0 && mainArchivesOut.stdout
-    ? mainArchivesOut.stdout.split(/\r?\n/).map(s => s.trim()).filter(p => p.endsWith(".json")).sort()
+    ? mainArchivesOut.stdout.split(/\r?\n/).map((s) => s.trim()).filter((p) => p.endsWith(".json")).sort()
     : [];
   const mainArchives = snapshotBlobs(repoRoot, mainArchivePaths, targetMain);
 
   // Check archive collisions with different OIDs
-  const mainArchiveMap = new Map(mainArchives.map(a => [a.path, a.oid]));
+  const mainArchiveMap = new Map(mainArchives.map((a) => [a.path, a.oid]));
   for (const ta of taskArchives) {
     const mainOid = mainArchiveMap.get(ta.path);
     if (mainOid && mainOid !== ta.oid) {
@@ -219,17 +283,19 @@ export function planAlignment(options = {}) {
   }
 
   // Preserved task blobs
-  const preservedPaths = taskChangedPaths.filter(p =>
+  const preservedPaths = taskChangedPaths.filter((p) =>
     !CANONICAL_SHARED_PATHS.includes(p) && !p.startsWith(".synthesis/task-capsules/")
   ).sort();
-  const preservedBlobs = snapshotBlobs(repoRoot, preservedPaths, taskHead);
+  const preservedBlobs = snapshotBlobs(repoRoot, preservedPaths, actualHead);
 
   // Cumulative allowed_paths
   const projectedAllowedPaths = computeCumulativeAllowedPaths(taskChangedPaths, CANONICAL_SHARED_PATHS, targetArchivePath);
 
+  const repoIdentity = runGitOrThrow(repoRoot, ["rev-parse", "--show-toplevel"]);
+
   const hashPayload = {
     active_capsule_id: activeCapsule.capsule_id || activeCapsule.task_id,
-    branch: currentBranch,
+    branch: actualBranch,
     canonical_shared_paths: [...CANONICAL_SHARED_PATHS].sort(),
     concurrent_paths: concurrentPaths,
     conflict_paths: conflictPaths,
@@ -239,11 +305,12 @@ export function planAlignment(options = {}) {
     next_sequence: nextSeq,
     parent_capsule_id: activeCapsule.capsule_id || activeCapsule.task_id,
     preserved_blobs: preservedBlobs,
+    repo_identity: repoIdentity,
     target_archive_path: targetArchivePath,
     target_main_sha: targetMain,
     task_archives: taskArchives,
     task_changed_paths: taskChangedPaths,
-    task_head_sha: taskHead,
+    task_head_sha: actualHead,
     tool_contract_version: TOOL_CONTRACT_VERSION
   };
 
@@ -257,8 +324,8 @@ export function planAlignment(options = {}) {
     valid: true,
     errors: [],
     planHash,
-    branch: currentBranch,
-    taskHead,
+    branch: actualBranch,
+    taskHead: actualHead,
     targetMain,
     mergeBase,
     activeCapsule,
@@ -297,17 +364,20 @@ export function applyAlignment(options = {}) {
     };
   }
 
-  const { targetMain, activeCapsule, rootTaskId, nextSeq, targetArchivePath, preservedBlobs, projectedAllowedPaths } = plan;
+  const { targetMain, activeCapsule, rootTaskId, nextSeq, targetArchivePath, preservedBlobs, projectedAllowedPaths, taskArchives, mainArchives } = plan;
+  let mergeInitiated = false;
+  let commitCreated = false;
 
   // 2. Start Merge
   const mergeRes = runGit(repoRoot, ["merge", "--no-commit", "--no-ff", targetMain]);
+  mergeInitiated = true;
+
   if (mergeRes.status !== 0) {
     // Check conflicts
     const unmergedOut = runGitOrThrow(repoRoot, ["diff", "--name-only", "--diff-filter=U"]);
-    const actualConflicts = unmergedOut ? unmergedOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean) : [];
+    const actualConflicts = unmergedOut ? unmergedOut.split(/\r?\n/).map((s) => s.trim()).filter(Boolean) : [];
     for (const ac of actualConflicts) {
       if (!CANONICAL_SHARED_PATHS.includes(ac)) {
-        // Rollback
         runGit(repoRoot, ["merge", "--abort"]);
         return {
           success: false,
@@ -374,7 +444,7 @@ export function applyAlignment(options = {}) {
     // 4. Pre-Commit Verifications
     // A. Staged index diff vs targetMain
     const stagedDiffOut = runGitOrThrow(repoRoot, ["diff", "--cached", "--name-only", targetMain]);
-    const stagedPaths = stagedDiffOut ? stagedDiffOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean).sort() : [];
+    const stagedPaths = stagedDiffOut ? stagedDiffOut.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort() : [];
 
     const expectedAllowed = [...projectedAllowedPaths].sort();
     if (JSON.stringify(stagedPaths) !== JSON.stringify(expectedAllowed)) {
@@ -387,14 +457,29 @@ export function applyAlignment(options = {}) {
       if (!fs.existsSync(fullP)) {
         throw new Error(`Preserved task file missing after merge: ${pb.path}`);
       }
-      const fileBytes = fs.readFileSync(fullP);
       const hashRes = runGitOrThrow(repoRoot, ["hash-object", pb.path]);
       if (hashRes !== pb.oid) {
         throw new Error(`Preserved task file blob OID mismatch for ${pb.path}: pre-merge ${pb.oid} != current ${hashRes}`);
       }
     }
 
-    // C. Ruleset & Registry Validators
+    // C. Historical Archives Integrity
+    const allHistoricalArchives = new Map();
+    for (const a of [...taskArchives, ...mainArchives]) {
+      allHistoricalArchives.set(a.path, a.oid);
+    }
+    for (const [aPath, expectedOid] of allHistoricalArchives.entries()) {
+      const fullP = path.join(repoRoot, aPath);
+      if (!fs.existsSync(fullP)) {
+        throw new Error(`Historical archive missing after merge: ${aPath}`);
+      }
+      const currentOid = runGitOrThrow(repoRoot, ["hash-object", aPath]);
+      if (currentOid !== expectedOid) {
+        throw new Error(`Historical archive modified for ${aPath}: expected ${expectedOid} != current ${currentOid}`);
+      }
+    }
+
+    // D. Ruleset & Registry & Lineage Validators
     const rulesetRes = validateRulesetLock({ repoRoot });
     if (!rulesetRes.valid) {
       throw new Error(`Ruleset lock validation failed: ${rulesetRes.errors.join("; ")}`);
@@ -405,7 +490,12 @@ export function applyAlignment(options = {}) {
       throw new Error(`Capsule registry validation failed: ${regRes.errors.join("; ")}`);
     }
 
-    // D. git diff --cached --check
+    const lineageRes = validateLineage({ repoRoot });
+    if (!lineageRes.valid) {
+      throw new Error(`Lineage validation failed: ${lineageRes.errors.join("; ")}`);
+    }
+
+    // E. git diff --cached --check
     const diffCheckRes = runGit(repoRoot, ["diff", "--cached", "--check"]);
     if (diffCheckRes.status !== 0) {
       throw new Error(`git diff --cached --check failed: ${diffCheckRes.stderr || diffCheckRes.stdout}`);
@@ -421,11 +511,26 @@ export function applyAlignment(options = {}) {
       `PLAN_HASH: ${plan.planHash}`;
 
     runGitOrThrow(repoRoot, ["commit", "-m", commitMsg]);
+    commitCreated = true;
 
+    // 6. Post-Commit Verifications
     const newHead = runGitOrThrow(repoRoot, ["rev-parse", "HEAD"]);
     const parents = runGitOrThrow(repoRoot, ["rev-parse", "HEAD^1", "HEAD^2"]).split(/\r?\n/).filter(Boolean);
     if (parents.length !== 2) {
       throw new Error(`Created commit ${newHead} does not have exactly 2 parents (parents: ${parents.join(", ")})`);
+    }
+    if (parents[0] !== plan.taskHead) {
+      throw new Error(`First parent ${parents[0]} does not equal pre-merge task HEAD ${plan.taskHead}`);
+    }
+    if (parents[1] !== targetMain) {
+      throw new Error(`Second parent ${parents[1]} does not equal target main ${targetMain}`);
+    }
+
+    // Final diff against targetMain
+    const finalDiffOut = runGitOrThrow(repoRoot, ["diff", "--name-only", targetMain, "HEAD"]);
+    const finalDiffPaths = finalDiffOut ? finalDiffOut.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort() : [];
+    if (JSON.stringify(finalDiffPaths) !== JSON.stringify(expectedAllowed)) {
+      throw new Error(`Post-commit final branch diff does not match projected allowed_paths.`);
     }
 
     return {
@@ -437,16 +542,27 @@ export function applyAlignment(options = {}) {
       targetMainSha: targetMain
     };
   } catch (err) {
-    // Rollback pre-commit
-    runGit(repoRoot, ["merge", "--abort"]);
-    const fullArchivePath = path.join(repoRoot, targetArchivePath);
-    if (fs.existsSync(fullArchivePath)) {
-      try { fs.unlinkSync(fullArchivePath); } catch {}
+    if (!commitCreated && mergeInitiated) {
+      // Safe pre-commit rollback
+      runGit(repoRoot, ["merge", "--abort"]);
+      const fullArchivePath = path.join(repoRoot, targetArchivePath);
+      if (fs.existsSync(fullArchivePath)) {
+        try { fs.unlinkSync(fullArchivePath); } catch {}
+      }
+      return {
+        success: false,
+        errors: [`Apply failed pre-commit: ${err.message}. Merge aborted and worktree restored.`]
+      };
+    } else {
+      // Post-commit failure: NEVER destructive rollback!
+      return {
+        success: false,
+        postCommitFailure: true,
+        status: "POST_COMMIT_VALIDATION_FAILED",
+        recovery: "RECOVERY_REQUIRED",
+        errors: [`Apply failed post-commit: ${err.message}. Commit preserved for audit. DO NOT PUSH.`]
+      };
     }
-    return {
-      success: false,
-      errors: [`Apply failed: ${err.message}. Merge aborted and worktree restored.`]
-    };
   }
 }
 
@@ -488,7 +604,7 @@ if (process.argv[1] && process.argv[1].endsWith("align_branch.mjs")) {
   } else if (mode === "apply") {
     const res = applyAlignment({ planHash, targetMain });
     if (!res.success) {
-      console.error(JSON.stringify({ success: false, errors: res.errors }, null, 2));
+      console.error(JSON.stringify({ success: false, errors: res.errors, recovery: res.recovery || null }, null, 2));
       process.exit(1);
     }
     console.log(JSON.stringify({
