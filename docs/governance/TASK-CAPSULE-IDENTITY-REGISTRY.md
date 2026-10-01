@@ -64,3 +64,10 @@ Governance validation fails immediately and blocks CI on:
 6. Invalid parent or superseded capsule ID references.
 7. Task ID mismatch between archive JSON content and registry entry.
 8. File mutations outside `allowed_paths` (blocked by Diff Firewall).
+
+## 11. Canonical Task Branch Alignment Engine (SYN-GOV-BRANCH-ALIGNMENT-001)
+- **Authoritative Tool**: `scripts/ci/align_branch.mjs` is the sole canonical mechanism for aligning task branches with `main`.
+- **PLAN Mode (`--mode=plan`)**: Strictly read-only preflight analysis that detects merge conflicts via `git merge-tree`, checks concurrent edits outside `.synthesis/task-capsule.json` and `.synthesis/lineage/capsules.json`, snapshots preserved blob OIDs, and produces a deterministic `PLAN_HASH`.
+- **APPLY Mode (`--mode=apply --plan-hash=<sha256>`)**: Verifies TOCTOU plan hash agreement, executes 2-parent merge, resolves canonical shared paths by generating an immutable child alignment capsule, regenerates `capsules.json`, verifies byte integrity of preserved task blobs and adopted main blobs, and creates the merge commit.
+- **Fail-Closed Policy**: Any unexpected conflict or concurrent domain edit aborts the merge immediately (`git merge --abort`).
+- **Archive Immutability**: Historical task capsule archives are permanently byte-immutable and never overwritten. Manual ad-hoc task branch alignment is strictly prohibited.

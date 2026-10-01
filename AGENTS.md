@@ -9,3 +9,4 @@ All automated agents and contributors must observe these rules before performing
 5. **Technical Authority**: Treat exact pushed commit SHAs evaluated by GitHub Actions CI as authoritative technical gate.
 6. **Anti-Drift Requirement**: Stop execution immediately upon detecting governance drift, uncommitted changes, or authoritative remote divergence.
 7. **No Implicit Approval**: Never silently regenerate approvals, weaken security gates, or invent commit hashes.
+8. **Canonical Task-Branch Alignment**: Never manually merge main or manually resolve capsule conflicts on task branches. Use the canonical alignment engine (`node scripts/ci/align_branch.mjs --mode=plan` followed by authorized `--mode=apply --plan-hash=<sha>`). Fail closed on any unexpected concurrent edit or conflict outside canonical shared paths.
