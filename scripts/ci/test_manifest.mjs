@@ -89,7 +89,8 @@ export const DETERMINISTIC_TESTS = [
   "tests/settings-registry.test.ts",
   "tests/settings-api-security.test.ts",
   "tests/settings-admin-ui.test.ts",
-  "tests/privacy-baseline.test.ts"
+  "tests/privacy-baseline.test.ts",
+  "tests/branch-alignment.test.ts"
 ];
 
 export const POSTGRES_TESTS = [

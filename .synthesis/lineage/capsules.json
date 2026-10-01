@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_capsules": 104,
+  "total_capsules": 105,
   "capsules": [
     {
       "capsule_id": "CAP-SYN-ADMIN-SCOPE-001-20260928-001",
@@ -377,6 +377,20 @@
       "expected_branch": "task/SYN-EDITOR-002-PUCK-PARITY-MOBILE",
       "sha256": "63a025c497831cb615a4098e1bba3bac7fba3bfde678bf4dd9f4d566e4740063",
       "parent_capsule_id": "CAP-SYN-SEC-008-20260921-001",
+      "supersedes_capsule_id": null,
+      "legacy": false
+    },
+    {
+      "capsule_id": "CAP-SYN-GOV-BRANCH-ALIGNMENT-001-20260930-001",
+      "task_id": "SYN-GOV-BRANCH-ALIGNMENT-001",
+      "title": "Deterministic Task Branch Alignment Hardening",
+      "version": "1.1.0",
+      "status": "IN_PROGRESS",
+      "archive_path": ".synthesis/task-capsules/SYN-GOV-BRANCH-ALIGNMENT-001.json",
+      "base_sha": "5780699736de1e6af3fde5a763a85871f3937d10",
+      "expected_branch": "task/SYN-GOV-BRANCH-ALIGNMENT-001",
+      "sha256": "a158acce8aec61574b786c6a30bdf92a6a365861d3c1166c62aa404c5f9fd23a",
+      "parent_capsule_id": "CAP-SYN-GOV-LINEAGE-SYNC-PR93-20260930-001",
       "supersedes_capsule_id": null,
       "legacy": false
     },
