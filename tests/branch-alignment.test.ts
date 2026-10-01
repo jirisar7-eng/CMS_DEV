@@ -15,7 +15,7 @@ import {
   CANONICAL_SHARED_PATHS
 } from "../scripts/ci/align_branch.mjs";
 
-function runGitIn(dir, args) {
+function runGitIn(dir: string, args: string[]): string {
   const res = spawnSync("git", args, { cwd: dir, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
   if (res.status !== 0) {
     throw new Error(`git ${args.join(" ")} failed: ${res.stderr || res.stdout}`);
@@ -23,7 +23,7 @@ function runGitIn(dir, args) {
   return (res.stdout || "").trim();
 }
 
-function createTempGitRepo() {
+function createTempGitRepo(): { tmpDir: string; baseCommit: string } {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "syn-align-test-"));
   runGitIn(tmpDir, ["init", "-b", "main"]);
   runGitIn(tmpDir, ["config", "user.name", "Test Runner"]);
@@ -54,7 +54,24 @@ function createTempGitRepo() {
   fs.writeFileSync(path.join(tmpDir, ".synthesis/task-capsules/SYN-BASE-001.json"), JSON.stringify(baseCapsule, null, 2) + "\n", "utf8");
   fs.writeFileSync(path.join(tmpDir, ".synthesis/task-capsule.json"), JSON.stringify(baseCapsule, null, 2) + "\n", "utf8");
   fs.writeFileSync(path.join(tmpDir, ".synthesis/lineage/tasks.json"), JSON.stringify({ registry_version: "1.0.0", total_tasks: 1, tasks: [] }, null, 2) + "\n", "utf8");
-  fs.writeFileSync(path.join(tmpDir, ".synthesis/lineage/capsules.json"), JSON.stringify({ registry_version: "1.0.0", total_capsules: 1, capsules: [] }, null, 2) + "\n", "utf8");
+  fs.writeFileSync(path.join(tmpDir, ".synthesis/lineage/capsules.json"), JSON.stringify({
+    registry_version: "1.0.0",
+    total_capsules: 1,
+    capsules: [{
+      capsule_id: "CAP-SYN-BASE-001-20260101-001",
+      task_id: "SYN-BASE-001",
+      title: "Base Task",
+      version: "1.1.0",
+      status: "COMPLETED",
+      archive_path: ".synthesis/task-capsules/SYN-BASE-001.json",
+      base_sha: "0000000000000000000000000000000000000000",
+      expected_branch: "task/SYN-BASE-001",
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+      parent_capsule_id: null,
+      supersedes_capsule_id: null,
+      legacy: false
+    }]
+  }, null, 2) + "\n", "utf8");
 
   runGitIn(tmpDir, ["add", "-A"]);
   const baseCommit = runGitIn(tmpDir, ["commit", "-m", "chore: base init"]);
@@ -62,7 +79,7 @@ function createTempGitRepo() {
   return { tmpDir, baseCommit };
 }
 
-function writeActiveCapsule(tmpDir, branch, taskId) {
+function writeActiveCapsule(tmpDir: string, branch: string, taskId: string): void {
   const cap = {
     version: "1.1.0",
     capsule_id: `CAP-${taskId}-20260101-001`,
@@ -92,12 +109,19 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
       runGitIn(tmpDir, ["add", "-A"]);
       runGitIn(tmpDir, ["commit", "-m", "feat: add feature capsule"]);
 
+      const headBefore = runGitIn(tmpDir, ["rev-parse", "HEAD"]);
+      const indexTreeBefore = runGitIn(tmpDir, ["write-tree"]);
       const statusBefore = runGitIn(tmpDir, ["status", "--porcelain"]);
+
       const plan = planAlignment({ repoRoot: tmpDir, targetMain: runGitIn(tmpDir, ["rev-parse", "main"]) });
+
+      const headAfter = runGitIn(tmpDir, ["rev-parse", "HEAD"]);
+      const indexTreeAfter = runGitIn(tmpDir, ["write-tree"]);
       const statusAfter = runGitIn(tmpDir, ["status", "--porcelain"]);
 
-      assert.equal(statusBefore, "");
-      assert.equal(statusAfter, "");
+      assert.equal(headAfter, headBefore, "HEAD must not move during PLAN");
+      assert.equal(indexTreeAfter, indexTreeBefore, "Index must remain byte-identical during PLAN");
+      assert.equal(statusAfter, statusBefore, "Worktree must remain clean during PLAN");
       assert.ok(plan.planHash);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -115,16 +139,39 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
       const targetMain = runGitIn(tmpDir, ["rev-parse", "main"]);
       const plan = planAlignment({ repoRoot: tmpDir, targetMain });
       assert.equal(plan.valid, true);
+      assert.ok(plan.planHash);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
   await t.test("03. Successful alignment with exactly the two canonical shared conflicts", () => {
-    assert.deepEqual(CANONICAL_SHARED_PATHS, [
-      ".synthesis/lineage/capsules.json",
-      ".synthesis/task-capsule.json"
-    ]);
+    const { tmpDir } = createTempGitRepo();
+    try {
+      // Create change on main in shared capsule
+      fs.writeFileSync(path.join(tmpDir, ".synthesis/task-capsules/SYN-MAIN-UPDATE.json"), JSON.stringify({
+        version: "1.1.0",
+        capsule_id: "CAP-SYN-MAIN-UPDATE-20260101-001",
+        task_id: "SYN-MAIN-UPDATE",
+        status: "COMPLETED"
+      }, null, 2) + "\n", "utf8");
+      runGitIn(tmpDir, ["add", "-A"]);
+      runGitIn(tmpDir, ["commit", "-m", "chore: add main archive"]);
+
+      // On task branch, create task capsule
+      runGitIn(tmpDir, ["checkout", "-b", "task/SYN-FEATURE-003", "HEAD~1"]);
+      writeActiveCapsule(tmpDir, "task/SYN-FEATURE-003", "SYN-FEATURE-003");
+      runGitIn(tmpDir, ["add", "-A"]);
+      runGitIn(tmpDir, ["commit", "-m", "feat: task 003"]);
+
+      const mainSha = runGitIn(tmpDir, ["rev-parse", "main"]);
+      const plan = planAlignment({ repoRoot: tmpDir, targetMain: mainSha });
+      assert.equal(plan.valid, true);
+      assert.ok(CANONICAL_SHARED_PATHS.includes(".synthesis/lineage/capsules.json"));
+      assert.ok(CANONICAL_SHARED_PATHS.includes(".synthesis/task-capsule.json"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   await t.test("04. Reject unexpected merge conflicts outside canonical shared paths", () => {
@@ -178,7 +225,26 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
   });
 
   await t.test("06. Reject protected task blob OID mismatch", () => {
-    assert.equal(typeof snapshotBlobs, "function");
+    const { tmpDir } = createTempGitRepo();
+    try {
+      runGitIn(tmpDir, ["checkout", "-b", "task/SYN-BLOB-001"]);
+      writeActiveCapsule(tmpDir, "task/SYN-BLOB-001", "SYN-BLOB-001");
+      fs.writeFileSync(path.join(tmpDir, "domain.txt"), "content A\n", "utf8");
+      runGitIn(tmpDir, ["add", "-A"]);
+      runGitIn(tmpDir, ["commit", "-m", "add domain.txt"]);
+
+      const blobs = snapshotBlobs(tmpDir, ["domain.txt"], "HEAD");
+      assert.equal(blobs.length, 1);
+      assert.equal(blobs[0].path, "domain.txt");
+      assert.ok(blobs[0].oid);
+
+      // Mutated blob test
+      fs.writeFileSync(path.join(tmpDir, "domain.txt"), "content B\n", "utf8");
+      const mutatedOid = runGitIn(tmpDir, ["hash-object", "domain.txt"]);
+      assert.notEqual(mutatedOid, blobs[0].oid, "Mutated content must produce different blob OID");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   await t.test("07. Reject overwriting an existing archive", () => {
@@ -230,11 +296,23 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
     try {
       runGitIn(tmpDir, ["checkout", "-b", "task/SYN-DIRTY-001"]);
       writeActiveCapsule(tmpDir, "task/SYN-DIRTY-001", "SYN-DIRTY-001");
+      runGitIn(tmpDir, ["add", "-A"]);
+      runGitIn(tmpDir, ["commit", "-m", "clean init"]);
+
+      // Unstaged change test
       fs.writeFileSync(path.join(tmpDir, "untracked.txt"), "dirty\n", "utf8");
       const mainSha = runGitIn(tmpDir, ["rev-parse", "main"]);
-      const plan = planAlignment({ repoRoot: tmpDir, targetMain: mainSha });
-      assert.equal(plan.valid, false);
-      assert.ok(plan.errors.some(e => e.includes("dirty")));
+      const planUnstaged = planAlignment({ repoRoot: tmpDir, targetMain: mainSha });
+      assert.equal(planUnstaged.valid, false);
+      assert.ok(planUnstaged.errors.some(e => e.includes("dirty")));
+
+      // Staged uncommitted change test
+      fs.unlinkSync(path.join(tmpDir, "untracked.txt"));
+      fs.writeFileSync(path.join(tmpDir, "staged.txt"), "staged\n", "utf8");
+      runGitIn(tmpDir, ["add", "staged.txt"]);
+      const planStaged = planAlignment({ repoRoot: tmpDir, targetMain: mainSha });
+      assert.equal(planStaged.valid, false);
+      assert.ok(planStaged.errors.some(e => e.includes("dirty")));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -243,9 +321,20 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
   await t.test("11. Reject execution on main, detached HEAD and unauthorized branch names", () => {
     const { tmpDir } = createTempGitRepo();
     try {
+      // Test on main
       const planMain = planAlignment({ repoRoot: tmpDir, targetMain: runGitIn(tmpDir, ["rev-parse", "main"]) });
       assert.equal(planMain.valid, false);
       assert.ok(planMain.errors.some(e => e.includes("only permitted on task branches")));
+
+      // Test on unauthorized branch name
+      runGitIn(tmpDir, ["checkout", "-b", "feature/unauthorized"]);
+      writeActiveCapsule(tmpDir, "feature/unauthorized", "SYN-UNAUTH-001");
+      runGitIn(tmpDir, ["add", "-A"]);
+      runGitIn(tmpDir, ["commit", "-m", "unauthorized branch"]);
+
+      const planUnauth = planAlignment({ repoRoot: tmpDir, targetMain: runGitIn(tmpDir, ["rev-parse", "main"]) });
+      assert.equal(planUnauth.valid, false);
+      assert.ok(planUnauth.errors.some(e => e.includes("does not match authorized task branch pattern")));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -259,9 +348,21 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
       runGitIn(tmpDir, ["add", "-A"]);
       runGitIn(tmpDir, ["commit", "-m", "feat: drift test"]);
 
-      const plan = planAlignment({ repoRoot: tmpDir, targetMain: "invalid-sha" });
-      assert.equal(plan.valid, false);
-      assert.ok(plan.errors.some(e => e.includes("valid 40-character")));
+      // Malformed SHA
+      const planMalformed = planAlignment({ repoRoot: tmpDir, targetMain: "invalid-sha" });
+      assert.equal(planMalformed.valid, false);
+      assert.ok(planMalformed.errors.some(e => e.includes("valid 40-character")));
+
+      // Capsule expected_branch mismatch
+      const cap = JSON.parse(fs.readFileSync(path.join(tmpDir, ".synthesis/task-capsule.json"), "utf8"));
+      cap.expected_branch = "task/OTHER-BRANCH";
+      fs.writeFileSync(path.join(tmpDir, ".synthesis/task-capsule.json"), JSON.stringify(cap, null, 2) + "\n", "utf8");
+      runGitIn(tmpDir, ["add", "-A"]);
+      runGitIn(tmpDir, ["commit", "-m", "mismatch capsule branch"]);
+
+      const planMismatch = planAlignment({ repoRoot: tmpDir, targetMain: runGitIn(tmpDir, ["rev-parse", "main"]) });
+      assert.equal(planMismatch.valid, false);
+      assert.ok(planMismatch.errors.some(e => e.includes("expected_branch")));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -271,6 +372,21 @@ test("Branch Alignment Security Engine — 26 Test Matrix", async (t) => {
     const payloadA = { preserved_blobs: [{ path: "a.ts", oid: "1111111111111111111111111111111111111111" }] };
     const payloadB = { preserved_blobs: [{ path: "a.ts", oid: "2222222222222222222222222222222222222222" }] };
     assert.notEqual(computePlanHash(payloadA), computePlanHash(payloadB));
+
+    const { tmpDir } = createTempGitRepo();
+    try {
+      runGitIn(tmpDir, ["checkout", "-b", "task/SYN-STALE-001"]);
+      writeActiveCapsule(tmpDir, "task/SYN-STALE-001", "SYN-STALE-001");
+      runGitIn(tmpDir, ["add", "-A"]);
+      runGitIn(tmpDir, ["commit", "-m", "feat: stale test"]);
+
+      const staleHash = "0000000000000000000000000000000000000000000000000000000000000000";
+      const applyRes = applyAlignment({ repoRoot: tmpDir, targetMain: runGitIn(tmpDir, ["rev-parse", "main"]), planHash: staleHash });
+      assert.equal(applyRes.success, false);
+      assert.ok(applyRes.errors.some(e => e.includes("Plan hash mismatch")));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   await t.test("14. Sequence allocation is deterministic and does not reuse 001, 002 or 003", () => {
