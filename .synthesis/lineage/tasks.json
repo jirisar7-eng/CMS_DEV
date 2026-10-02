@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "total_tasks": 78,
+  "total_tasks": 79,
   "tasks": [
     {
       "record_version": "1.0.0",
@@ -3942,6 +3942,46 @@
         "scripts/ci/validate_ruleset_lock.mjs",
         "scripts/ci/validate_ruleset_lock.test.mjs"
       ]
+    },
+    {
+        "record_version": "1.0.0",
+        "pr_number": 95,
+        "pr_title": "fix(governance): harden deterministic task branch alignment",
+        "task_id": "SYN-GOV-BRANCH-ALIGNMENT-001",
+        "branch": "task/SYN-GOV-BRANCH-ALIGNMENT-001",
+        "base_sha": "5780699736de1e6af3fde5a763a85871f3937d10",
+        "source_head_sha": "cb86ec25887a15758a359817cbdeca30b44de132",
+        "merge_sha": "cbba3d8c505f460f19138568e929bb3dd893f301",
+        "merged_at": "2026-10-01T20:10:43Z",
+        "capsule_present": true,
+        "capsule_declared_status": "IN_PROGRESS",
+        "derived_status": "MERGED",
+        "capsule_sha256": "a158acce8aec61574b786c6a30bdf92a6a365861d3c1166c62aa404c5f9fd23a",
+        "touches_capabilities": [
+            "governance"
+        ],
+        "depends_on_tasks": [],
+        "evidence_source": "GITHUB_PR_API_GIT_SOURCE_CAPSULE_AND_ARCHIVE_REGISTRY",
+        "allowed_paths": [
+            ".synthesis/lineage/capsules.json",
+            ".synthesis/task-capsule.json",
+            ".synthesis/task-capsules/SYN-GOV-BRANCH-ALIGNMENT-001.json",
+            "AGENTS.md",
+            "docs/governance/TASK-CAPSULE-IDENTITY-REGISTRY.md",
+            "scripts/ci/align_branch.mjs",
+            "scripts/ci/test_manifest.mjs",
+            "tests/branch-alignment.test.ts"
+        ],
+        "actual_changed_files": [
+            ".synthesis/lineage/capsules.json",
+            ".synthesis/task-capsule.json",
+            ".synthesis/task-capsules/SYN-GOV-BRANCH-ALIGNMENT-001.json",
+            "AGENTS.md",
+            "docs/governance/TASK-CAPSULE-IDENTITY-REGISTRY.md",
+            "scripts/ci/align_branch.mjs",
+            "scripts/ci/test_manifest.mjs",
+            "tests/branch-alignment.test.ts"
+        ]
     }
   ]
 }
